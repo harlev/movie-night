@@ -1,0 +1,11 @@
+name = "movie-night"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+ENVIRONMENT = "development"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "movie-night-db"
+database_id = "local-dev-db"

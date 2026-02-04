@@ -1,0 +1,35 @@
+{
+	"name": "movie-night",
+	"private": true,
+	"version": "0.0.1",
+	"type": "module",
+	"scripts": {
+		"dev": "vite dev",
+		"build": "vite build",
+		"preview": "wrangler pages dev .svelte-kit/cloudflare",
+		"prepare": "svelte-kit sync || echo ''",
+		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+		"db:generate": "drizzle-kit generate",
+		"db:migrate": "wrangler d1 migrations apply movie-night-db",
+		"db:migrate:local": "wrangler d1 migrations apply movie-night-db --local",
+		"db:studio": "drizzle-kit studio",
+		"deploy": "wrangler pages deploy .svelte-kit/cloudflare"
+	},
+	"devDependencies": {
+		"@cloudflare/workers-types": "^4.20260203.0",
+		"@sveltejs/adapter-auto": "^7.0.0",
+		"@sveltejs/adapter-cloudflare": "^7.2.6",
+		"@sveltejs/kit": "^2.50.1",
+		"@sveltejs/vite-plugin-svelte": "^6.2.4",
+		"@tailwindcss/vite": "^4.1.18",
+		"drizzle-kit": "^0.31.8",
+		"drizzle-orm": "^0.45.1",
+		"svelte": "^5.48.2",
+		"svelte-check": "^4.3.5",
+		"tailwindcss": "^4.1.18",
+		"typescript": "^5.9.3",
+		"vite": "^7.3.1",
+		"wrangler": "^4.62.0"
+	}
+}

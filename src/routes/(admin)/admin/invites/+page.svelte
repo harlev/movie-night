@@ -2,6 +2,7 @@
 	import { enhance } from '$app/forms';
 
 	let { data, form } = $props();
+	let expandedInvites = $state<Set<string>>(new Set());
 
 	function formatDate(dateStr: string): string {
 		return new Date(dateStr).toLocaleDateString('en-US', {
@@ -18,16 +19,24 @@
 	}
 
 	function getStatusColor(status: string, expiresAt: string): string {
-		if (status === 'used') return 'bg-[var(--color-success)]/10 text-[var(--color-success)]';
 		if (status === 'expired' || isExpired(expiresAt))
 			return 'bg-[var(--color-error)]/10 text-[var(--color-error)]';
-		return 'bg-[var(--color-warning)]/10 text-[var(--color-warning)]';
+		return 'bg-[var(--color-success)]/10 text-[var(--color-success)]';
 	}
 
 	function getDisplayStatus(status: string, expiresAt: string): string {
-		if (status === 'used') return 'Used';
 		if (status === 'expired' || isExpired(expiresAt)) return 'Expired';
-		return 'Pending';
+		return 'Active';
+	}
+
+	function toggleExpanded(inviteId: string) {
+		const newSet = new Set(expandedInvites);
+		if (newSet.has(inviteId)) {
+			newSet.delete(inviteId);
+		} else {
+			newSet.add(inviteId);
+		}
+		expandedInvites = newSet;
 	}
 </script>
 
@@ -91,7 +100,7 @@
 						<th
 							class="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wider"
 						>
-							Used By
+							Uses
 						</th>
 						<th class="px-4 py-3"></th>
 					</tr>
@@ -122,11 +131,39 @@
 							<td class="px-4 py-4 text-sm text-[var(--color-text-muted)]">
 								{formatDate(invite.expiresAt)}
 							</td>
-							<td class="px-4 py-4 text-sm text-[var(--color-text-muted)]">
-								{invite.usedByName || '-'}
+							<td class="px-4 py-4">
+								{#if invite.useCount > 0}
+									<button
+										type="button"
+										onclick={() => toggleExpanded(invite.id)}
+										class="text-sm text-[var(--color-primary)] hover:underline flex items-center gap-1"
+									>
+										<span class="font-medium">{invite.useCount}</span>
+										<span class="text-[var(--color-text-muted)]">
+											{invite.useCount === 1 ? 'user' : 'users'}
+										</span>
+										<svg
+											class="w-4 h-4 transition-transform {expandedInvites.has(invite.id)
+												? 'rotate-180'
+												: ''}"
+											fill="none"
+											stroke="currentColor"
+											viewBox="0 0 24 24"
+										>
+											<path
+												stroke-linecap="round"
+												stroke-linejoin="round"
+												stroke-width="2"
+												d="M19 9l-7 7-7-7"
+											/>
+										</svg>
+									</button>
+								{:else}
+									<span class="text-sm text-[var(--color-text-muted)]">0 users</span>
+								{/if}
 							</td>
 							<td class="px-4 py-4 text-right">
-								{#if invite.status === 'pending' && !isExpired(invite.expiresAt)}
+								{#if invite.status === 'active' && !isExpired(invite.expiresAt)}
 									<form method="POST" action="?/expire" use:enhance class="inline">
 										<input type="hidden" name="inviteId" value={invite.id} />
 										<button
@@ -139,6 +176,29 @@
 								{/if}
 							</td>
 						</tr>
+						{#if expandedInvites.has(invite.id) && invite.users.length > 0}
+							<tr class="bg-[var(--color-surface-elevated)]/30">
+								<td colspan="6" class="px-4 py-3">
+									<div class="pl-4 border-l-2 border-[var(--color-border)]">
+										<p class="text-xs font-medium text-[var(--color-text-muted)] mb-2">
+											Users who joined with this invite:
+										</p>
+										<div class="flex flex-wrap gap-2">
+											{#each invite.users as user}
+												<span
+													class="inline-flex items-center gap-1 px-2 py-1 bg-[var(--color-surface)] rounded text-sm"
+												>
+													<span class="text-[var(--color-text)]">{user.displayName}</span>
+													<span class="text-[var(--color-text-muted)] text-xs">
+														({formatDate(user.usedAt)})
+													</span>
+												</span>
+											{/each}
+										</div>
+									</div>
+								</td>
+							</tr>
+						{/if}
 					{/each}
 				</tbody>
 			</table>

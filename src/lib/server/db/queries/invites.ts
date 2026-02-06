@@ -1,6 +1,6 @@
-import { eq, and, gt } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import type { Database } from '../index';
-import { invites, type Invite } from '../schema';
+import { invites, inviteUses, users, type Invite } from '../schema';
 import { generateId, generateInviteCode } from '$lib/utils';
 
 export async function createInvite(
@@ -40,10 +40,6 @@ export async function validateInviteCode(
 		return { valid: false, error: 'Invalid invite code' };
 	}
 
-	if (invite.status === 'used') {
-		return { valid: false, error: 'This invite code has already been used' };
-	}
-
 	if (invite.status === 'expired' || new Date(invite.expiresAt) < new Date()) {
 		return { valid: false, error: 'This invite code has expired' };
 	}
@@ -51,17 +47,25 @@ export async function validateInviteCode(
 	return { valid: true, invite };
 }
 
-export async function markInviteUsed(
+export async function recordInviteUse(
 	db: Database,
 	inviteId: string,
-	usedBy: string
+	userId: string
 ): Promise<void> {
+	const id = generateId();
+
+	// Insert the usage record
+	await db.insert(inviteUses).values({
+		id,
+		inviteId,
+		userId
+	});
+
+	// Increment the use count
 	await db
 		.update(invites)
 		.set({
-			status: 'used',
-			usedBy,
-			usedAt: new Date().toISOString()
+			useCount: sql`${invites.useCount} + 1`
 		})
 		.where(eq(invites.id, inviteId));
 }
@@ -76,4 +80,21 @@ export async function getInvitesByCreator(db: Database, createdBy: string): Prom
 
 export async function expireInvite(db: Database, inviteId: string): Promise<void> {
 	await db.update(invites).set({ status: 'expired' }).where(eq(invites.id, inviteId));
+}
+
+export async function getInviteUsers(
+	db: Database,
+	inviteId: string
+): Promise<Array<{ userId: string; displayName: string; usedAt: string }>> {
+	const results = await db
+		.select({
+			userId: inviteUses.userId,
+			displayName: users.displayName,
+			usedAt: inviteUses.usedAt
+		})
+		.from(inviteUses)
+		.innerJoin(users, eq(inviteUses.userId, users.id))
+		.where(eq(inviteUses.inviteId, inviteId));
+
+	return results;
 }

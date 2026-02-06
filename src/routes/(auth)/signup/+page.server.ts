@@ -6,7 +6,7 @@ import {
 	createUser,
 	createSession,
 	validateInviteCode,
-	markInviteUsed
+	recordInviteUse
 } from '$lib/server/db/queries';
 import { createAccessToken, generateRefreshToken } from '$lib/server/auth';
 import { isValidEmail, isValidPassword, isValidDisplayName } from '$lib/utils';
@@ -80,8 +80,8 @@ export const actions: Actions = {
 			displayName
 		});
 
-		// Mark invite as used
-		await markInviteUsed(db, inviteValidation.invite.id, user.id);
+		// Record invite usage
+		await recordInviteUse(db, inviteValidation.invite.id, user.id);
 
 		// Create tokens
 		const accessToken = await createAccessToken(

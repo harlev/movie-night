@@ -33,12 +33,25 @@ export const invites = sqliteTable('invites', {
 		.notNull()
 		.references(() => users.id),
 	expiresAt: text('expires_at').notNull(),
-	status: text('status', { enum: ['pending', 'used', 'expired'] })
+	status: text('status', { enum: ['active', 'expired'] })
 		.notNull()
-		.default('pending'),
-	usedBy: text('used_by').references(() => users.id),
-	usedAt: text('used_at'),
+		.default('active'),
+	useCount: integer('use_count').notNull().default(0),
 	createdAt: text('created_at')
+		.notNull()
+		.default(sql`(datetime('now'))`)
+});
+
+// Invite uses table - tracks which users signed up with which invite
+export const inviteUses = sqliteTable('invite_uses', {
+	id: text('id').primaryKey(),
+	inviteId: text('invite_id')
+		.notNull()
+		.references(() => invites.id),
+	userId: text('user_id')
+		.notNull()
+		.references(() => users.id),
+	usedAt: text('used_at')
 		.notNull()
 		.default(sql`(datetime('now'))`)
 });
@@ -231,6 +244,7 @@ export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type Invite = typeof invites.$inferSelect;
 export type NewInvite = typeof invites.$inferInsert;
+export type InviteUse = typeof inviteUses.$inferSelect;
 export type Movie = typeof movies.$inferSelect;
 export type NewMovie = typeof movies.$inferInsert;
 export type MovieComment = typeof movieComments.$inferSelect;

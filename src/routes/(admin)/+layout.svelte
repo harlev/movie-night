@@ -26,7 +26,9 @@
 		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 			<div class="flex justify-between h-16">
 				<div class="flex items-center">
-					<a href="/dashboard" class="text-xl font-bold text-[var(--color-text)]"> Movie Night </a>
+					<a href="/dashboard">
+						<img src="/logo.png" alt="Movie Night" class="h-14" />
+					</a>
 					<span
 						class="ml-3 px-2 py-1 text-xs font-medium bg-[var(--color-warning)]/10 text-[var(--color-warning)] rounded"
 					>

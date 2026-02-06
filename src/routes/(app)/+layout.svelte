@@ -20,8 +20,8 @@
 			<div class="flex justify-between h-16">
 				<div class="flex">
 					<div class="flex-shrink-0 flex items-center">
-						<a href="/dashboard" class="text-xl font-bold text-[var(--color-text)]">
-							Movie Night
+						<a href="/dashboard">
+							<img src="/logo.png" alt="Movie Night" class="h-14" />
 						</a>
 					</div>
 					<div class="hidden sm:ml-8 sm:flex sm:space-x-4">

@@ -47,7 +47,7 @@ async function verifySignature(data: string, signature: string, secret: string):
 export async function createAccessToken(
 	payload: Omit<JWTPayload, 'iat' | 'exp'>,
 	secret: string,
-	expiresIn: number = 15 * 60 // 15 minutes
+	expiresIn: number = 60 * 60 // 1 hour
 ): Promise<string> {
 	const now = Math.floor(Date.now() / 1000);
 	const fullPayload: JWTPayload = {

@@ -67,7 +67,7 @@ export const actions: Actions = {
 			httpOnly: true,
 			secure: true,
 			sameSite: 'lax',
-			maxAge: 15 * 60 // 15 minutes
+			maxAge: 60 * 60 // 1 hour
 		});
 
 		cookies.set('refresh_token', refreshToken, {

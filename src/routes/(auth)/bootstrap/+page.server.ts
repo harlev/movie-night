@@ -92,7 +92,7 @@ export const actions: Actions = {
 			httpOnly: true,
 			secure: false, // Allow HTTP for local dev
 			sameSite: 'lax',
-			maxAge: 15 * 60
+			maxAge: 60 * 60 // 1 hour
 		});
 
 		cookies.set('refresh_token', refreshToken, {

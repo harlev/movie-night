@@ -1,4 +1,4 @@
-import { fail, redirect } from '@sveltejs/kit';
+import { fail, redirect, isRedirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { getDb } from '$lib/server/db';
 import { createMovie, getMovieByTmdbId } from '$lib/server/db/queries';
@@ -74,7 +74,7 @@ export const actions: Actions = {
 
 			throw redirect(302, `/movies/${movie.id}`);
 		} catch (error) {
-			if (error instanceof Response) throw error;
+			if (isRedirect(error)) throw error;
 			console.error('Error creating movie:', error);
 			return fail(500, { error: 'Failed to suggest movie' });
 		}

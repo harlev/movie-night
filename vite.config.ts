@@ -3,5 +3,8 @@ import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
-	plugins: [sveltekit(), tailwindcss()]
+	plugins: [sveltekit(), tailwindcss()],
+	define: {
+		__BUILD_TIME__: JSON.stringify(new Date().toISOString())
+	}
 });

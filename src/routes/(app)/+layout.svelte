@@ -144,4 +144,8 @@
 	<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 		{@render children()}
 	</main>
+
+	<footer class="text-center text-[10px] text-[var(--color-text-muted)] opacity-40 pb-2">
+		build {__BUILD_TIME__}
+	</footer>
 </div>

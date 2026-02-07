@@ -6,6 +6,7 @@
 	const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w500';
 	let commentContent = $state('');
 	let submitting = $state(false);
+	let showTrailer = $state(false);
 
 	function formatDate(dateStr: string): string {
 		return new Date(dateStr).toLocaleDateString('en-US', {
@@ -80,6 +81,22 @@
 
 				{#if data.movie.metadataSnapshot?.overview}
 					<p class="text-[var(--color-text-muted)] mt-4">{data.movie.metadataSnapshot.overview}</p>
+				{/if}
+
+				{#if data.movie.metadataSnapshot?.trailerKey}
+					<button
+						onclick={() => (showTrailer = true)}
+						class="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors"
+					>
+						<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+							<path
+								fill-rule="evenodd"
+								d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"
+								clip-rule="evenodd"
+							/>
+						</svg>
+						Watch Trailer
+					</button>
 				{/if}
 
 				<div class="mt-6 pt-4 border-t border-[var(--color-border)]">
@@ -174,3 +191,43 @@
 		</a>
 	</p>
 </div>
+
+<!-- Trailer Modal -->
+{#if showTrailer && data.movie.metadataSnapshot?.trailerKey}
+	<div
+		class="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
+		onclick={() => (showTrailer = false)}
+		onkeydown={(e) => e.key === 'Escape' && (showTrailer = false)}
+		role="dialog"
+		aria-modal="true"
+		aria-label="Movie trailer"
+		tabindex="-1"
+	>
+		<div
+			class="relative w-full max-w-4xl mx-4"
+			onclick={(e) => e.stopPropagation()}
+			onkeydown={() => {}}
+			role="document"
+		>
+			<button
+				onclick={() => (showTrailer = false)}
+				class="absolute -top-10 right-0 text-white hover:text-gray-300 transition-colors"
+				aria-label="Close trailer"
+			>
+				<svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+				</svg>
+			</button>
+			<div class="relative w-full" style="padding-bottom: 56.25%;">
+				<iframe
+					src="https://www.youtube.com/embed/{data.movie.metadataSnapshot.trailerKey}?autoplay=1"
+					title="{data.movie.title} trailer"
+					class="absolute inset-0 w-full h-full rounded-lg"
+					frameborder="0"
+					allow="autoplay; encrypted-media"
+					allowfullscreen
+				></iframe>
+			</div>
+		</div>
+	</div>
+{/if}

@@ -92,12 +92,52 @@ export function mapGenreIds(genreIds: number[]): string[] {
 	return genreIds.map((id) => GENRE_MAP[id]).filter(Boolean);
 }
 
-export function createMetadataSnapshot(movie: TMDbMovie | TMDbMovieDetails): {
+interface TMDbVideo {
+	key: string;
+	site: string;
+	type: string;
+	official: boolean;
+}
+
+interface TMDbVideosResponse {
+	results: TMDbVideo[];
+}
+
+export async function fetchMovieVideos(apiKey: string, tmdbId: number): Promise<string | null> {
+	const url = new URL(`${TMDB_BASE_URL}/movie/${tmdbId}/videos`);
+	url.searchParams.set('api_key', apiKey);
+
+	const response = await fetch(url.toString());
+	if (!response.ok) {
+		return null;
+	}
+
+	const data: TMDbVideosResponse = await response.json();
+	const youtubeVideos = data.results.filter((v) => v.site === 'YouTube');
+
+	// Prefer official trailers, then any trailer, then teasers
+	const officialTrailer = youtubeVideos.find((v) => v.type === 'Trailer' && v.official);
+	if (officialTrailer) return officialTrailer.key;
+
+	const anyTrailer = youtubeVideos.find((v) => v.type === 'Trailer');
+	if (anyTrailer) return anyTrailer.key;
+
+	const teaser = youtubeVideos.find((v) => v.type === 'Teaser');
+	if (teaser) return teaser.key;
+
+	return null;
+}
+
+export function createMetadataSnapshot(
+	movie: TMDbMovie | TMDbMovieDetails,
+	trailerKey: string | null = null
+): {
 	posterPath: string | null;
 	releaseDate: string | null;
 	overview: string | null;
 	voteAverage: number | null;
 	genres: string[];
+	trailerKey: string | null;
 } {
 	const genres =
 		'genres' in movie
@@ -111,6 +151,7 @@ export function createMetadataSnapshot(movie: TMDbMovie | TMDbMovieDetails): {
 		releaseDate: movie.release_date,
 		overview: movie.overview,
 		voteAverage: movie.vote_average,
-		genres
+		genres,
+		trailerKey
 	};
 }

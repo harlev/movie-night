@@ -82,6 +82,7 @@ export const movies = sqliteTable(
 			overview: string | null;
 			voteAverage: number | null;
 			genres: string[];
+			trailerKey?: string | null;
 		}>(),
 		suggestedBy: text('suggested_by')
 			.notNull()

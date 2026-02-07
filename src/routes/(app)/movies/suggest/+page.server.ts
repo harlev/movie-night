@@ -2,7 +2,12 @@ import { fail, redirect, isRedirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { getDb } from '$lib/server/db';
 import { createMovie, getMovieByTmdbId } from '$lib/server/db/queries';
-import { searchMovies, getMovieDetails, createMetadataSnapshot } from '$lib/server/services/tmdb';
+import {
+	searchMovies,
+	getMovieDetails,
+	createMetadataSnapshot,
+	fetchMovieVideos
+} from '$lib/server/services/tmdb';
 
 export const load: PageServerLoad = async () => {
 	return {};
@@ -65,10 +70,12 @@ export const actions: Actions = {
 				return fail(404, { error: 'Movie not found' });
 			}
 
+			const trailerKey = await fetchMovieVideos(platform.env.TMDB_API_KEY, tmdbId);
+
 			const movie = await createMovie(db, {
 				tmdbId: details.id,
 				title: details.title,
-				metadataSnapshot: createMetadataSnapshot(details),
+				metadataSnapshot: createMetadataSnapshot(details, trailerKey),
 				suggestedBy: locals.user.id
 			});
 

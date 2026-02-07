@@ -6,6 +6,7 @@ import { passwordResetTokens } from '$lib/server/db/schema';
 import { generateId } from '$lib/utils';
 import { hashToken } from '$lib/server/auth';
 import { isValidEmail } from '$lib/utils';
+import { sendEmail, buildPasswordResetEmail } from '$lib/server/services/email';
 
 export const load: PageServerLoad = async () => {
 	return {};
@@ -52,9 +53,12 @@ export const actions: Actions = {
 			expiresAt: expiresAt.toISOString()
 		});
 
-		// In production, send email here
-		// For now, just log the token (would be sent via email)
-		console.log(`Password reset token for ${email}: ${tokenString}`);
+		// Send reset email
+		if (platform.env.EMAIL_API_KEY) {
+			const resetUrl = `${new URL(request.url).origin}/reset-password/${tokenString}`;
+			const { subject, html } = buildPasswordResetEmail(resetUrl);
+			await sendEmail(platform.env.EMAIL_API_KEY, { to: email, subject, html });
+		}
 
 		return { success: true };
 	}

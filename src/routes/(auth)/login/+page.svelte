@@ -4,6 +4,7 @@
 
 	let { form } = $props();
 	let loading = $state(false);
+	let showPassword = $state(false);
 
 	const showResetSuccess = $derived($page.url.searchParams.get('reset') === 'success');
 </script>
@@ -62,13 +63,21 @@
 						Password
 					</label>
 					<input
-						type="password"
+						type={showPassword ? 'text' : 'password'}
 						id="password"
 						name="password"
 						required
 						class="w-full px-4 py-2 bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-lg text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)] transition-colors"
 						placeholder="••••••••"
 					/>
+					<label class="flex items-center mt-2 cursor-pointer">
+						<input
+							type="checkbox"
+							bind:checked={showPassword}
+							class="mr-2 accent-[var(--color-primary)]"
+						/>
+						<span class="text-sm text-[var(--color-text-muted)]">Show password</span>
+					</label>
 				</div>
 
 				<button

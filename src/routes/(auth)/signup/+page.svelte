@@ -3,6 +3,7 @@
 
 	let { data, form } = $props();
 	let loading = $state(false);
+	let showPassword = $state(false);
 </script>
 
 <svelte:head>
@@ -83,7 +84,7 @@
 						Password
 					</label>
 					<input
-						type="password"
+						type={showPassword ? 'text' : 'password'}
 						id="password"
 						name="password"
 						required
@@ -94,7 +95,7 @@
 					<p class="text-xs text-[var(--color-text-muted)] mt-1">At least 8 characters</p>
 				</div>
 
-				<div class="mb-6">
+				<div class="mb-4">
 					<label
 						for="confirmPassword"
 						class="block text-sm font-medium text-[var(--color-text)] mb-2"
@@ -102,13 +103,24 @@
 						Confirm Password
 					</label>
 					<input
-						type="password"
+						type={showPassword ? 'text' : 'password'}
 						id="confirmPassword"
 						name="confirmPassword"
 						required
 						class="w-full px-4 py-2 bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-lg text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)] transition-colors"
 						placeholder="••••••••"
 					/>
+				</div>
+
+				<div class="mb-6">
+					<label class="flex items-center cursor-pointer">
+						<input
+							type="checkbox"
+							bind:checked={showPassword}
+							class="mr-2 accent-[var(--color-primary)]"
+						/>
+						<span class="text-sm text-[var(--color-text-muted)]">Show passwords</span>
+					</label>
 				</div>
 
 				<button

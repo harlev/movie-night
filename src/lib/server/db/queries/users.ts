@@ -79,6 +79,18 @@ export async function getSessionByRefreshToken(
 	return session;
 }
 
+export async function updateSessionExpiry(
+	db: Database,
+	refreshToken: string,
+	expiresAt: Date
+): Promise<void> {
+	const tokenHash = await hashToken(refreshToken);
+	await db
+		.update(sessions)
+		.set({ expiresAt: expiresAt.toISOString() })
+		.where(eq(sessions.refreshTokenHash, tokenHash));
+}
+
 export async function deleteSession(db: Database, refreshToken: string): Promise<void> {
 	const tokenHash = await hashToken(refreshToken);
 	await db.delete(sessions).where(eq(sessions.refreshTokenHash, tokenHash));

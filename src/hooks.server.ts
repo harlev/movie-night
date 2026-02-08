@@ -1,11 +1,11 @@
 import type { Handle } from '@sveltejs/kit';
-import { verifyAccessToken, createAccessToken, generateRefreshToken } from '$lib/server/auth';
+import { verifyAccessToken, createAccessToken } from '$lib/server/auth';
 import { getDb } from '$lib/server/db';
 import {
 	getSessionByRefreshToken,
 	getUserById,
 	deleteSession,
-	createSession
+	updateSessionExpiry
 } from '$lib/server/db/queries';
 
 export const handle: Handle = async ({ event, resolve }) => {
@@ -65,14 +65,11 @@ export const handle: Handle = async ({ event, resolve }) => {
 							event.platform.env.JWT_SECRET
 						);
 
-						// Rotate refresh token (delete old, create new)
-						const newRefreshToken = generateRefreshToken();
+						// Slide session expiry forward (no token rotation — avoids race condition)
 						const refreshExpires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
+						await updateSessionExpiry(db, refreshToken, refreshExpires);
 
-						await deleteSession(db, refreshToken);
-						await createSession(db, user.id, newRefreshToken, refreshExpires);
-
-						// Set new cookies
+						// Set new access token cookie
 						event.cookies.set('access_token', newAccessToken, {
 							path: '/',
 							httpOnly: true,
@@ -81,7 +78,8 @@ export const handle: Handle = async ({ event, resolve }) => {
 							maxAge: 60 * 60 // 1 hour
 						});
 
-						event.cookies.set('refresh_token', newRefreshToken, {
+						// Re-set refresh token cookie to slide browser expiry
+						event.cookies.set('refresh_token', refreshToken, {
 							path: '/',
 							httpOnly: true,
 							secure: true,
@@ -98,10 +96,9 @@ export const handle: Handle = async ({ event, resolve }) => {
 						};
 					}
 				}
-			} catch {
-				// Transient DB error — clear cookies, user goes to login
-				event.cookies.delete('access_token', { path: '/' });
-				event.cookies.delete('refresh_token', { path: '/' });
+			} catch (err) {
+				// Transient DB error — don't clear cookies, let user retry on next request
+				console.error('Silent refresh failed:', err);
 			}
 		}
 	}

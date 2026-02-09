@@ -185,6 +185,28 @@ npm run build
 npm run preview
 ```
 
+### Running with Docker
+
+Build the image:
+
+```sh
+docker build -t movie-night .
+```
+
+Run the container:
+
+```sh
+docker run -p 8788:8788 movie-night
+```
+
+The app will be available at `http://localhost:8788`. On first run, visit `/bootstrap` to create the initial admin account.
+
+The container uses `wrangler pages dev` with a local D1 database and default dev secrets. To supply your own TMDB API key or JWT secret, mount a `.dev.vars` file:
+
+```sh
+docker run -p 8788:8788 -v $(pwd)/.dev.vars:/app/.dev.vars movie-night
+```
+
 ### Deploying
 
 ```sh

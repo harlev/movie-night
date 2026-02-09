@@ -3,6 +3,16 @@
 
 	let { data, form } = $props();
 	let expandedInvites = $state<Set<string>>(new Set());
+	let copiedInviteId = $state<string | null>(null);
+
+	function copyInviteUrl(invite: { id: string; code: string }) {
+		const url = `${window.location.origin}/signup?code=${invite.code}`;
+		navigator.clipboard.writeText(url);
+		copiedInviteId = invite.id;
+		setTimeout(() => {
+			copiedInviteId = null;
+		}, 2000);
+	}
 
 	function formatDate(dateStr: string): string {
 		return new Date(dateStr).toLocaleDateString('en-US', {
@@ -114,6 +124,26 @@
 								>
 									{invite.code}
 								</code>
+								<span class="relative inline-flex group">
+									<button
+										type="button"
+										onclick={() => copyInviteUrl(invite)}
+										class="ml-1.5 inline-flex items-center justify-center w-6 h-6 rounded text-[var(--color-text-muted)] hover:text-[var(--color-primary)] hover:bg-[var(--color-surface-elevated)] transition-colors"
+									>
+										{#if copiedInviteId === invite.id}
+											<svg class="w-3.5 h-3.5 text-[var(--color-success)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+											</svg>
+										{:else}
+											<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+											</svg>
+										{/if}
+									</button>
+									<span class="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 whitespace-nowrap rounded bg-[var(--color-surface-elevated)] px-2 py-1 text-xs text-[var(--color-text)] opacity-0 group-hover:opacity-100 transition-opacity shadow-lg border border-[var(--color-border)]">
+										{copiedInviteId === invite.id ? 'Copied!' : 'Copy signup URL'}
+									</span>
+								</span>
 							</td>
 							<td class="px-4 py-4">
 								<span

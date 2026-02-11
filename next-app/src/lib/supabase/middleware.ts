@@ -1,0 +1,70 @@
+import { createServerClient } from '@supabase/ssr';
+import { NextResponse, type NextRequest } from 'next/server';
+
+export async function updateSession(request: NextRequest) {
+  let supabaseResponse = NextResponse.next({
+    request,
+  });
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) =>
+            request.cookies.set(name, value)
+          );
+          supabaseResponse = NextResponse.next({
+            request,
+          });
+          cookiesToSet.forEach(({ name, value, options }) =>
+            supabaseResponse.cookies.set(name, value, options)
+          );
+        },
+      },
+    }
+  );
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const pathname = request.nextUrl.pathname;
+
+  // Auth routes: redirect to dashboard if logged in (except reset-password, which needs auth)
+  const authRoutes = ['/login', '/signup', '/forgot-password'];
+  if (user && authRoutes.some((r) => pathname.startsWith(r))) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/dashboard';
+    return NextResponse.redirect(url);
+  }
+
+  // Bootstrap: always allow through
+  if (pathname === '/bootstrap') {
+    return supabaseResponse;
+  }
+
+  // App routes: redirect to login if not logged in
+  const appRoutes = ['/dashboard', '/movies', '/survey', '/history'];
+  if (!user && appRoutes.some((r) => pathname.startsWith(r))) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/login';
+    return NextResponse.redirect(url);
+  }
+
+  // Admin routes: redirect if not logged in
+  if (pathname.startsWith('/admin')) {
+    if (!user) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/login';
+      return NextResponse.redirect(url);
+    }
+    // Role check is done in the admin layout server component
+  }
+
+  return supabaseResponse;
+}

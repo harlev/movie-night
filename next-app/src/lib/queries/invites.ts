@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import type { Invite, InviteUse } from '@/lib/types';
 import { generateId, generateInviteCode } from '@/lib/utils/id';
 
@@ -19,8 +20,9 @@ export async function createInvite(createdBy: string, expiresInDays: number = 7)
 }
 
 export async function validateInviteCode(code: string): Promise<{ valid: boolean; error?: string; invite?: Invite }> {
-  const supabase = await createClient();
-  const { data: invite } = await supabase.from('invites').select('*').eq('code', code.toUpperCase()).single();
+  // Use admin client since this is called before authentication (during signup)
+  const admin = createAdminClient();
+  const { data: invite } = await admin.from('invites').select('*').eq('code', code.toUpperCase()).single();
 
   if (!invite) return { valid: false, error: 'Invalid invite code' };
   if (invite.status === 'expired' || new Date(invite.expires_at) < new Date()) {
@@ -30,10 +32,12 @@ export async function validateInviteCode(code: string): Promise<{ valid: boolean
 }
 
 export async function recordInviteUse(inviteId: string, userId: string): Promise<void> {
-  const supabase = await createClient();
+  // Use admin client since this is called during signup before session is established
+  const admin = createAdminClient();
   const id = generateId();
-  await supabase.from('invite_uses').insert({ id, invite_id: inviteId, user_id: userId });
-  await supabase.from('invites').update({ use_count: (await supabase.from('invites').select('use_count').eq('id', inviteId).single()).data!.use_count + 1 }).eq('id', inviteId);
+  await admin.from('invite_uses').insert({ id, invite_id: inviteId, user_id: userId });
+  const { data } = await admin.from('invites').select('use_count').eq('id', inviteId).single();
+  await admin.from('invites').update({ use_count: (data?.use_count || 0) + 1 }).eq('id', inviteId);
 }
 
 export async function getAllInvites(): Promise<Invite[]> {

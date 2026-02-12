@@ -3,6 +3,7 @@
 import { useActionState, useState } from 'react';
 import Link from 'next/link';
 import { createInviteAction } from '@/lib/actions/invites';
+import QRCodeDisplay from '@/components/QRCodeDisplay';
 
 export default function NewInvitePage() {
   const [state, formAction, pending] = useActionState(createInviteAction, null);
@@ -86,6 +87,15 @@ export default function NewInvitePage() {
                   {copiedUrl ? 'Copied!' : 'Copy'}
                 </button>
               </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-[var(--color-text)] mb-2">
+                QR Code
+              </label>
+              <QRCodeDisplay
+                url={`${typeof window !== 'undefined' ? window.location.origin : ''}/signup?code=${state.invite.code}`}
+              />
             </div>
 
             <p className="text-sm text-[var(--color-text-muted)]">

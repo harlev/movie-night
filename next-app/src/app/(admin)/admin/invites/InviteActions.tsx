@@ -4,6 +4,7 @@ import { useActionState, useState } from 'react';
 import Link from 'next/link';
 import { expireInviteAction } from '@/lib/actions/invites';
 import type { Invite } from '@/lib/types';
+import QRCodeDisplay from '@/components/QRCodeDisplay';
 
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('en-US', {
@@ -69,6 +70,29 @@ function CopyButton({ invite }: { invite: InviteWithDetails }) {
   );
 }
 
+function QRButton({ inviteId, onToggle, isOpen }: { inviteId: string; onToggle: () => void; isOpen: boolean }) {
+  return (
+    <span className="relative inline-flex group">
+      <button
+        type="button"
+        onClick={onToggle}
+        className={`ml-1 inline-flex items-center justify-center w-6 h-6 rounded transition-colors ${
+          isOpen
+            ? 'text-[var(--color-primary)] bg-[var(--color-surface-elevated)]'
+            : 'text-[var(--color-text-muted)] hover:text-[var(--color-primary)] hover:bg-[var(--color-surface-elevated)]'
+        }`}
+      >
+        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM17 14v3m0 3h.01M14 17h3" />
+        </svg>
+      </button>
+      <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 whitespace-nowrap rounded bg-[var(--color-surface-elevated)] px-2 py-1 text-xs text-[var(--color-text)] opacity-0 group-hover:opacity-100 transition-opacity shadow-lg border border-[var(--color-border)]">
+        {isOpen ? 'Hide QR code' : 'Show QR code'}
+      </span>
+    </span>
+  );
+}
+
 function ExpireButton({ inviteId }: { inviteId: string }) {
   const [state, formAction, pending] = useActionState(expireInviteAction, null);
 
@@ -88,9 +112,22 @@ function ExpireButton({ inviteId }: { inviteId: string }) {
 
 export default function InviteActions({ invites }: { invites: InviteWithDetails[] }) {
   const [expandedInvites, setExpandedInvites] = useState<Set<string>>(new Set());
+  const [qrExpanded, setQrExpanded] = useState<Set<string>>(new Set());
 
   function toggleExpanded(inviteId: string) {
     setExpandedInvites((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(inviteId)) {
+        newSet.delete(inviteId);
+      } else {
+        newSet.add(inviteId);
+      }
+      return newSet;
+    });
+  }
+
+  function toggleQR(inviteId: string) {
+    setQrExpanded((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(inviteId)) {
         newSet.delete(inviteId);
@@ -141,6 +178,13 @@ export default function InviteActions({ invites }: { invites: InviteWithDetails[
                     {invite.code}
                   </code>
                   <CopyButton invite={invite} />
+                  {invite.status === 'active' && !isExpired(invite.expires_at) && (
+                    <QRButton
+                      inviteId={invite.id}
+                      onToggle={() => toggleQR(invite.id)}
+                      isOpen={qrExpanded.has(invite.id)}
+                    />
+                  )}
                 </td>
                 <td className="px-4 py-4">
                   <span
@@ -205,6 +249,18 @@ export default function InviteActions({ invites }: { invites: InviteWithDetails[
                           </span>
                         ))}
                       </div>
+                    </div>
+                  </td>
+                </tr>
+              )}
+              {qrExpanded.has(invite.id) && (
+                <tr key={`${invite.id}-qr`} className="bg-[var(--color-surface-elevated)]/30">
+                  <td colSpan={6} className="px-4 py-4">
+                    <div className="flex justify-center">
+                      <QRCodeDisplay
+                        url={`${window.location.origin}/signup?code=${invite.code}`}
+                        size={160}
+                      />
                     </div>
                   </td>
                 </tr>

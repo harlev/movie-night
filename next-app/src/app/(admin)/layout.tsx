@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { getUserById } from '@/lib/queries/profiles';
+import { logout } from '@/lib/actions/auth';
 import AdminSidebar from '@/components/AdminSidebar';
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -41,7 +42,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                 Back to App
               </Link>
               <span className="text-[var(--color-text-muted)] text-sm">{profile.display_name}</span>
-              <form action="/api/auth/signout" method="POST">
+              <form action={logout}>
                 <button
                   type="submit"
                   className="text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text)]"

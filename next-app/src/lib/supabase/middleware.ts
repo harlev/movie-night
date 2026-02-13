@@ -35,8 +35,8 @@ export async function updateSession(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
 
-  // Auth routes: redirect to dashboard if logged in (except reset-password, which needs auth)
-  const authRoutes = ['/login', '/signup', '/forgot-password'];
+  // Auth routes: redirect to dashboard if already logged in
+  const authRoutes = ['/login', '/signup'];
   if (user && authRoutes.some((r) => pathname.startsWith(r))) {
     const url = request.nextUrl.clone();
     url.pathname = '/dashboard';

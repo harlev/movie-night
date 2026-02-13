@@ -3,211 +3,145 @@
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { redirect } from 'next/navigation';
-import { isValidEmail, isValidPassword, isValidDisplayName } from '@/lib/utils/validation';
-import { validateInviteCode, recordInviteUse } from '@/lib/queries/invites';
+import { cookies } from 'next/headers';
+import { isValidEmail, isValidDisplayName } from '@/lib/utils/validation';
+import { validateInviteCode } from '@/lib/queries/invites';
 
-export async function login(prevState: any, formData: FormData) {
-  const supabase = await createClient();
-  const email = formData.get('email') as string;
-  const password = formData.get('password') as string;
+// --- Cookie helpers ---
 
-  if (!email || !password) {
-    return { error: 'Email and password are required', email };
-  }
-
-  if (!isValidEmail(email)) {
-    return { error: 'Invalid email format', email };
-  }
-
-  // Check if user is disabled (use admin client since user isn't authenticated yet, RLS would block)
-  const admin = createAdminClient();
-  const { data: profile } = await admin.from('profiles').select('status').eq('email', email.toLowerCase()).single();
-  if (profile?.status === 'disabled') {
-    return { error: 'Your account has been disabled', email };
-  }
-
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) {
-    return { error: 'Invalid email or password', email };
-  }
-
-  return { success: true };
+async function setPendingSignupCookie(data: { inviteCode: string; displayName: string }) {
+  const cookieStore = await cookies();
+  cookieStore.set('pending_signup', JSON.stringify(data), {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+    maxAge: 600,
+  });
 }
 
-export async function signup(prevState: any, formData: FormData) {
-  const admin = createAdminClient();
-  const email = formData.get('email') as string;
-  const password = formData.get('password') as string;
-  const confirmPassword = formData.get('confirmPassword') as string;
-  const displayName = formData.get('displayName') as string;
-  const inviteCode = formData.get('inviteCode') as string;
+async function setPendingBootstrapCookie(data: { displayName: string }) {
+  const cookieStore = await cookies();
+  cookieStore.set('pending_bootstrap', JSON.stringify(data), {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+    maxAge: 600,
+  });
+}
 
-  // Validate invite code first
+// --- Validate invite (signup step 1) ---
+
+export async function validateInviteAndSetCookie(prevState: any, formData: FormData) {
+  const inviteCode = formData.get('inviteCode') as string;
+  const displayName = formData.get('displayName') as string;
+
+  if (!inviteCode || !displayName) {
+    return { error: 'All fields are required', inviteCode, displayName };
+  }
+
+  const nameValidation = isValidDisplayName(displayName);
+  if (!nameValidation.valid) {
+    return { error: nameValidation.error, inviteCode, displayName };
+  }
+
   const inviteValidation = await validateInviteCode(inviteCode);
   if (!inviteValidation.valid || !inviteValidation.invite) {
-    return { error: inviteValidation.error || 'Invalid invite code', email, displayName, inviteCode };
+    return { error: inviteValidation.error || 'Invalid invite code', inviteCode, displayName };
   }
 
-  if (!email || !password || !displayName) {
-    return { error: 'All fields are required', email, displayName, inviteCode };
-  }
+  await setPendingSignupCookie({ inviteCode, displayName });
 
-  if (!isValidEmail(email)) {
-    return { error: 'Invalid email format', email, displayName, inviteCode };
-  }
-
-  const passwordValidation = isValidPassword(password);
-  if (!passwordValidation.valid) {
-    return { error: passwordValidation.error, email, displayName, inviteCode };
-  }
-
-  if (password !== confirmPassword) {
-    return { error: 'Passwords do not match', email, displayName, inviteCode };
-  }
-
-  const nameValidation = isValidDisplayName(displayName);
-  if (!nameValidation.valid) {
-    return { error: nameValidation.error, email, displayName, inviteCode };
-  }
-
-  // Create user via admin (auto-confirms email, triggers profile creation)
-  const { data: newUser, error: createError } = await admin.auth.admin.createUser({
-    email,
-    password,
-    email_confirm: true,
-    user_metadata: { display_name: displayName },
-  });
-
-  if (createError) {
-    if (createError.message.includes('already')) {
-      return { error: 'An account with this email already exists', displayName, inviteCode };
-    }
-    return { error: createError.message, email, displayName, inviteCode };
-  }
-
-  // Ensure profile exists (trigger may not be set up yet)
-  const { data: existingProfile } = await admin.from('profiles').select('id').eq('id', newUser.user.id).single();
-  if (!existingProfile) {
-    await admin.from('profiles').insert({
-      id: newUser.user.id,
-      email: email.toLowerCase(),
-      display_name: displayName,
-      role: 'member',
-      status: 'active',
-    });
-  }
-
-  // Record invite usage
-  await recordInviteUse(inviteValidation.invite.id, newUser.user.id);
-
-  // Sign in the new user
-  const supabase = await createClient();
-  await supabase.auth.signInWithPassword({ email, password });
-
-  return { success: true };
+  return { success: true, inviteCode, displayName };
 }
 
-export async function bootstrap(prevState: any, formData: FormData) {
-  const admin = createAdminClient();
-  const email = formData.get('email') as string;
-  const password = formData.get('password') as string;
+// --- Validate bootstrap (bootstrap step 1) ---
+
+export async function validateBootstrapAndSetCookie(prevState: any, formData: FormData) {
   const displayName = formData.get('displayName') as string;
 
-  if (!email || !password || !displayName) {
-    return { error: 'All fields are required', email, displayName };
-  }
-
-  if (!isValidEmail(email)) {
-    return { error: 'Invalid email format', email, displayName };
-  }
-
-  const passwordValidation = isValidPassword(password);
-  if (!passwordValidation.valid) {
-    return { error: passwordValidation.error, email, displayName };
+  if (!displayName) {
+    return { error: 'Display name is required', displayName };
   }
 
   const nameValidation = isValidDisplayName(displayName);
   if (!nameValidation.valid) {
-    return { error: nameValidation.error, email, displayName };
+    return { error: nameValidation.error, displayName };
   }
 
-  // Double-check no users exist
+  const admin = createAdminClient();
   const { count } = await admin.from('profiles').select('*', { count: 'exact', head: true });
   if (count && count > 0) {
     return { error: 'Bootstrap is no longer available' };
   }
 
-  // Create admin user
-  const { data: newUser, error: createError } = await admin.auth.admin.createUser({
-    email,
-    password,
-    email_confirm: true,
-    user_metadata: { display_name: displayName, role: 'admin' },
-  });
+  await setPendingBootstrapCookie({ displayName });
 
-  if (createError) {
-    return { error: createError.message, email, displayName };
-  }
-
-  // Ensure profile exists (trigger may not be set up yet)
-  const { data: existingProfile } = await admin.from('profiles').select('id').eq('id', newUser.user.id).single();
-  if (!existingProfile) {
-    await admin.from('profiles').insert({
-      id: newUser.user.id,
-      email: email.toLowerCase(),
-      display_name: displayName,
-      role: 'admin',
-      status: 'active',
-    });
-  }
-
-  // Sign in
-  const supabase = await createClient();
-  const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-  if (signInError) {
-    return { error: `Account created but sign-in failed: ${signInError.message}`, email, displayName };
-  }
-
-  return { success: true };
+  return { success: true, displayName };
 }
 
-export async function forgotPassword(prevState: any, formData: FormData) {
+// --- Magic link (email OTP) ---
+
+export async function sendMagicLink(prevState: any, formData: FormData) {
   const supabase = await createClient();
   const email = formData.get('email') as string;
+  const flow = formData.get('flow') as string;
 
   if (!email) return { error: 'Email is required' };
   if (!isValidEmail(email)) return { error: 'Invalid email format' };
 
+  // For login flow: check if user is disabled
+  if (flow === 'login') {
+    const admin = createAdminClient();
+    const { data: profile } = await admin
+      .from('profiles')
+      .select('status')
+      .eq('email', email.toLowerCase())
+      .single();
+    if (profile?.status === 'disabled') {
+      return { error: 'Your account has been disabled' };
+    }
+  }
+
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
-  await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${siteUrl}/auth/callback?next=/reset-password`,
+
+  const { error } = await supabase.auth.signInWithOtp({
+    email,
+    options: {
+      emailRedirectTo: `${siteUrl}/auth/callback`,
+      shouldCreateUser: true,
+    },
   });
 
-  // Always return success to prevent email enumeration
+  if (error) {
+    return { error: 'Failed to send magic link. Please try again.' };
+  }
+
   return { success: true };
 }
 
-export async function resetPassword(prevState: any, formData: FormData) {
+// --- OAuth sign-in (Google) ---
+
+export async function signInWithOAuth() {
   const supabase = await createClient();
-  const password = formData.get('password') as string;
-  const confirmPassword = formData.get('confirmPassword') as string;
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
 
-  const passwordValidation = isValidPassword(password);
-  if (!passwordValidation.valid) {
-    return { error: passwordValidation.error };
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: `${siteUrl}/auth/callback`,
+    },
+  });
+
+  if (error || !data.url) {
+    return { error: 'Failed to initiate sign-in. Please try again.' };
   }
 
-  if (password !== confirmPassword) {
-    return { error: 'Passwords do not match' };
-  }
-
-  const { error } = await supabase.auth.updateUser({ password });
-  if (error) {
-    return { error: 'Failed to reset password. The link may have expired.' };
-  }
-
-  redirect('/login?reset=success');
+  redirect(data.url);
 }
+
+// --- Logout ---
 
 export async function logout() {
   const supabase = await createClient();

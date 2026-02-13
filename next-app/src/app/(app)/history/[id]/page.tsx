@@ -29,6 +29,20 @@ function formatDate(dateStr: string | null): string {
   });
 }
 
+function getRankBadgeClasses(position: number): string {
+  if (position === 1) return 'bg-yellow-500/20 text-yellow-500 ring-1 ring-yellow-500/30';
+  if (position === 2) return 'bg-gray-300/20 text-gray-300 ring-1 ring-gray-300/30';
+  if (position === 3) return 'bg-orange-400/20 text-orange-400 ring-1 ring-orange-400/30';
+  return 'bg-[var(--color-surface)] text-[var(--color-text-muted)]';
+}
+
+function getStandingBorderColor(position: number): string {
+  if (position === 1) return 'border-l-yellow-500';
+  if (position === 2) return 'border-l-gray-300';
+  if (position === 3) return 'border-l-orange-400';
+  return 'border-l-transparent';
+}
+
 export default async function HistoryDetailPage({ params }: PageProps) {
   const { id } = await params;
   const supabase = await createClient();
@@ -68,11 +82,11 @@ export default async function HistoryDetailPage({ params }: PageProps) {
   const pointsBreakdown = getPointsBreakdown(survey.max_rank_n);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <div>
         <Link
           href="/history"
-          className="text-[var(--color-primary)] hover:underline text-sm inline-flex items-center gap-1"
+          className="text-[var(--color-primary)] hover:text-[var(--color-primary-light)] text-sm inline-flex items-center gap-1 transition-colors"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path
@@ -85,8 +99,8 @@ export default async function HistoryDetailPage({ params }: PageProps) {
           Back to History
         </Link>
         <div className="flex items-center gap-3 mt-2">
-          <h1 className="text-2xl font-bold text-[var(--color-text)]">{survey.title}</h1>
-          <span className="px-2 py-1 text-xs font-medium rounded bg-[var(--color-secondary)]/10 text-[var(--color-secondary)]">
+          <h1 className="text-2xl font-display font-bold text-[var(--color-text)]">{survey.title}</h1>
+          <span className="px-2.5 py-1 text-xs font-medium rounded-full bg-[var(--color-secondary)]/10 text-[var(--color-secondary)] border border-[var(--color-secondary)]/20">
             {survey.state}
           </span>
         </div>
@@ -100,17 +114,17 @@ export default async function HistoryDetailPage({ params }: PageProps) {
 
       <div className="grid lg:grid-cols-2 gap-6">
         {/* Final Standings */}
-        <div className="bg-[var(--color-surface)] rounded-lg p-6">
-          <h2 className="text-lg font-semibold text-[var(--color-text)] mb-4">Final Standings</h2>
+        <div className="bg-[var(--color-surface)] rounded-xl p-6 border border-[var(--color-border)]/50 shadow-lg shadow-black/20">
+          <h2 className="text-lg font-display font-semibold text-[var(--color-text)] mb-4">Final Standings</h2>
 
           {/* Points breakdown */}
-          <div className="mb-4 p-3 bg-[var(--color-surface-elevated)] rounded-lg">
+          <div className="mb-4 p-3 bg-[var(--color-surface-elevated)] rounded-xl">
             <p className="text-xs text-[var(--color-text-muted)] mb-2">Points per position:</p>
             <div className="flex flex-wrap gap-2">
               {pointsBreakdown.map(({ rank, points }) => (
                 <span
                   key={rank}
-                  className="text-xs px-2 py-1 bg-[var(--color-surface)] rounded"
+                  className="text-xs px-2 py-1 bg-[var(--color-surface)] rounded-lg"
                 >
                   #{rank} = {points}pts
                 </span>
@@ -123,26 +137,18 @@ export default async function HistoryDetailPage({ params }: PageProps) {
               {standings.map((standing, i) => (
                 <div
                   key={standing.movieId}
-                  className={`flex items-center gap-3 p-3 rounded-lg ${
+                  className={`flex items-center gap-3 p-3 rounded-xl border-l-4 ${getStandingBorderColor(i + 1)} ${
                     i === 0
-                      ? 'bg-yellow-500/10 border border-yellow-500/30'
+                      ? 'bg-yellow-500/5'
                       : i === 1
-                        ? 'bg-gray-300/10'
+                        ? 'bg-gray-300/5'
                         : i === 2
-                          ? 'bg-orange-400/10'
+                          ? 'bg-orange-400/5'
                           : 'bg-[var(--color-surface-elevated)]'
                   }`}
                 >
                   <span
-                    className={`w-8 h-8 flex items-center justify-center rounded-full font-bold text-lg ${
-                      i === 0
-                        ? 'bg-yellow-500/20 text-yellow-500'
-                        : i === 1
-                          ? 'bg-gray-300/20 text-gray-300'
-                          : i === 2
-                            ? 'bg-orange-400/20 text-orange-400'
-                            : 'bg-[var(--color-surface)] text-[var(--color-text-muted)]'
-                    }`}
+                    className={`w-8 h-8 flex items-center justify-center rounded-full font-bold text-sm ${getRankBadgeClasses(i + 1)}`}
                   >
                     {standing.position}
                   </span>
@@ -150,7 +156,7 @@ export default async function HistoryDetailPage({ params }: PageProps) {
                     <img
                       src={`${TMDB_IMAGE_BASE}${standing.posterPath}`}
                       alt={standing.title}
-                      className="w-12 h-18 object-cover rounded"
+                      className="w-12 h-18 object-cover rounded-lg"
                     />
                   )}
                   <div className="flex-1 min-w-0">
@@ -174,7 +180,7 @@ export default async function HistoryDetailPage({ params }: PageProps) {
                     </div>
                   </div>
                   <span
-                    className={`text-xl font-bold ${
+                    className={`text-xl font-display font-bold ${
                       i === 0 ? 'text-yellow-500' : 'text-[var(--color-primary)]'
                     }`}
                   >
@@ -193,8 +199,8 @@ export default async function HistoryDetailPage({ params }: PageProps) {
         {/* Your Ballot & All Ballots */}
         <div className="space-y-6">
           {/* Your Ballot */}
-          <div className="bg-[var(--color-surface)] rounded-lg p-6">
-            <h2 className="text-lg font-semibold text-[var(--color-text)] mb-4">Your Ballot</h2>
+          <div className="bg-[var(--color-surface)] rounded-xl p-6 border border-[var(--color-border)]/50 shadow-lg shadow-black/20">
+            <h2 className="text-lg font-display font-semibold text-[var(--color-text)] mb-4">Your Ballot</h2>
             {userBallot && userBallot.ranks.length > 0 ? (
               <div className="space-y-2">
                 {[...userBallot.ranks]
@@ -202,9 +208,9 @@ export default async function HistoryDetailPage({ params }: PageProps) {
                   .map(({ rank, movie }) => (
                     <div
                       key={rank}
-                      className="flex items-center gap-3 p-2 bg-[var(--color-surface-elevated)] rounded-lg"
+                      className="flex items-center gap-3 p-2.5 bg-[var(--color-surface-elevated)] rounded-xl"
                     >
-                      <span className="w-6 h-6 flex items-center justify-center rounded-full bg-[var(--color-primary)]/20 text-[var(--color-primary)] text-sm font-bold">
+                      <span className={`w-7 h-7 flex items-center justify-center rounded-full text-sm font-bold ${getRankBadgeClasses(rank)}`}>
                         {rank}
                       </span>
                       <span className="text-[var(--color-text)]">{movie.title}</span>
@@ -219,8 +225,8 @@ export default async function HistoryDetailPage({ params }: PageProps) {
           </div>
 
           {/* All Ballots */}
-          <div className="bg-[var(--color-surface)] rounded-lg p-6">
-            <h2 className="text-lg font-semibold text-[var(--color-text)] mb-4">
+          <div className="bg-[var(--color-surface)] rounded-xl p-6 border border-[var(--color-border)]/50 shadow-lg shadow-black/20">
+            <h2 className="text-lg font-display font-semibold text-[var(--color-text)] mb-4">
               All Ballots ({allBallots.length})
             </h2>
             {allBallots.length > 0 ? (
@@ -228,7 +234,7 @@ export default async function HistoryDetailPage({ params }: PageProps) {
                 {allBallots.map((b) => (
                   <div
                     key={b.user.id}
-                    className="p-3 bg-[var(--color-surface-elevated)] rounded-lg"
+                    className="p-3 bg-[var(--color-surface-elevated)] rounded-xl"
                   >
                     <p className="font-medium text-[var(--color-text)] mb-2">
                       {b.user.displayName}
@@ -240,7 +246,7 @@ export default async function HistoryDetailPage({ params }: PageProps) {
                           .map(({ rank, movieTitle }) => (
                             <span
                               key={rank}
-                              className="text-xs px-2 py-1 bg-[var(--color-surface)] rounded"
+                              className="text-xs px-2 py-1 bg-[var(--color-surface)] rounded-lg"
                             >
                               #{rank}: {movieTitle}
                             </span>

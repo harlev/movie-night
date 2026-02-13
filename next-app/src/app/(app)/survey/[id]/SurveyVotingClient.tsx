@@ -44,6 +44,20 @@ interface SurveyVotingClientProps {
   hasExistingBallot: boolean;
 }
 
+function getRankBadgeClasses(rank: number): string {
+  if (rank === 1) return 'bg-yellow-500/20 text-yellow-500 ring-1 ring-yellow-500/30';
+  if (rank === 2) return 'bg-gray-300/20 text-gray-300 ring-1 ring-gray-300/30';
+  if (rank === 3) return 'bg-orange-400/20 text-orange-400 ring-1 ring-orange-400/30';
+  return 'bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)]';
+}
+
+function getStandingBorderColor(position: number): string {
+  if (position === 1) return 'border-l-yellow-500';
+  if (position === 2) return 'border-l-gray-300';
+  if (position === 3) return 'border-l-orange-400';
+  return 'border-l-transparent';
+}
+
 export default function SurveyVotingClient({
   survey,
   entries,
@@ -62,6 +76,7 @@ export default function SurveyVotingClient({
   }
 
   const [ballot, setBallot] = useState<Map<number, string>>(initialBallot);
+  const [lastChangedRank, setLastChangedRank] = useState<number | null>(null);
   const isLive = survey.state === 'live';
 
   const [formState, formAction, isSubmitting] = useActionState(submitBallotAction, null);
@@ -87,6 +102,8 @@ export default function SurveyVotingClient({
         newBallot.set(rank, movieId);
         return newBallot;
       });
+      setLastChangedRank(rank);
+      setTimeout(() => setLastChangedRank(null), 200);
     },
     []
   );
@@ -127,13 +144,26 @@ export default function SurveyVotingClient({
     setRank(survey.maxRankN, movieId);
   };
 
+  // Find first empty slot for pulse animation
+  let firstEmptySlot: number | null = null;
+  if (isLive) {
+    for (let r = 1; r <= survey.maxRankN; r++) {
+      if (!ballot.has(r)) {
+        firstEmptySlot = r;
+        break;
+      }
+    }
+  }
+
+  const isBallotComplete = ballot.size === survey.maxRankN;
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div>
         <Link
           href="/dashboard"
-          className="text-[var(--color-primary)] hover:underline text-sm inline-flex items-center gap-1"
+          className="text-[var(--color-primary)] hover:text-[var(--color-primary-light)] text-sm inline-flex items-center gap-1 transition-colors"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path
@@ -146,14 +176,15 @@ export default function SurveyVotingClient({
           Back to Dashboard
         </Link>
         <div className="flex items-center gap-3 mt-2">
-          <h1 className="text-2xl font-bold text-[var(--color-text)]">{survey.title}</h1>
+          <h1 className="text-2xl font-display font-bold text-[var(--color-text)]">{survey.title}</h1>
           <span
-            className={`px-2 py-1 text-xs font-medium rounded ${
+            className={`px-2.5 py-1 text-xs font-medium rounded-full ${
               isLive
-                ? 'bg-[var(--color-success)]/10 text-[var(--color-success)]'
-                : 'bg-[var(--color-secondary)]/10 text-[var(--color-secondary)]'
+                ? 'bg-[var(--color-success)]/10 text-[var(--color-success)] border border-[var(--color-success)]/20'
+                : 'bg-[var(--color-secondary)]/10 text-[var(--color-secondary)] border border-[var(--color-secondary)]/20'
             }`}
           >
+            {isLive && <span className="inline-block w-1.5 h-1.5 rounded-full bg-[var(--color-success)] mr-1.5 animate-pulse" />}
             {survey.state}
           </span>
         </div>
@@ -163,13 +194,13 @@ export default function SurveyVotingClient({
       </div>
 
       {formState?.error && (
-        <div className="bg-red-500/10 border border-red-500 text-red-400 rounded-lg p-3">
+        <div className="bg-red-500/10 border border-red-500/50 text-red-400 rounded-xl p-3">
           {formState.error}
         </div>
       )}
 
       {formState?.success && (
-        <div className="bg-[var(--color-success)]/10 border border-[var(--color-success)] text-[var(--color-success)] rounded-lg p-3">
+        <div className="bg-[var(--color-success)]/10 border border-[var(--color-success)]/50 text-[var(--color-success)] rounded-xl p-3">
           Your ballot has been submitted!
         </div>
       )}
@@ -177,14 +208,14 @@ export default function SurveyVotingClient({
       <div className="grid lg:grid-cols-2 gap-6">
         {/* Ballot Section */}
         <div className="space-y-4">
-          <div className="bg-[var(--color-surface)] rounded-lg p-6">
+          <div className="bg-[var(--color-surface)] rounded-xl p-6 border border-[var(--color-border)]/50 shadow-lg shadow-black/20">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-[var(--color-text)]">Your Ballot</h2>
+              <h2 className="text-lg font-display font-semibold text-[var(--color-text)]">Your Ballot</h2>
               {isLive && ballot.size > 0 && (
                 <button
                   type="button"
                   onClick={clearBallot}
-                  className="text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
+                  className="text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
                 >
                   Clear
                 </button>
@@ -192,13 +223,13 @@ export default function SurveyVotingClient({
             </div>
 
             {/* Points breakdown */}
-            <div className="mb-4 p-3 bg-[var(--color-surface-elevated)] rounded-lg">
+            <div className="mb-4 p-3 bg-[var(--color-surface-elevated)] rounded-xl">
               <p className="text-xs text-[var(--color-text-muted)] mb-2">Points per position:</p>
               <div className="flex flex-wrap gap-2">
                 {pointsBreakdown.map(({ rank, points }) => (
                   <span
                     key={rank}
-                    className="text-xs px-2 py-1 bg-[var(--color-surface)] rounded"
+                    className="text-xs px-2 py-1 bg-[var(--color-surface)] rounded-lg"
                   >
                     #{rank} = {points}pts
                   </span>
@@ -212,17 +243,21 @@ export default function SurveyVotingClient({
                 const rank = i + 1;
                 const movieId = getMovieForRank(rank);
                 const movie = movieId ? getMovieById(movieId) : null;
+                const isFirstEmpty = firstEmptySlot === rank;
+                const justChanged = lastChangedRank === rank;
 
                 return (
                   <div
                     key={rank}
-                    className={`flex items-center gap-3 p-3 rounded-lg border-2 border-dashed ${
+                    className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-all duration-200 ${
                       movie
-                        ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/5'
-                        : 'border-[var(--color-border)]'
-                    }`}
+                        ? 'border-[var(--color-primary)]/40 bg-gradient-to-r from-[var(--color-primary)]/10 to-transparent'
+                        : isFirstEmpty
+                          ? 'border-dashed border-[var(--color-border)] animate-slot-pulse'
+                          : 'border-dashed border-[var(--color-border)]'
+                    } ${justChanged ? 'animate-ballot-pop' : ''}`}
                   >
-                    <span className="w-8 h-8 flex items-center justify-center rounded-full bg-[var(--color-surface-elevated)] font-bold text-[var(--color-text)]">
+                    <span className={`w-8 h-8 flex items-center justify-center rounded-full font-bold text-sm ${getRankBadgeClasses(rank)}`}>
                       {rank}
                     </span>
                     {movie ? (
@@ -232,7 +267,7 @@ export default function SurveyVotingClient({
                             <img
                               src={`${TMDB_IMAGE_BASE}${movie.metadata_snapshot.posterPath}`}
                               alt={movie.title}
-                              className="w-10 h-15 object-cover rounded"
+                              className="w-10 h-15 object-cover rounded-lg"
                             />
                           )}
                           <span className="font-medium text-[var(--color-text)]">
@@ -243,7 +278,7 @@ export default function SurveyVotingClient({
                           <button
                             type="button"
                             onClick={() => setRank(rank, movieId)}
-                            className="p-1 text-[var(--color-text-muted)] hover:text-[var(--color-error)]"
+                            className="p-1 text-[var(--color-text-muted)] hover:text-[var(--color-error)] transition-colors"
                             aria-label={`Remove from rank ${rank}`}
                           >
                             <svg
@@ -263,7 +298,9 @@ export default function SurveyVotingClient({
                         )}
                       </>
                     ) : (
-                      <span className="text-[var(--color-text-muted)] italic">Select a movie</span>
+                      <span className="text-[var(--color-text-muted)] italic text-sm">
+                        {isFirstEmpty ? 'Select a movie below' : 'Empty'}
+                      </span>
                     )}
                   </div>
                 );
@@ -281,7 +318,9 @@ export default function SurveyVotingClient({
                 <button
                   type="submit"
                   disabled={isSubmitting || ballot.size === 0}
-                  className="w-full py-2 px-4 bg-[var(--color-primary)] hover:bg-[var(--color-primary-dark)] text-white font-medium rounded-lg transition-colors disabled:opacity-50"
+                  className={`w-full py-2.5 px-4 bg-[var(--color-primary)] hover:bg-[var(--color-primary-dark)] text-white font-medium rounded-xl transition-all duration-150 active:scale-[0.97] disabled:opacity-50 disabled:active:scale-100 ${
+                    isBallotComplete ? 'shadow-lg shadow-[var(--color-primary)]/30' : 'shadow-md shadow-[var(--color-primary)]/20'
+                  }`}
                 >
                   {isSubmitting
                     ? 'Submitting...'
@@ -298,8 +337,8 @@ export default function SurveyVotingClient({
           </div>
 
           {/* Available Movies */}
-          <div className="bg-[var(--color-surface)] rounded-lg p-6">
-            <h2 className="text-lg font-semibold text-[var(--color-text)] mb-4">
+          <div className="bg-[var(--color-surface)] rounded-xl p-6 border border-[var(--color-border)]/50 shadow-lg shadow-black/20">
+            <h2 className="text-lg font-display font-semibold text-[var(--color-text)] mb-4">
               Movies ({entries.length})
             </h2>
             <div className="space-y-2 max-h-96 overflow-y-auto">
@@ -312,21 +351,24 @@ export default function SurveyVotingClient({
                     type="button"
                     disabled={!isLive}
                     onClick={() => handleMovieClick(entry.movie.id)}
-                    className={`w-full flex items-center gap-3 p-3 rounded-lg text-left transition-colors ${
+                    className={`w-full flex items-center gap-3 p-3 rounded-xl text-left transition-all duration-150 ${
                       selectedRank !== null
-                        ? 'bg-[var(--color-primary)]/10 ring-2 ring-[var(--color-primary)]'
-                        : 'bg-[var(--color-surface-elevated)] hover:bg-[var(--color-border)]'
-                    } ${!isLive ? 'cursor-default' : ''}`}
+                        ? 'bg-[var(--color-primary)]/10 border-l-4 border-l-[var(--color-primary)]'
+                        : 'bg-[var(--color-surface-elevated)] hover:bg-[var(--color-border)] border-l-4 border-l-transparent'
+                    } ${!isLive ? 'cursor-default' : 'active:scale-[0.98]'}`}
                   >
                     {entry.movie.metadata_snapshot?.posterPath ? (
                       <img
                         src={`${TMDB_IMAGE_BASE}${entry.movie.metadata_snapshot.posterPath}`}
                         alt={entry.movie.title}
-                        className="w-12 h-18 object-cover rounded"
+                        className="w-12 h-18 object-cover rounded-lg"
                       />
                     ) : (
-                      <div className="w-12 h-18 bg-[var(--color-border)] rounded flex items-center justify-center">
-                        <span className="text-[var(--color-text-muted)]">?</span>
+                      <div className="w-12 h-18 bg-[var(--color-border)] rounded-lg flex items-center justify-center">
+                        <svg className="w-5 h-5 text-[var(--color-text-muted)]/30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+                          <rect x="2" y="4" width="20" height="16" rx="2" />
+                          <path d="M2 8h20M2 16h20" />
+                        </svg>
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
@@ -340,7 +382,7 @@ export default function SurveyVotingClient({
                       )}
                     </div>
                     {selectedRank !== null && (
-                      <span className="w-6 h-6 flex items-center justify-center rounded-full bg-[var(--color-primary)] text-white text-sm font-bold">
+                      <span className={`w-7 h-7 flex items-center justify-center rounded-full text-sm font-bold ${getRankBadgeClasses(selectedRank)}`}>
                         {selectedRank}
                       </span>
                     )}
@@ -354,8 +396,8 @@ export default function SurveyVotingClient({
         {/* Standings & Ballots Section */}
         <div className="space-y-4">
           {/* Current Standings */}
-          <div className="bg-[var(--color-surface)] rounded-lg p-6">
-            <h2 className="text-lg font-semibold text-[var(--color-text)] mb-4">
+          <div className="bg-[var(--color-surface)] rounded-xl p-6 border border-[var(--color-border)]/50 shadow-lg shadow-black/20">
+            <h2 className="text-lg font-display font-semibold text-[var(--color-text)] mb-4">
               Current Standings
             </h2>
             {standings.length > 0 && allBallots.length > 0 ? (
@@ -363,18 +405,10 @@ export default function SurveyVotingClient({
                 {standings.map((standing) => (
                   <div
                     key={standing.movieId}
-                    className="flex items-center gap-3 p-3 bg-[var(--color-surface-elevated)] rounded-lg"
+                    className={`flex items-center gap-3 p-3 bg-[var(--color-surface-elevated)] rounded-xl border-l-4 ${getStandingBorderColor(standing.position)}`}
                   >
                     <span
-                      className={`w-8 h-8 flex items-center justify-center rounded-full font-bold ${
-                        standing.position === 1
-                          ? 'bg-yellow-500/20 text-yellow-500'
-                          : standing.position === 2
-                            ? 'bg-gray-300/20 text-gray-300'
-                            : standing.position === 3
-                              ? 'bg-orange-400/20 text-orange-400'
-                              : 'bg-[var(--color-surface)] text-[var(--color-text-muted)]'
-                      }`}
+                      className={`w-8 h-8 flex items-center justify-center rounded-full font-bold text-sm ${getRankBadgeClasses(standing.position)}`}
                     >
                       {standing.position}
                     </span>
@@ -382,7 +416,7 @@ export default function SurveyVotingClient({
                       <img
                         src={`${TMDB_IMAGE_BASE}${standing.posterPath}`}
                         alt={standing.title}
-                        className="w-10 h-15 object-cover rounded"
+                        className="w-10 h-15 object-cover rounded-lg"
                       />
                     )}
                     <div className="flex-1 min-w-0">
@@ -393,7 +427,9 @@ export default function SurveyVotingClient({
                         )}
                       </p>
                     </div>
-                    <span className="text-lg font-bold text-[var(--color-primary)]">
+                    <span className={`text-lg font-display font-bold ${
+                      standing.position === 1 ? 'text-yellow-500' : 'text-[var(--color-primary)]'
+                    }`}>
                       {standing.totalPoints}
                     </span>
                   </div>
@@ -405,8 +441,8 @@ export default function SurveyVotingClient({
           </div>
 
           {/* All Ballots (Transparency) */}
-          <div className="bg-[var(--color-surface)] rounded-lg p-6">
-            <h2 className="text-lg font-semibold text-[var(--color-text)] mb-4">
+          <div className="bg-[var(--color-surface)] rounded-xl p-6 border border-[var(--color-border)]/50 shadow-lg shadow-black/20">
+            <h2 className="text-lg font-display font-semibold text-[var(--color-text)] mb-4">
               All Ballots ({allBallots.length})
             </h2>
             {allBallots.length > 0 ? (
@@ -414,7 +450,7 @@ export default function SurveyVotingClient({
                 {allBallots.map((b) => (
                   <div
                     key={b.user.id}
-                    className="p-3 bg-[var(--color-surface-elevated)] rounded-lg"
+                    className="p-3 bg-[var(--color-surface-elevated)] rounded-xl"
                   >
                     <p className="font-medium text-[var(--color-text)] mb-2">
                       {b.user.displayName}
@@ -426,7 +462,7 @@ export default function SurveyVotingClient({
                           .map(({ rank, movieTitle }) => (
                             <span
                               key={rank}
-                              className="text-xs px-2 py-1 bg-[var(--color-surface)] rounded"
+                              className="text-xs px-2 py-1 bg-[var(--color-surface)] rounded-lg"
                             >
                               #{rank}: {movieTitle}
                             </span>

@@ -14,13 +14,13 @@ export default function AuthMethodPicker({ flow }: AuthMethodPickerProps) {
   return (
     <>
       {state?.error && (
-        <div className="bg-red-500/10 border border-red-500 text-red-400 rounded-lg p-3 mb-6">
+        <div className="bg-red-500/10 border border-red-500/50 text-red-400 rounded-xl p-3 mb-6">
           {state.error}
         </div>
       )}
 
       {state?.success && (
-        <div className="bg-[var(--color-success)]/10 border border-[var(--color-success)] text-[var(--color-success)] rounded-lg p-4 mb-6">
+        <div className="bg-[var(--color-success)]/10 border border-[var(--color-success)]/50 text-[var(--color-success)] rounded-xl p-4 mb-6">
           <p className="font-medium">Check your email</p>
           <p className="text-sm mt-1">We sent you a sign-in link. Click it to continue.</p>
         </div>
@@ -36,7 +36,7 @@ export default function AuthMethodPicker({ flow }: AuthMethodPickerProps) {
         <button
           type="submit"
           disabled={oauthPending}
-          className="w-full py-2.5 px-4 bg-white text-gray-900 font-medium rounded-lg flex items-center justify-center gap-3 hover:bg-gray-100 transition-colors disabled:opacity-50"
+          className="w-full py-2.5 px-4 bg-white text-gray-900 font-medium rounded-xl flex items-center justify-center gap-3 hover:bg-gray-100 transition-all duration-150 active:scale-[0.97] disabled:opacity-50"
         >
           <svg className="w-5 h-5" viewBox="0 0 24 24">
             <path
@@ -63,7 +63,7 @@ export default function AuthMethodPicker({ flow }: AuthMethodPickerProps) {
       {/* Divider */}
       <div className="relative my-6">
         <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-[var(--color-border)]" />
+          <div className="w-full border-t border-[var(--color-border)]/50" />
         </div>
         <div className="relative flex justify-center text-sm">
           <span className="px-2 bg-[var(--color-surface)] text-[var(--color-text-muted)]">
@@ -84,14 +84,14 @@ export default function AuthMethodPicker({ flow }: AuthMethodPickerProps) {
             id="email"
             name="email"
             required
-            className="w-full px-4 py-2 bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-lg text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)] transition-colors"
+            className="w-full px-4 py-2.5 bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-xl text-[var(--color-text)] placeholder:text-[var(--color-text-muted)]/60 focus:outline-none focus:border-[var(--color-primary)] focus:ring-1 focus:ring-[var(--color-primary)] transition-all"
             placeholder="you@example.com"
           />
         </div>
         <button
           type="submit"
           disabled={pending}
-          className="w-full py-2 px-4 bg-[var(--color-primary)] hover:bg-[var(--color-primary-dark)] text-white font-medium rounded-lg transition-colors disabled:opacity-50"
+          className="w-full py-2.5 px-4 bg-[var(--color-primary)] hover:bg-[var(--color-primary-dark)] text-white font-medium rounded-xl transition-all duration-150 active:scale-[0.97] disabled:opacity-50 shadow-md shadow-[var(--color-primary)]/20"
         >
           {pending ? 'Sending link...' : 'Send Magic Link'}
         </button>

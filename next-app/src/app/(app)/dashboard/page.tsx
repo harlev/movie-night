@@ -5,6 +5,7 @@ import { getAllUsers } from '@/lib/queries/profiles';
 import { getBallot } from '@/lib/queries/ballots';
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import EmptyState from '@/components/ui/EmptyState';
 
 export const metadata: Metadata = {
   title: 'Dashboard - Movie Night',
@@ -67,39 +68,73 @@ export default async function DashboardPage() {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 stagger-children">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-[var(--color-text)]">Dashboard</h1>
-        <p className="text-[var(--color-text-muted)] mt-1">Welcome back to Movie Night!</p>
+        <p className="text-xs uppercase tracking-widest text-[var(--color-primary)] font-medium mb-1">Now Showing</p>
+        <h1 className="text-2xl font-display font-bold text-[var(--color-text)]">
+          Welcome back to Movie Night
+        </h1>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-[var(--color-surface)] rounded-lg p-6">
-          <p className="text-[var(--color-text-muted)] text-sm">Total Movies</p>
-          <p className="text-3xl font-bold text-[var(--color-text)] mt-1">{stats.totalMovies}</p>
+        <div className="bg-[var(--color-surface)] rounded-xl p-6 border border-[var(--color-border)]/50 shadow-lg shadow-black/20">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 rounded-full bg-[var(--color-primary)]/10 flex items-center justify-center">
+              <svg className="w-5 h-5 text-[var(--color-primary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <rect x="2" y="4" width="20" height="16" rx="2" />
+                <path d="M2 8h20M2 16h20" />
+                <path d="M6 4v4M6 16v4M18 4v4M18 16v4" />
+              </svg>
+            </div>
+            <p className="text-[var(--color-text-muted)] text-sm">Total Movies</p>
+          </div>
+          <p className="text-3xl font-display font-bold text-[var(--color-text)]">{stats.totalMovies}</p>
         </div>
-        <div className="bg-[var(--color-surface)] rounded-lg p-6">
-          <p className="text-[var(--color-text-muted)] text-sm">Community Members</p>
-          <p className="text-3xl font-bold text-[var(--color-text)] mt-1">{stats.totalUsers}</p>
+        <div className="bg-[var(--color-surface)] rounded-xl p-6 border border-[var(--color-border)]/50 shadow-lg shadow-black/20">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 rounded-full bg-[var(--color-accent)]/10 flex items-center justify-center">
+              <svg className="w-5 h-5 text-[var(--color-accent)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4-4v2" strokeLinecap="round" strokeLinejoin="round" />
+                <circle cx="9" cy="7" r="4" />
+                <path d="M22 21v-2a4 4 0 00-3-3.87" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M16 3.13a4 4 0 010 7.75" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
+            <p className="text-[var(--color-text-muted)] text-sm">Community Members</p>
+          </div>
+          <p className="text-3xl font-display font-bold text-[var(--color-text)]">{stats.totalUsers}</p>
         </div>
-        <div className="bg-[var(--color-surface)] rounded-lg p-6">
-          <p className="text-[var(--color-text-muted)] text-sm">Surveys Completed</p>
-          <p className="text-3xl font-bold text-[var(--color-text)] mt-1">{stats.surveysCompleted}</p>
+        <div className="bg-[var(--color-surface)] rounded-xl p-6 border border-[var(--color-border)]/50 shadow-lg shadow-black/20">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 rounded-full bg-[var(--color-success)]/10 flex items-center justify-center">
+              <svg className="w-5 h-5 text-[var(--color-success)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <rect x="4" y="2" width="16" height="20" rx="2" />
+                <path d="M9 10l2 2 4-4" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M9 16h6" strokeLinecap="round" />
+              </svg>
+            </div>
+            <p className="text-[var(--color-text-muted)] text-sm">Surveys Completed</p>
+          </div>
+          <p className="text-3xl font-display font-bold text-[var(--color-text)]">{stats.surveysCompleted}</p>
         </div>
       </div>
 
       {/* Live Survey */}
       {surveyData ? (
-        <div className="bg-[var(--color-surface)] rounded-lg p-6 border border-[var(--color-primary)]">
-          <div className="flex items-center justify-between mb-4">
+        <div className="relative rounded-xl p-6 border border-[var(--color-primary)]/40 bg-gradient-to-br from-[var(--color-primary)]/5 to-transparent shadow-lg shadow-[var(--color-primary)]/5 animate-pulse-glow overflow-hidden">
+          {/* Spotlight glow */}
+          <div className="absolute -top-20 -right-20 w-40 h-40 bg-[var(--color-primary)]/10 rounded-full blur-3xl" />
+
+          <div className="relative flex items-center justify-between mb-4">
             <div>
               <div className="flex items-center gap-2">
-                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-[var(--color-success)]/10 text-[var(--color-success)]">
+                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-[var(--color-success)]/10 text-[var(--color-success)] border border-[var(--color-success)]/20">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-success)] mr-1.5 animate-pulse" />
                   Live
                 </span>
-                <h2 className="text-xl font-semibold text-[var(--color-text)]">
+                <h2 className="text-xl font-display font-semibold text-[var(--color-text)]">
                   {surveyData.title}
                 </h2>
               </div>
@@ -117,9 +152,12 @@ export default async function DashboardPage() {
             </div>
           </div>
 
-          <div className="flex items-center justify-between">
+          <div className="relative flex items-center justify-between">
             {surveyData.hasVoted ? (
-              <span className="text-[var(--color-success)] text-sm">
+              <span className="text-[var(--color-success)] text-sm inline-flex items-center gap-1.5">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
                 You&apos;ve submitted your ballot
               </span>
             ) : (
@@ -129,25 +167,27 @@ export default async function DashboardPage() {
             )}
             <Link
               href={`/survey/${surveyData.id}`}
-              className="px-4 py-2 bg-[var(--color-primary)] hover:bg-[var(--color-primary-dark)] text-white font-medium rounded-lg transition-colors"
+              className="px-5 py-2.5 bg-[var(--color-primary)] hover:bg-[var(--color-primary-dark)] text-white font-medium rounded-xl transition-all duration-150 active:scale-[0.97] shadow-md shadow-[var(--color-primary)]/20"
             >
               {surveyData.hasVoted ? 'Update Vote' : 'Vote Now'}
             </Link>
           </div>
         </div>
       ) : (
-        <div className="bg-[var(--color-surface)] rounded-lg p-6 text-center">
-          <p className="text-[var(--color-text-muted)]">
-            No active survey right now. Check back later!
-          </p>
+        <div className="bg-[var(--color-surface)] rounded-xl border border-[var(--color-border)]/50 shadow-lg shadow-black/20">
+          <EmptyState
+            icon="surveys"
+            title="No active survey"
+            description="Check back later for the next voting round!"
+          />
         </div>
       )}
 
       {/* Recent Movies */}
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-[var(--color-text)]">Recent Suggestions</h2>
-          <Link href="/movies" className="text-[var(--color-primary)] hover:underline text-sm">
+          <h2 className="text-xl font-display font-semibold text-[var(--color-text)]">Recent Suggestions</h2>
+          <Link href="/movies" className="text-[var(--color-primary)] hover:text-[var(--color-primary-light)] text-sm transition-colors">
             View all movies
           </Link>
         </div>
@@ -158,19 +198,27 @@ export default async function DashboardPage() {
               <Link
                 key={movie.id}
                 href={`/movies/${movie.id}`}
-                className="bg-[var(--color-surface)] rounded-lg overflow-hidden hover:ring-2 hover:ring-[var(--color-primary)] transition-all"
+                className="group bg-[var(--color-surface)] rounded-xl overflow-hidden border border-[var(--color-border)]/50 shadow-lg shadow-black/20 hover:-translate-y-1.5 hover:shadow-xl hover:shadow-black/30 transition-all duration-300"
               >
-                {movie.metadata_snapshot?.posterPath ? (
-                  <img
-                    src={`${TMDB_IMAGE_BASE}${movie.metadata_snapshot.posterPath}`}
-                    alt={movie.title}
-                    className="w-full aspect-[2/3] object-cover"
-                  />
-                ) : (
-                  <div className="w-full aspect-[2/3] bg-[var(--color-surface-elevated)] flex items-center justify-center">
-                    <span className="text-[var(--color-text-muted)] text-4xl">?</span>
-                  </div>
-                )}
+                <div className="relative overflow-hidden">
+                  {movie.metadata_snapshot?.posterPath ? (
+                    <img
+                      src={`${TMDB_IMAGE_BASE}${movie.metadata_snapshot.posterPath}`}
+                      alt={movie.title}
+                      className="w-full aspect-[2/3] object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                  ) : (
+                    <div className="w-full aspect-[2/3] bg-[var(--color-surface-elevated)] flex items-center justify-center">
+                      <svg className="w-10 h-10 text-[var(--color-text-muted)]/30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+                        <rect x="2" y="4" width="20" height="16" rx="2" />
+                        <path d="M2 8h20M2 16h20" />
+                        <path d="M6 4v4M6 16v4M18 4v4M18 16v4" />
+                      </svg>
+                    </div>
+                  )}
+                  {/* Gradient overlay on hover */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                </div>
                 <div className="p-2">
                   <p className="text-sm font-medium text-[var(--color-text)] truncate">
                     {movie.title}
@@ -185,14 +233,14 @@ export default async function DashboardPage() {
             ))}
           </div>
         ) : (
-          <div className="bg-[var(--color-surface)] rounded-lg p-6 text-center">
-            <p className="text-[var(--color-text-muted)]">No movies suggested yet.</p>
-            <Link
-              href="/movies/suggest"
-              className="text-[var(--color-primary)] hover:underline text-sm"
-            >
-              Be the first to suggest a movie!
-            </Link>
+          <div className="bg-[var(--color-surface)] rounded-xl border border-[var(--color-border)]/50 shadow-lg shadow-black/20">
+            <EmptyState
+              icon="movies"
+              title="No movies yet"
+              description="Be the first to suggest a movie for the group!"
+              actionLabel="Suggest a Movie"
+              actionHref="/movies/suggest"
+            />
           </div>
         )}
       </div>

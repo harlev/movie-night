@@ -12,12 +12,12 @@ interface ButtonProps {
 }
 
 const baseClasses =
-  'inline-flex items-center justify-center font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed';
+  'inline-flex items-center justify-center font-medium rounded-xl transition-all duration-150 active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100';
 
 const variantClasses: Record<string, string> = {
-  primary: 'bg-[var(--color-primary)] hover:bg-[var(--color-primary-dark)] text-white',
+  primary: 'bg-[var(--color-primary)] hover:bg-[var(--color-primary-dark)] text-white shadow-md shadow-[var(--color-primary)]/20',
   secondary:
-    'bg-[var(--color-surface-elevated)] hover:bg-[var(--color-border)] text-[var(--color-text)]',
+    'bg-[var(--color-surface-elevated)] hover:bg-[var(--color-border)] text-[var(--color-text)] border border-[var(--color-border)]/50',
   danger: 'bg-[var(--color-error)] hover:bg-[var(--color-error)]/80 text-white',
   ghost:
     'bg-transparent hover:bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)] hover:text-[var(--color-text)]',

@@ -1,11 +1,18 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import { Playfair_Display, DM_Sans } from 'next/font/google';
 import Script from 'next/script';
 import './globals.css';
 
-const inter = Inter({
+const playfairDisplay = Playfair_Display({
   subsets: ['latin'],
-  variable: '--font-inter',
+  variable: '--font-display',
+  display: 'swap',
+});
+
+const dmSans = DM_Sans({
+  subsets: ['latin'],
+  variable: '--font-body',
+  display: 'swap',
 });
 
 export const metadata: Metadata = {
@@ -35,7 +42,7 @@ export default function RootLayout({
         </Script>
       </head>
       <body
-        className={`${inter.variable} font-sans antialiased bg-[var(--color-background)] text-[var(--color-text)] min-h-screen`}
+        className={`${playfairDisplay.variable} ${dmSans.variable} font-sans antialiased bg-[var(--color-background)] text-[var(--color-text)] min-h-screen`}
       >
         {children}
       </body>

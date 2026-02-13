@@ -1,6 +1,7 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
+import { revalidatePath } from 'next/cache';
 import { getSurveyById, getSurveyEntries } from '@/lib/queries/surveys';
 import { submitBallot } from '@/lib/queries/ballots';
 
@@ -44,5 +45,7 @@ export async function submitBallotAction(prevState: any, formData: FormData) {
   }
 
   await submitBallot({ surveyId: survey.id, userId: user.id, ranks: validRanks });
+  revalidatePath(`/survey/${surveyId}`);
+  revalidatePath('/dashboard');
   return { success: true };
 }

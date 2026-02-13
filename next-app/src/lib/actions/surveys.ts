@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
+import { revalidatePath } from 'next/cache';
 import { createSurvey, updateSurvey, updateSurveyState, deleteSurvey, addSurveyEntry, removeSurveyEntry, getSurveyById, getSurveyEntries } from '@/lib/queries/surveys';
 import { removeBallotMovie } from '@/lib/queries/ballots';
 
@@ -34,6 +35,7 @@ export async function updateSurveyAction(prevState: any, formData: FormData) {
   if (isNaN(maxRankN) || maxRankN < 1 || maxRankN > 10) return { error: 'Max rank must be between 1 and 10' };
 
   await updateSurvey(surveyId, { title, description: description || null, max_rank_n: maxRankN });
+  revalidatePath(`/admin/surveys/${surveyId}`);
   return { success: true, message: 'Survey updated' };
 }
 
@@ -55,6 +57,8 @@ export async function changeSurveyStateAction(prevState: any, formData: FormData
 
   const result = await updateSurveyState(surveyId, newState);
   if (!result.success) return { error: result.error };
+  revalidatePath(`/admin/surveys/${surveyId}`);
+  revalidatePath('/dashboard');
   return { success: true, message: `Survey is now ${newState}` };
 }
 
@@ -69,6 +73,7 @@ export async function addMovieToSurveyAction(prevState: any, formData: FormData)
 
   try {
     await addSurveyEntry({ surveyId, movieId, addedBy: user.id });
+    revalidatePath(`/admin/surveys/${surveyId}`);
     return { success: true, message: 'Movie added' };
   } catch {
     return { error: 'Movie already in survey' };
@@ -87,10 +92,12 @@ export async function removeMovieFromSurveyAction(prevState: any, formData: Form
   if (survey.state === 'live' && movieId) {
     const affected = await removeBallotMovie(surveyId, movieId);
     await removeSurveyEntry(entryId);
+    revalidatePath(`/admin/surveys/${surveyId}`);
     return { success: true, message: `Movie removed. ${affected} ballot(s) affected.` };
   }
 
   await removeSurveyEntry(entryId);
+  revalidatePath(`/admin/surveys/${surveyId}`);
   return { success: true, message: 'Movie removed' };
 }
 

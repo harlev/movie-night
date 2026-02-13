@@ -45,10 +45,10 @@ export default async function MovieDetailPage({ params }: PageProps) {
   const meta = movie.metadata_snapshot;
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
       <Link
         href="/movies"
-        className="text-[var(--color-primary)] hover:underline text-sm inline-flex items-center gap-1"
+        className="text-[var(--color-primary)] hover:text-[var(--color-primary-light)] text-sm inline-flex items-center gap-1 transition-colors"
       >
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -57,7 +57,7 @@ export default async function MovieDetailPage({ params }: PageProps) {
       </Link>
 
       {/* Movie Details */}
-      <div className="bg-[var(--color-surface)] rounded-lg overflow-hidden">
+      <div className="bg-[var(--color-surface)] rounded-xl overflow-hidden border border-[var(--color-border)]/50 shadow-lg shadow-black/20">
         <div className="md:flex">
           {meta?.posterPath && (
             <div className="md:w-1/3">
@@ -69,7 +69,7 @@ export default async function MovieDetailPage({ params }: PageProps) {
             </div>
           )}
           <div className="p-6 md:flex-1">
-            <h1 className="text-2xl font-bold text-[var(--color-text)]">{movie.title}</h1>
+            <h1 className="text-2xl font-display font-bold text-[var(--color-text)]">{movie.title}</h1>
 
             <div className="flex flex-wrap items-center gap-3 mt-2 text-sm">
               {meta?.releaseDate && (
@@ -78,7 +78,7 @@ export default async function MovieDetailPage({ params }: PageProps) {
                 </span>
               )}
               {meta?.voteAverage ? (
-                <span className="inline-flex items-center gap-1 text-[var(--color-warning)] bg-[var(--color-warning)]/10 px-2 py-0.5 rounded">
+                <span className="inline-flex items-center gap-1 text-[var(--color-warning)] bg-[var(--color-warning)]/10 px-2.5 py-0.5 rounded-lg">
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                     <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                   </svg>
@@ -92,7 +92,7 @@ export default async function MovieDetailPage({ params }: PageProps) {
                 {meta.genres.map((genre) => (
                   <span
                     key={genre}
-                    className="text-xs px-2 py-1 rounded bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)]"
+                    className="text-xs px-2.5 py-1 rounded-lg bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)] border border-[var(--color-border)]/30"
                   >
                     {genre}
                   </span>
@@ -101,7 +101,7 @@ export default async function MovieDetailPage({ params }: PageProps) {
             )}
 
             {meta?.overview && (
-              <p className="text-[var(--color-text-muted)] mt-4">{meta.overview}</p>
+              <p className="text-[var(--color-text-muted)] mt-4 leading-relaxed">{meta.overview}</p>
             )}
 
             <MovieDetailClient
@@ -109,7 +109,7 @@ export default async function MovieDetailPage({ params }: PageProps) {
               movieTitle={movie.title}
             />
 
-            <div className="mt-6 pt-4 border-t border-[var(--color-border)]">
+            <div className="mt-6 pt-4 border-t border-[var(--color-border)]/50">
               <p className="text-sm text-[var(--color-text-muted)]">
                 Suggested by{' '}
                 <span className="text-[var(--color-text)]">{suggestedByName}</span> on{' '}
@@ -130,7 +130,7 @@ export default async function MovieDetailPage({ params }: PageProps) {
           href={`https://www.themoviedb.org/movie/${movie.tmdb_id}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-[var(--color-primary)] hover:underline"
+          className="text-[var(--color-primary)] hover:text-[var(--color-primary-light)] transition-colors"
         >
           TMDb
         </a>

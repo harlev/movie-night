@@ -18,17 +18,21 @@ export default function BootstrapForm() {
   }, [bootstrapState]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[var(--color-background)] px-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center bg-[var(--color-background)] px-4 relative overflow-hidden">
+      {/* Ambient gradient orbs */}
+      <div className="absolute top-1/4 -left-32 w-96 h-96 bg-[var(--color-warning)]/8 rounded-full blur-3xl" />
+      <div className="absolute bottom-1/4 -right-32 w-96 h-96 bg-[var(--color-secondary)]/8 rounded-full blur-3xl" />
+
+      <div className="w-full max-w-md relative z-10 animate-fade-in-up">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-[var(--color-text)]">Movie Night</h1>
+          <h1 className="text-3xl font-display italic font-bold text-[var(--color-text)]">Movie Night</h1>
           <p className="text-[var(--color-text-muted)] mt-2">
             {step === 1 ? 'Create the first admin account' : 'Choose how to sign in'}
           </p>
         </div>
 
-        <div className="bg-[var(--color-surface)] rounded-lg p-8 shadow-lg">
-          <div className="bg-[var(--color-warning)]/10 border border-[var(--color-warning)] text-[var(--color-warning)] rounded-lg p-3 mb-6">
+        <div className="bg-[var(--color-surface)] rounded-2xl p-8 shadow-2xl shadow-black/40 border border-[var(--color-border)]/50">
+          <div className="bg-[var(--color-warning)]/10 border border-[var(--color-warning)]/50 text-[var(--color-warning)] rounded-xl p-3 mb-6">
             <p className="text-sm">
               This page allows you to create the first admin account. It will only work once — when
               there are no users in the database.
@@ -38,7 +42,7 @@ export default function BootstrapForm() {
           {step === 1 && (
             <>
               {bootstrapState?.error && (
-                <div className="bg-red-500/10 border border-red-500 text-red-400 rounded-lg p-3 mb-6">
+                <div className="bg-red-500/10 border border-red-500/50 text-red-400 rounded-xl p-3 mb-6">
                   {bootstrapState.error}
                 </div>
               )}
@@ -57,7 +61,7 @@ export default function BootstrapForm() {
                     name="displayName"
                     defaultValue={bootstrapState?.displayName || ''}
                     required
-                    className="w-full px-4 py-2 bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-lg text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)] transition-colors"
+                    className="w-full px-4 py-2.5 bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-xl text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)] focus:ring-1 focus:ring-[var(--color-primary)] transition-all"
                     placeholder="Admin"
                   />
                 </div>
@@ -65,7 +69,7 @@ export default function BootstrapForm() {
                 <button
                   type="submit"
                   disabled={bootstrapPending}
-                  className="w-full py-2 px-4 bg-[var(--color-warning)] hover:bg-[var(--color-warning)]/80 text-black font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full py-2.5 px-4 bg-[var(--color-warning)] hover:bg-[var(--color-warning)]/80 text-black font-medium rounded-xl transition-all duration-150 active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {bootstrapPending ? 'Validating...' : 'Continue'}
                 </button>

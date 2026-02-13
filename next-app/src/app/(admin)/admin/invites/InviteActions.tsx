@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useState } from 'react';
+import React, { useActionState, useState } from 'react';
 import Link from 'next/link';
 import { expireInviteAction } from '@/lib/actions/invites';
 import type { Invite } from '@/lib/types';
@@ -171,8 +171,8 @@ export default function InviteActions({ invites }: { invites: InviteWithDetails[
         </thead>
         <tbody className="divide-y divide-[var(--color-border)]">
           {invites.map((invite) => (
-            <>
-              <tr key={invite.id} className="hover:bg-[var(--color-surface-elevated)]/50">
+            <React.Fragment key={invite.id}>
+              <tr className="hover:bg-[var(--color-surface-elevated)]/50">
                 <td className="px-4 py-4">
                   <code className="px-2 py-1 bg-[var(--color-surface-elevated)] rounded text-sm font-mono text-[var(--color-text)]">
                     {invite.code}
@@ -230,7 +230,7 @@ export default function InviteActions({ invites }: { invites: InviteWithDetails[
                 </td>
               </tr>
               {expandedInvites.has(invite.id) && invite.users.length > 0 && (
-                <tr key={`${invite.id}-users`} className="bg-[var(--color-surface-elevated)]/30">
+                <tr className="bg-[var(--color-surface-elevated)]/30">
                   <td colSpan={6} className="px-4 py-3">
                     <div className="pl-4 border-l-2 border-[var(--color-border)]">
                       <p className="text-xs font-medium text-[var(--color-text-muted)] mb-2">
@@ -254,7 +254,7 @@ export default function InviteActions({ invites }: { invites: InviteWithDetails[
                 </tr>
               )}
               {qrExpanded.has(invite.id) && (
-                <tr key={`${invite.id}-qr`} className="bg-[var(--color-surface-elevated)]/30">
+                <tr className="bg-[var(--color-surface-elevated)]/30">
                   <td colSpan={6} className="px-4 py-4">
                     <div className="flex justify-center">
                       <QRCodeDisplay
@@ -265,7 +265,7 @@ export default function InviteActions({ invites }: { invites: InviteWithDetails[
                   </td>
                 </tr>
               )}
-            </>
+            </React.Fragment>
           ))}
         </tbody>
       </table>

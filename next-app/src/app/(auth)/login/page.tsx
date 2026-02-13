@@ -15,16 +15,21 @@ function LoginForm() {
   const errorParam = searchParams.get('error');
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[var(--color-background)] px-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center bg-[var(--color-background)] px-4 relative overflow-hidden">
+      {/* Ambient gradient orbs */}
+      <div className="absolute top-1/4 -left-32 w-96 h-96 bg-[var(--color-primary)]/8 rounded-full blur-3xl" />
+      <div className="absolute bottom-1/4 -right-32 w-96 h-96 bg-[var(--color-secondary)]/8 rounded-full blur-3xl" />
+
+      <div className="w-full max-w-md relative z-10 animate-fade-in-up">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-[var(--color-text)]">Movie Night</h1>
-          <p className="text-[var(--color-text-muted)] mt-2">Sign in to your account</p>
+          <img src="/logo.png" alt="Movie Night" className="h-20 mx-auto mb-4" />
+          <h1 className="text-3xl font-display italic font-bold text-[var(--color-text)]">Movie Night</h1>
+          <p className="text-[var(--color-text-muted)] mt-2">Your private cinema club</p>
         </div>
 
-        <div className="bg-[var(--color-surface)] rounded-lg p-8 shadow-lg">
+        <div className="bg-[var(--color-surface)] rounded-2xl p-8 shadow-2xl shadow-black/40 border border-[var(--color-border)]/50">
           {errorParam && errorMessages[errorParam] && (
-            <div className="bg-red-500/10 border border-red-500 text-red-400 rounded-lg p-3 mb-6">
+            <div className="bg-red-500/10 border border-red-500/50 text-red-400 rounded-xl p-3 mb-6">
               {errorMessages[errorParam]}
             </div>
           )}
@@ -33,7 +38,7 @@ function LoginForm() {
 
           <div className="mt-6 text-center text-[var(--color-text-muted)] text-sm">
             Have an invite code?{' '}
-            <a href="/signup" className="text-[var(--color-primary)] hover:underline">Sign up</a>
+            <a href="/signup" className="text-[var(--color-primary)] hover:text-[var(--color-primary-light)] transition-colors">Sign up</a>
           </div>
         </div>
       </div>

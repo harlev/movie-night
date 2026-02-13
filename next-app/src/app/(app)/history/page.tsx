@@ -3,6 +3,7 @@ import { getLiveSurvey } from '@/lib/queries/surveys';
 import { getBallot } from '@/lib/queries/ballots';
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import EmptyState from '@/components/ui/EmptyState';
 
 export const metadata: Metadata = {
   title: 'Survey History - Movie Night',
@@ -63,20 +64,21 @@ export default async function HistoryPage() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <div>
-        <h1 className="text-2xl font-bold text-[var(--color-text)]">Survey History</h1>
+        <h1 className="text-2xl font-display font-bold text-[var(--color-text)]">Survey History</h1>
         <p className="text-[var(--color-text-muted)] mt-1">
           Browse past surveys and their results
         </p>
       </div>
 
       {liveSurvey && (
-        <div className="bg-[var(--color-surface)] rounded-lg p-4 border border-[var(--color-success)]">
+        <div className="bg-[var(--color-surface)] rounded-xl p-4 border border-[var(--color-success)]/40 shadow-lg shadow-black/20">
           <div className="flex items-center justify-between">
             <div>
               <div className="flex items-center gap-2">
-                <span className="px-2 py-1 text-xs font-medium bg-[var(--color-success)]/10 text-[var(--color-success)] rounded">
+                <span className="px-2.5 py-1 text-xs font-medium bg-[var(--color-success)]/10 text-[var(--color-success)] rounded-full border border-[var(--color-success)]/20">
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-[var(--color-success)] mr-1.5 animate-pulse" />
                   Live
                 </span>
                 <span className="font-medium text-[var(--color-text)]">{liveSurvey.title}</span>
@@ -84,7 +86,7 @@ export default async function HistoryPage() {
             </div>
             <Link
               href={`/survey/${liveSurvey.id}`}
-              className="text-[var(--color-primary)] hover:underline text-sm"
+              className="text-[var(--color-primary)] hover:text-[var(--color-primary-light)] text-sm transition-colors"
             >
               Vote Now
             </Link>
@@ -98,7 +100,7 @@ export default async function HistoryPage() {
             <Link
               key={survey.id}
               href={`/history/${survey.id}`}
-              className="block bg-[var(--color-surface)] rounded-lg p-4 hover:ring-2 hover:ring-[var(--color-primary)] transition-all"
+              className="block bg-[var(--color-surface)] rounded-xl p-4 border border-[var(--color-border)]/50 shadow-lg shadow-black/20 hover:-translate-y-0.5 hover:shadow-xl hover:border-[var(--color-primary)]/30 transition-all duration-200"
             >
               <div className="flex items-center justify-between">
                 <div>
@@ -116,11 +118,11 @@ export default async function HistoryPage() {
                 </div>
                 <div className="text-right">
                   {survey.userParticipated ? (
-                    <span className="px-2 py-1 text-xs bg-[var(--color-success)]/10 text-[var(--color-success)] rounded">
+                    <span className="px-2.5 py-1 text-xs bg-[var(--color-success)]/10 text-[var(--color-success)] rounded-full border border-[var(--color-success)]/20">
                       Voted
                     </span>
                   ) : (
-                    <span className="px-2 py-1 text-xs bg-[var(--color-text-muted)]/10 text-[var(--color-text-muted)] rounded">
+                    <span className="px-2.5 py-1 text-xs bg-[var(--color-text-muted)]/10 text-[var(--color-text-muted)] rounded-full">
                       Did not vote
                     </span>
                   )}
@@ -130,8 +132,12 @@ export default async function HistoryPage() {
           ))}
         </div>
       ) : (
-        <div className="bg-[var(--color-surface)] rounded-lg p-8 text-center">
-          <p className="text-[var(--color-text-muted)]">No completed surveys yet.</p>
+        <div className="bg-[var(--color-surface)] rounded-xl border border-[var(--color-border)]/50 shadow-lg shadow-black/20">
+          <EmptyState
+            icon="surveys"
+            title="No completed surveys"
+            description="Completed surveys and their results will appear here."
+          />
         </div>
       )}
     </div>

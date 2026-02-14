@@ -15,6 +15,7 @@ import {
   addPollMovie,
   removePollMovieAndCleanVotes,
   submitPollVote,
+  togglePollVoteDisabled,
 } from '@/lib/queries/polls';
 import { createAdminLog } from '@/lib/queries/admin';
 
@@ -203,6 +204,20 @@ export async function removeMovieFromPollAction(prevState: any, formData: FormDa
   await supabaseClient.from('quick_poll_movies').delete().eq('id', pollMovieId);
   revalidatePath(`/admin/polls/${pollId}`);
   return { success: true, message: 'Movie removed' };
+}
+
+export async function togglePollVoteDisabledAction(prevState: any, formData: FormData) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: 'Not authenticated' };
+
+  const voteId = formData.get('voteId') as string;
+  const pollId = formData.get('pollId') as string;
+  const disabled = formData.get('disabled') === 'true';
+
+  await togglePollVoteDisabled(voteId, disabled);
+  revalidatePath(`/admin/polls/${pollId}`);
+  return { success: true };
 }
 
 // ── Public Action (no auth required) ──

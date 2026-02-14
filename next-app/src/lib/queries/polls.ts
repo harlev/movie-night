@@ -137,13 +137,16 @@ export async function getPollVote(pollId: string, voterId: string): Promise<Quic
   return data;
 }
 
-export async function getPollVotes(pollId: string): Promise<QuickPollVote[]> {
+export async function getPollVotes(pollId: string, includeDisabled = false): Promise<QuickPollVote[]> {
   const admin = createAdminClient();
-  const { data } = await admin
+  let query = admin
     .from('quick_poll_votes')
     .select('*')
-    .eq('poll_id', pollId)
-    .order('created_at');
+    .eq('poll_id', pollId);
+  if (!includeDisabled) {
+    query = query.eq('disabled', false);
+  }
+  const { data } = await query.order('created_at');
   return data || [];
 }
 
@@ -152,8 +155,17 @@ export async function getPollVoteCount(pollId: string): Promise<number> {
   const { count } = await admin
     .from('quick_poll_votes')
     .select('*', { count: 'exact', head: true })
-    .eq('poll_id', pollId);
+    .eq('poll_id', pollId)
+    .eq('disabled', false);
   return count || 0;
+}
+
+export async function togglePollVoteDisabled(voteId: string, disabled: boolean): Promise<void> {
+  const admin = createAdminClient();
+  await admin
+    .from('quick_poll_votes')
+    .update({ disabled, updated_at: new Date().toISOString() })
+    .eq('id', voteId);
 }
 
 export async function removePollMovieAndCleanVotes(pollId: string, movieId: string, pollMovieId: string): Promise<number> {

@@ -141,6 +141,7 @@ export interface QuickPollVote {
   voter_id: string;
   voter_name: string | null;
   ranks: Array<{ rank: number; movieId: string }>;
+  disabled: boolean;
   created_at: string;
   updated_at: string;
 }

@@ -461,6 +461,17 @@ export default function PollVotingClient({
     <div className="space-y-4 sm:space-y-6 animate-fade-in max-w-full overflow-hidden">
       {/* Header */}
       <div className="text-center">
+        {isLoggedIn && (
+          <a
+            href="/dashboard"
+            className="inline-flex items-center gap-1 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-primary)] transition-colors mb-2"
+          >
+            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            Back to Movie Night
+          </a>
+        )}
         <div className="flex items-center justify-center gap-2 sm:gap-3">
           <h1 className="text-xl sm:text-2xl font-display font-bold text-[var(--color-text)]">{poll.title}</h1>
           <span

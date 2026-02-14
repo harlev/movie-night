@@ -20,13 +20,15 @@ export default async function PollDetailPage({ params }: { params: Promise<{ id:
     notFound();
   }
 
-  const [movies, votes] = await Promise.all([
+  const [movies, allVotes] = await Promise.all([
     getPollMovies(poll.id),
-    getPollVotes(poll.id),
+    getPollVotes(poll.id, true), // include disabled votes for admin
   ]);
 
+  const enabledVotes = allVotes.filter((v) => !v.disabled);
+
   const standings = calculateStandings(
-    votes.map((v) => ({
+    enabledVotes.map((v) => ({
       ranks: (v.ranks as Array<{ rank: number; movieId: string }>),
     })),
     movies.map((m) => ({
@@ -38,8 +40,10 @@ export default async function PollDetailPage({ params }: { params: Promise<{ id:
     poll.max_rank_n
   );
 
-  const clientVotes = votes.map((v) => ({
+  const clientVotes = allVotes.map((v) => ({
+    voteId: v.id,
     voterName: v.voter_name || 'Anonymous',
+    disabled: v.disabled,
     ranks: (v.ranks as Array<{ rank: number; movieId: string }>).map((r) => {
       const movie = movies.find((m) => m.id === r.movieId);
       return { rank: r.rank, movieId: r.movieId, movieTitle: movie?.title || 'Unknown' };
@@ -50,7 +54,7 @@ export default async function PollDetailPage({ params }: { params: Promise<{ id:
     <PollDetailClient
       poll={poll}
       movies={movies}
-      voteCount={votes.length}
+      voteCount={enabledVotes.length}
       votes={clientVotes}
       standings={standings}
     />

@@ -9,6 +9,7 @@ import {
   removeMovieFromPollAction,
   deletePollAction,
   searchMoviesForPollAction,
+  togglePollVoteDisabledAction,
 } from '@/lib/actions/polls';
 import type { QuickPoll, QuickPollMovie } from '@/lib/types';
 import type { Standing } from '@/lib/services/scoring';
@@ -42,7 +43,9 @@ function getStandingBorderColor(position: number): string {
 }
 
 interface VoteInfo {
+  voteId: string;
   voterName: string;
+  disabled: boolean;
   ranks: Array<{ rank: number; movieId: string; movieTitle: string }>;
 }
 
@@ -373,6 +376,29 @@ function RemovePollMovieButton({ pollId, pollMovieId, movieId }: { pollId: strin
   );
 }
 
+function ToggleVoteButton({ pollId, voteId, disabled }: { pollId: string; voteId: string; disabled: boolean }) {
+  const [, formAction, pending] = useActionState(togglePollVoteDisabledAction, null);
+
+  return (
+    <form action={formAction} className="inline">
+      <input type="hidden" name="pollId" value={pollId} />
+      <input type="hidden" name="voteId" value={voteId} />
+      <input type="hidden" name="disabled" value={disabled ? 'false' : 'true'} />
+      <button
+        type="submit"
+        disabled={pending}
+        className={`px-2 py-0.5 text-xs font-medium rounded transition-colors disabled:opacity-50 ${
+          disabled
+            ? 'bg-[var(--color-success)]/10 text-[var(--color-success)] hover:bg-[var(--color-success)]/20'
+            : 'bg-[var(--color-error)]/10 text-[var(--color-error)] hover:bg-[var(--color-error)]/20'
+        }`}
+      >
+        {pending ? '...' : disabled ? 'Enable' : 'Disable'}
+      </button>
+    </form>
+  );
+}
+
 export default function PollDetailClient({
   poll,
   movies,
@@ -586,12 +612,17 @@ export default function PollDetailClient({
             All Ballots ({votes.length})
           </h2>
           <div className="space-y-3">
-            {votes.map((vote, i) => (
+            {votes.map((vote) => (
               <div
-                key={i}
-                className="p-3 bg-[var(--color-surface-elevated)] rounded-lg"
+                key={vote.voteId}
+                className={`p-3 bg-[var(--color-surface-elevated)] rounded-lg transition-opacity ${vote.disabled ? 'opacity-50' : ''}`}
               >
-                <p className="font-medium text-[var(--color-text)] mb-2">{vote.voterName}</p>
+                <div className="flex items-center justify-between mb-2">
+                  <p className={`font-medium text-[var(--color-text)] ${vote.disabled ? 'line-through' : ''}`}>
+                    {vote.voterName}
+                  </p>
+                  <ToggleVoteButton pollId={poll.id} voteId={vote.voteId} disabled={vote.disabled} />
+                </div>
                 {vote.ranks.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
                     {[...vote.ranks].sort((a, b) => a.rank - b.rank).map((r) => (

@@ -54,6 +54,7 @@ export async function GET(request: Request) {
   if (bootstrapCookie) {
     try {
       const { displayName } = JSON.parse(bootstrapCookie.value);
+      const resolvedName = displayName?.trim() || user.email!.split('@')[0];
 
       // Verify profiles table is still empty
       const { count } = await admin
@@ -64,7 +65,7 @@ export async function GET(request: Request) {
         await admin.from('profiles').insert({
           id: user.id,
           email: user.email!.toLowerCase(),
-          display_name: displayName,
+          display_name: resolvedName,
           role: 'admin',
           status: 'active',
         });
@@ -82,6 +83,7 @@ export async function GET(request: Request) {
   if (signupCookie) {
     try {
       const { inviteCode, displayName } = JSON.parse(signupCookie.value);
+      const resolvedName = displayName?.trim() || user.email!.split('@')[0];
 
       // Re-validate invite code (could have expired)
       const inviteValidation = await validateInviteCode(inviteCode);
@@ -89,7 +91,7 @@ export async function GET(request: Request) {
         await admin.from('profiles').insert({
           id: user.id,
           email: user.email!.toLowerCase(),
-          display_name: displayName,
+          display_name: resolvedName,
           role: 'member',
           status: 'active',
         });

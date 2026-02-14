@@ -49,7 +49,7 @@ export async function updateSession(request: NextRequest) {
   }
 
   // App routes: redirect to login if not logged in
-  const appRoutes = ['/dashboard', '/movies', '/survey', '/history'];
+  const appRoutes = ['/dashboard', '/movies', '/survey', '/history', '/settings'];
   if (!user && appRoutes.some((r) => pathname.startsWith(r))) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';

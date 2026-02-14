@@ -7,6 +7,10 @@ import { validateInviteCode, recordInviteUse } from '@/lib/queries/invites';
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get('code');
+  const next = searchParams.get('next');
+
+  // Sanitize: only allow relative paths
+  const safeNext = next && next.startsWith('/') && !next.startsWith('//') ? next : null;
 
   if (!code) {
     return NextResponse.redirect(`${origin}/login`);
@@ -44,7 +48,7 @@ export async function GET(request: Request) {
     // Clear any stale cookies
     cookieStore.delete('pending_signup');
     cookieStore.delete('pending_bootstrap');
-    return NextResponse.redirect(`${origin}/dashboard`);
+    return NextResponse.redirect(`${origin}${safeNext || '/dashboard'}`);
   }
 
   // --- New user: needs profile provisioning ---
@@ -70,7 +74,7 @@ export async function GET(request: Request) {
           status: 'active',
         });
         cookieStore.delete('pending_bootstrap');
-        return NextResponse.redirect(`${origin}/dashboard`);
+        return NextResponse.redirect(`${origin}${safeNext || '/dashboard'}`);
       }
     } catch {
       // Invalid cookie data, fall through
@@ -97,7 +101,7 @@ export async function GET(request: Request) {
         });
         await recordInviteUse(inviteValidation.invite.id, user.id);
         cookieStore.delete('pending_signup');
-        return NextResponse.redirect(`${origin}/dashboard`);
+        return NextResponse.redirect(`${origin}${safeNext || '/dashboard'}`);
       }
     } catch {
       // Invalid cookie data, fall through
@@ -105,7 +109,24 @@ export async function GET(request: Request) {
     cookieStore.delete('pending_signup');
   }
 
-  // No profile, no valid cookie: unauthorized signup
+  // New user arriving from a poll — auto-create profile (no invite needed)
+  if (safeNext && safeNext.startsWith('/poll/')) {
+    const displayName =
+      user.user_metadata?.full_name?.trim() ||
+      user.email!.split('@')[0];
+
+    await admin.from('profiles').insert({
+      id: user.id,
+      email: user.email!.toLowerCase(),
+      display_name: displayName,
+      role: 'member',
+      status: 'active',
+    });
+
+    return NextResponse.redirect(`${origin}${safeNext}`);
+  }
+
+  // No profile, no valid cookie, not a poll signup: unauthorized signup
   await supabase.auth.signOut();
   return NextResponse.redirect(`${origin}/signup?error=no_invite`);
 }

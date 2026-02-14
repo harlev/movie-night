@@ -3,6 +3,7 @@
 import { useState, useEffect, useActionState, useCallback } from 'react';
 import { submitPollVoteAction } from '@/lib/actions/polls';
 import type { Standing } from '@/lib/services/scoring';
+import PollAuthModal from './PollAuthModal';
 
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w92';
 
@@ -34,6 +35,7 @@ interface PollVotingClientProps {
   voterRanks: Array<{ rank: number; movieId: string }> | null;
   voterName: string;
   loggedInName: string;
+  isLoggedIn: boolean;
   allVotes: ClientVote[];
   standings: Standing[];
   pointsBreakdown: Array<{ rank: number; points: number; label: string }>;
@@ -60,6 +62,7 @@ export default function PollVotingClient({
   voterRanks,
   voterName: initialVoterName,
   loggedInName,
+  isLoggedIn,
   allVotes,
   standings,
   pointsBreakdown,
@@ -554,6 +557,8 @@ export default function PollVotingClient({
           Powered by Movie Night
         </p>
       </div>
+
+      {!isLoggedIn && <PollAuthModal pollId={poll.id} />}
     </div>
   );
 }

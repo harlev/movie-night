@@ -104,6 +104,7 @@ export default async function PollPage({ params }: PageProps) {
       voterRanks={clientVoterRanks}
       voterName={existingVote?.voter_name || loggedInName || ''}
       loggedInName={loggedInName}
+      isLoggedIn={!!loggedInName}
       allVotes={clientAllVotes}
       standings={standings}
       pointsBreakdown={pointsBreakdown}

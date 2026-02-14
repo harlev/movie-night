@@ -29,7 +29,13 @@ export default async function SurveyDetailPage({ params }: { params: Promise<{ i
   const entryMovieIds = new Set(entries.map((e) => e.movie_id));
   const availableMovies = allMovies
     .filter((m) => !entryMovieIds.has(m.id))
-    .map((m) => ({ id: m.id, title: m.title }));
+    .map((m) => ({
+      id: m.id,
+      title: m.title,
+      posterPath: m.metadata_snapshot?.posterPath || null,
+      releaseDate: m.metadata_snapshot?.releaseDate || null,
+      voteAverage: m.metadata_snapshot?.voteAverage || null,
+    }));
 
   return (
     <SurveyDetailClient

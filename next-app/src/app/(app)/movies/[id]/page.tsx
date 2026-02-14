@@ -1,10 +1,12 @@
 import { notFound } from 'next/navigation';
 import { getMovieById, getMovieComments } from '@/lib/queries/movies';
 import { getUserById } from '@/lib/queries/profiles';
+import { createClient } from '@/lib/supabase/server';
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import MovieDetailClient from './MovieDetailClient';
 import MovieCommentSection from './MovieCommentSection';
+import ArchiveMovieButton from './ArchiveMovieButton';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -36,9 +38,13 @@ export default async function MovieDetailPage({ params }: PageProps) {
     notFound();
   }
 
-  const [suggester, comments] = await Promise.all([
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const [suggester, comments, currentProfile] = await Promise.all([
     getUserById(movie.suggested_by),
     getMovieComments(movie.id),
+    user ? getUserById(user.id) : null,
   ]);
 
   const suggestedByName = suggester?.display_name || 'Unknown';
@@ -109,12 +115,15 @@ export default async function MovieDetailPage({ params }: PageProps) {
               movieTitle={movie.title}
             />
 
-            <div className="mt-6 pt-4 border-t border-[var(--color-border)]/50">
+            <div className="mt-6 pt-4 border-t border-[var(--color-border)]/50 flex items-center justify-between">
               <p className="text-sm text-[var(--color-text-muted)]">
                 Suggested by{' '}
                 <span className="text-[var(--color-text)]">{suggestedByName}</span> on{' '}
                 {formatDate(movie.created_at)}
               </p>
+              {currentProfile?.role === 'admin' && (
+                <ArchiveMovieButton movieId={movie.id} />
+              )}
             </div>
           </div>
         </div>

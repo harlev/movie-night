@@ -1,9 +1,13 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { redirect } from 'next/navigation';
+import { revalidatePath } from 'next/cache';
 import { searchMovies, getMovieDetails, createMetadataSnapshot, fetchMovieVideos } from '@/lib/services/tmdb';
 import { createMovie, getMovieByTmdbId, createMovieComment } from '@/lib/queries/movies';
+import { getUserById } from '@/lib/queries/profiles';
+import { createAdminLog } from '@/lib/queries/admin';
 
 export async function searchMoviesAction(prevState: any, formData: FormData) {
   const query = formData.get('query') as string;
@@ -33,7 +37,19 @@ export async function suggestMovieAction(prevState: any, formData: FormData) {
   if (isNaN(tmdbId)) return { error: 'Invalid movie ID' };
 
   const existing = await getMovieByTmdbId(tmdbId);
-  if (existing) return { error: 'This movie has already been suggested' };
+  if (existing) {
+    if (existing.hidden) {
+      // Un-archive the movie instead of rejecting
+      const admin = createAdminClient();
+      await admin
+        .from('movies')
+        .update({ hidden: false, updated_at: new Date().toISOString() })
+        .eq('id', existing.id);
+      revalidatePath('/movies');
+      redirect(`/movies/${existing.id}`);
+    }
+    return { error: 'This movie has already been suggested' };
+  }
 
   try {
     const details = await getMovieDetails(tmdbId);
@@ -53,6 +69,48 @@ export async function suggestMovieAction(prevState: any, formData: FormData) {
     console.error('Error creating movie:', error);
     return { error: 'Failed to suggest movie' };
   }
+}
+
+export async function toggleMovieArchiveAction(prevState: any, formData: FormData) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: 'Not authenticated' };
+
+  const profile = await getUserById(user.id);
+  if (!profile || profile.role !== 'admin') return { error: 'Admin access required' };
+
+  const movieId = formData.get('movieId') as string;
+  if (!movieId) return { error: 'Invalid request' };
+
+  const admin = createAdminClient();
+  const { data: movie, error } = await admin
+    .from('movies')
+    .select('id, title, hidden')
+    .eq('id', movieId)
+    .single();
+  if (error || !movie) return { error: 'Movie not found' };
+
+  const newHidden = !movie.hidden;
+  await admin
+    .from('movies')
+    .update({ hidden: newHidden, updated_at: new Date().toISOString() })
+    .eq('id', movieId);
+
+  await createAdminLog({
+    actorId: user.id,
+    action: newHidden ? 'movie_archived' : 'movie_unarchived',
+    targetType: 'movie',
+    targetId: movieId,
+    details: { title: movie.title },
+  });
+
+  revalidatePath('/movies');
+  revalidatePath(`/movies/${movieId}`);
+
+  if (newHidden) {
+    redirect('/movies');
+  }
+  return { success: true, archived: false };
 }
 
 export async function addCommentAction(prevState: any, formData: FormData) {

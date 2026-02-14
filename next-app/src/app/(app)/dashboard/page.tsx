@@ -2,7 +2,8 @@ import { createClient } from '@/lib/supabase/server';
 import { getLiveSurvey, getSurveyEntries } from '@/lib/queries/surveys';
 import { getAllMovies } from '@/lib/queries/movies';
 import { getAllUsers } from '@/lib/queries/profiles';
-import { getBallot } from '@/lib/queries/ballots';
+import { getBallot, getAllBallots } from '@/lib/queries/ballots';
+import { calculateStandings, type Standing } from '@/lib/services/scoring';
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import EmptyState from '@/components/ui/EmptyState';
@@ -42,13 +43,31 @@ export default async function DashboardPage() {
     maxRankN: number;
     movieCount: number;
     hasVoted: boolean;
+    topStandings: Standing[];
+    ballotCount: number;
   } | null = null;
 
   if (liveSurvey && user) {
-    const [entries, userBallot] = await Promise.all([
+    const [entries, userBallot, allBallotData] = await Promise.all([
       getSurveyEntries(liveSurvey.id),
       getBallot(liveSurvey.id, user.id),
+      getAllBallots(liveSurvey.id),
     ]);
+
+    const movies = entries.map((e) => ({
+      id: e.movie.id,
+      title: e.movie.title,
+      tmdbId: e.movie.tmdb_id,
+      metadataSnapshot: e.movie.metadata_snapshot
+        ? { posterPath: e.movie.metadata_snapshot.posterPath }
+        : null,
+    }));
+
+    const standings = calculateStandings(
+      allBallotData.map((b) => ({ ranks: b.ranks.map((r) => ({ rank: r.rank, movieId: r.movieId })) })),
+      movies,
+      liveSurvey.max_rank_n
+    );
 
     surveyData = {
       id: liveSurvey.id,
@@ -57,6 +76,8 @@ export default async function DashboardPage() {
       maxRankN: liveSurvey.max_rank_n,
       movieCount: entries.length,
       hasVoted: !!userBallot,
+      topStandings: standings.filter((s) => s.totalPoints > 0).slice(0, 3),
+      ballotCount: allBallotData.length,
     };
   }
 
@@ -151,6 +172,46 @@ export default async function DashboardPage() {
               </p>
             </div>
           </div>
+
+          {/* Top Standings */}
+          {surveyData.topStandings.length > 0 && (
+            <div className="relative mb-4">
+              <p className="text-xs uppercase tracking-widest text-[var(--color-text-muted)] mb-3">
+                Current Standings
+                <span className="ml-2 normal-case tracking-normal text-[var(--color-text-muted)]/60">
+                  ({surveyData.ballotCount} {surveyData.ballotCount === 1 ? 'vote' : 'votes'})
+                </span>
+              </p>
+              <div className="flex gap-3">
+                {surveyData.topStandings.map((standing) => {
+                  const medalColors = ['text-yellow-400', 'text-gray-300', 'text-amber-600'];
+                  const medalColor = medalColors[standing.position - 1] || 'text-[var(--color-text-muted)]';
+                  return (
+                    <div key={standing.movieId} className="flex items-center gap-2.5 bg-[var(--color-surface)]/60 rounded-lg px-3 py-2 border border-[var(--color-border)]/30 min-w-0 flex-1">
+                      <span className={`text-sm font-bold ${medalColor} shrink-0`}>#{standing.position}</span>
+                      {standing.posterPath ? (
+                        <img
+                          src={`${TMDB_IMAGE_BASE}${standing.posterPath}`}
+                          alt={standing.title}
+                          className="w-8 h-12 rounded object-cover shrink-0"
+                        />
+                      ) : (
+                        <div className="w-8 h-12 rounded bg-[var(--color-surface-elevated)] shrink-0 flex items-center justify-center">
+                          <svg className="w-4 h-4 text-[var(--color-text-muted)]/30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+                            <rect x="2" y="4" width="20" height="16" rx="2" />
+                          </svg>
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-[var(--color-text)] truncate">{standing.title}</p>
+                        <p className="text-xs text-[var(--color-text-muted)]">{standing.totalPoints} pts</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           <div className="relative flex items-center justify-between">
             {surveyData.hasVoted ? (

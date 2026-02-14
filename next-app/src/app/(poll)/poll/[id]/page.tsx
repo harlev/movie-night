@@ -2,6 +2,8 @@ import { notFound } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { getPollById, getPollMovies, getPollVotes, getPollVote } from '@/lib/queries/polls';
 import { calculateStandings, getPointsBreakdown } from '@/lib/services/scoring';
+import { createClient } from '@/lib/supabase/server';
+import { getUserById } from '@/lib/queries/profiles';
 import type { Metadata } from 'next';
 import PollVotingClient from './PollVotingClient';
 
@@ -27,6 +29,21 @@ export default async function PollPage({ params }: PageProps) {
 
   const cookieStore = await cookies();
   const voterId = cookieStore.get('qp_voter_id')?.value || null;
+
+  // Check if the visitor is a logged-in user
+  let loggedInName = '';
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const profile = await getUserById(user.id);
+      if (profile?.display_name) {
+        loggedInName = profile.display_name;
+      }
+    }
+  } catch {
+    // Not logged in — that's fine
+  }
 
   const [movies, allVotes] = await Promise.all([
     getPollMovies(poll.id),
@@ -85,7 +102,8 @@ export default async function PollPage({ params }: PageProps) {
       }}
       movies={clientMovies}
       voterRanks={clientVoterRanks}
-      voterName={existingVote?.voter_name || ''}
+      voterName={existingVote?.voter_name || loggedInName || ''}
+      loggedInName={loggedInName}
       allVotes={clientAllVotes}
       standings={standings}
       pointsBreakdown={pointsBreakdown}

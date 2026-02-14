@@ -33,6 +33,7 @@ interface PollVotingClientProps {
   movies: PollMovie[];
   voterRanks: Array<{ rank: number; movieId: string }> | null;
   voterName: string;
+  loggedInName: string;
   allVotes: ClientVote[];
   standings: Standing[];
   pointsBreakdown: Array<{ rank: number; points: number; label: string }>;
@@ -58,6 +59,7 @@ export default function PollVotingClient({
   movies,
   voterRanks,
   voterName: initialVoterName,
+  loggedInName,
   allVotes,
   standings,
   pointsBreakdown,
@@ -192,10 +194,11 @@ export default function PollVotingClient({
           <input
             type="text"
             value={voterName}
-            onChange={(e) => setVoterName(e.target.value)}
+            onChange={(e) => !loggedInName && setVoterName(e.target.value)}
+            disabled={!!loggedInName}
             placeholder="Your name (optional)"
             maxLength={50}
-            className="w-full px-3 py-2 bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-lg text-[var(--color-text)] text-sm placeholder:text-[var(--color-text-muted)]/50 focus:outline-none focus:border-[var(--color-primary)] transition-colors"
+            className={`w-full px-3 py-2 bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-lg text-[var(--color-text)] text-sm placeholder:text-[var(--color-text-muted)]/50 focus:outline-none focus:border-[var(--color-primary)] transition-colors ${loggedInName ? 'opacity-70 cursor-not-allowed' : ''}`}
           />
         </div>
       )}

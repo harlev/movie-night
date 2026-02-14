@@ -101,8 +101,46 @@ export interface AdminLog {
   id: string;
   actor_id: string;
   action: string;
-  target_type: 'user' | 'movie' | 'survey' | 'invite';
+  target_type: 'user' | 'movie' | 'survey' | 'invite' | 'poll';
   target_id: string;
   details: Record<string, unknown> | null;
   created_at: string;
+}
+
+export interface QuickPoll {
+  id: string;
+  title: string;
+  description: string | null;
+  state: 'draft' | 'live' | 'closed';
+  max_rank_n: number;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+  closed_at: string | null;
+}
+
+export interface QuickPollMovie {
+  id: string;
+  poll_id: string;
+  tmdb_id: number;
+  title: string;
+  metadata_snapshot: {
+    posterPath: string | null;
+    releaseDate: string | null;
+    overview: string | null;
+    voteAverage: number | null;
+    genres: string[];
+    trailerKey?: string | null;
+  } | null;
+  created_at: string;
+}
+
+export interface QuickPollVote {
+  id: string;
+  poll_id: string;
+  voter_id: string;
+  voter_name: string | null;
+  ranks: Array<{ rank: number; movieId: string }>;
+  created_at: string;
+  updated_at: string;
 }

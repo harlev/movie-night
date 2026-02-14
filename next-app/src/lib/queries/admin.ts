@@ -5,7 +5,7 @@ import { generateId } from '@/lib/utils/id';
 export async function createAdminLog(data: {
   actorId: string;
   action: string;
-  targetType: 'user' | 'movie' | 'survey' | 'invite';
+  targetType: 'user' | 'movie' | 'survey' | 'invite' | 'poll';
   targetId: string;
   details?: Record<string, unknown>;
 }): Promise<AdminLog> {

@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+import { generateId } from '@/lib/utils/id';
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -64,6 +65,20 @@ export async function updateSession(request: NextRequest) {
       return NextResponse.redirect(url);
     }
     // Role check is done in the admin layout server component
+  }
+
+  // Set voter cookie for /poll/* routes (Quick Polls)
+  if (pathname.startsWith('/poll/')) {
+    if (!request.cookies.get('qp_voter_id')?.value) {
+      const voterId = generateId();
+      supabaseResponse.cookies.set('qp_voter_id', voterId, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 60 * 60 * 24 * 365, // 1 year
+      });
+    }
   }
 
   return supabaseResponse;

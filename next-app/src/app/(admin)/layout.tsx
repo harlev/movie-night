@@ -41,6 +41,18 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               >
                 Back to App
               </Link>
+              {user.user_metadata?.avatar_url ? (
+                <img
+                  src={user.user_metadata.avatar_url}
+                  alt={profile.display_name}
+                  referrerPolicy="no-referrer"
+                  className="w-8 h-8 rounded-full object-cover"
+                />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-[var(--color-primary)]/20 border border-[var(--color-primary)]/40 flex items-center justify-center text-sm font-bold text-[var(--color-primary)]">
+                  {profile.display_name.charAt(0).toUpperCase()}
+                </div>
+              )}
               <span className="text-[var(--color-text-muted)] text-sm">{profile.display_name}</span>
               <form action={logout}>
                 <button

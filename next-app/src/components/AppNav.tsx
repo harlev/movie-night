@@ -10,6 +10,7 @@ interface AppNavProps {
     displayName: string;
     role: string;
     email?: string;
+    avatarUrl?: string;
   };
 }
 
@@ -20,8 +21,20 @@ const navItems = [
   { href: '/leaderboard', label: 'Leaderboard' },
 ];
 
-function UserAvatar({ name }: { name: string }) {
+function UserAvatar({ name, avatarUrl }: { name: string; avatarUrl?: string }) {
   const initial = name.charAt(0).toUpperCase();
+
+  if (avatarUrl) {
+    return (
+      <img
+        src={avatarUrl}
+        alt={name}
+        referrerPolicy="no-referrer"
+        className="w-8 h-8 rounded-full object-cover"
+      />
+    );
+  }
+
   return (
     <div className="w-8 h-8 rounded-full bg-[var(--color-primary)]/20 border border-[var(--color-primary)]/40 flex items-center justify-center text-sm font-bold text-[var(--color-primary)]">
       {initial}
@@ -82,7 +95,7 @@ export default function AppNav({ user }: AppNavProps) {
           </div>
 
           <div className="hidden sm:flex sm:items-center sm:space-x-3">
-            <UserAvatar name={user.displayName} />
+            <UserAvatar name={user.displayName} avatarUrl={user.avatarUrl} />
             <span className="text-[var(--color-text-muted)] text-sm">
               {user.displayName}
             </span>
@@ -169,7 +182,7 @@ export default function AppNav({ user }: AppNavProps) {
           </div>
           <div className="pt-4 pb-3 border-t border-[var(--color-border)]/50">
             <div className="px-4 flex items-center gap-3">
-              <UserAvatar name={user.displayName} />
+              <UserAvatar name={user.displayName} avatarUrl={user.avatarUrl} />
               <div>
                 <p className="text-sm font-medium text-[var(--color-text)]">
                   {user.displayName}

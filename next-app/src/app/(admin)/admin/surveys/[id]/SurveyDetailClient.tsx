@@ -9,8 +9,11 @@ import {
   removeMovieFromSurveyAction,
   deleteSurveyAction,
   toggleSurveyArchivedAction,
+  updateSurveyClosesAtAction,
 } from '@/lib/actions/surveys';
 import type { Survey, Movie } from '@/lib/types';
+import { utcToPacificLocal } from '@/lib/utils/closesAt';
+import CountdownTimer from '@/components/CountdownTimer';
 
 function getStateColor(state: string): string {
   switch (state) {
@@ -120,6 +123,83 @@ function UpdateInfoForm({ survey }: { survey: Survey }) {
         >
           {pending ? 'Saving...' : 'Save Changes'}
         </button>
+      </div>
+    </form>
+  );
+}
+
+function ClosesAtForm({ survey }: { survey: Survey }) {
+  const [state, formAction, pending] = useActionState(updateSurveyClosesAtAction, null);
+  const [closesAt, setClosesAt] = useState(
+    survey.closes_at ? utcToPacificLocal(survey.closes_at) : ''
+  );
+
+  return (
+    <form action={formAction}>
+      <input type="hidden" name="surveyId" value={survey.id} />
+      <div className="space-y-3">
+        <div>
+          <label className="block text-sm font-medium text-[var(--color-text)] mb-2">
+            Closing Time
+            <span className="ml-1.5 text-xs font-normal text-[var(--color-text-muted)]">Pacific Time</span>
+          </label>
+          <div className="flex items-center gap-2">
+            <input
+              type="datetime-local"
+              name="closesAt"
+              value={closesAt}
+              onChange={(e) => setClosesAt(e.target.value)}
+              className="flex-1 px-4 py-2 bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-lg text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)] transition-colors"
+            />
+            <button
+              type="submit"
+              disabled={pending}
+              className="px-4 py-2 bg-[var(--color-primary)] hover:bg-[var(--color-primary-dark)] text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+            >
+              {pending ? 'Saving...' : 'Save'}
+            </button>
+            {closesAt && (
+              <button
+                type="button"
+                onClick={() => {
+                  setClosesAt('');
+                  // Submit the form with empty closesAt to clear
+                  const form = document.createElement('form');
+                  form.style.display = 'none';
+                  const input1 = document.createElement('input');
+                  input1.name = 'surveyId';
+                  input1.value = survey.id;
+                  const input2 = document.createElement('input');
+                  input2.name = 'closesAt';
+                  input2.value = '';
+                  form.appendChild(input1);
+                  form.appendChild(input2);
+                  document.body.appendChild(form);
+                  formAction(new FormData(form));
+                  document.body.removeChild(form);
+                }}
+                className="px-3 py-2 text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+        </div>
+
+        {survey.state === 'live' && survey.closes_at && (
+          <CountdownTimer closesAt={survey.closes_at} variant="compact" />
+        )}
+
+        {state?.error && (
+          <div className="bg-red-500/10 border border-red-500 text-red-400 rounded-lg p-3">
+            {state.error}
+          </div>
+        )}
+        {state?.success && (
+          <div className="bg-[var(--color-success)]/10 border border-[var(--color-success)] text-[var(--color-success)] rounded-lg p-3">
+            {state.message}
+          </div>
+        )}
       </div>
     </form>
   );
@@ -462,6 +542,14 @@ export default function SurveyDetailClient({
           </div>
         )}
       </div>
+
+      {/* Closing Time */}
+      {survey.state !== 'frozen' && (
+        <div className="bg-[var(--color-surface)] rounded-lg p-6">
+          <h2 className="text-lg font-semibold text-[var(--color-text)] mb-4">Closing Time</h2>
+          <ClosesAtForm survey={survey} />
+        </div>
+      )}
 
       {/* State Controls */}
       <div className="bg-[var(--color-surface)] rounded-lg p-6">

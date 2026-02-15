@@ -1,11 +1,17 @@
 'use client';
 
-import { useActionState } from 'react';
+import { useActionState, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { createSurveyAction } from '@/lib/actions/surveys';
+import { getNextSunday6pmPacific } from '@/lib/utils/closesAt';
 
 export default function NewSurveyPage() {
   const [state, formAction, pending] = useActionState(createSurveyAction, null);
+  const [closesAt, setClosesAt] = useState('');
+
+  useEffect(() => {
+    setClosesAt(getNextSunday6pmPacific());
+  }, []);
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -79,6 +85,31 @@ export default function NewSurveyPage() {
               </select>
               <p className="text-xs text-[var(--color-text-muted)] mt-1">
                 Users will rank their top N choices. Rank 1 gets N points, rank 2 gets N-1 points, etc.
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-[var(--color-text)] mb-2">
+                Closing Time
+                <span className="ml-1.5 text-xs font-normal text-[var(--color-text-muted)]">Pacific Time</span>
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="datetime-local"
+                  name="closesAt"
+                  value={closesAt}
+                  onChange={(e) => setClosesAt(e.target.value)}
+                  className="flex-1 px-4 py-2 bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-lg text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)] transition-colors"
+                />
+                {closesAt && (
+                  <button type="button" onClick={() => setClosesAt('')}
+                    className="px-3 py-2 text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors">
+                    Clear
+                  </button>
+                )}
+              </div>
+              <p className="text-xs text-[var(--color-text-muted)] mt-1">
+                Voting closes automatically at this time. Default: next Sunday 6pm PT.
               </p>
             </div>
           </div>

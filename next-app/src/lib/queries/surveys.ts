@@ -6,6 +6,7 @@ export async function createSurvey(data: {
   title: string;
   description?: string;
   maxRankN?: number;
+  closesAt?: string;
 }): Promise<Survey> {
   const supabase = await createClient();
   const id = generateId();
@@ -14,6 +15,7 @@ export async function createSurvey(data: {
     title: data.title,
     description: data.description || null,
     max_rank_n: data.maxRankN || 3,
+    closes_at: data.closesAt || null,
   }).select().single();
   if (error) throw error;
   return survey;
@@ -37,7 +39,7 @@ export async function getLiveSurvey(): Promise<Survey | null> {
   return data;
 }
 
-export async function updateSurvey(id: string, data: Partial<Pick<Survey, 'title' | 'description' | 'max_rank_n'>>): Promise<Survey | null> {
+export async function updateSurvey(id: string, data: Partial<Pick<Survey, 'title' | 'description' | 'max_rank_n' | 'closes_at'>>): Promise<Survey | null> {
   const supabase = await createClient();
   const { data: survey } = await supabase.from('surveys').update({ ...data, updated_at: new Date().toISOString() }).eq('id', id).select().single();
   return survey;

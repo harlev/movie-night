@@ -43,5 +43,7 @@ export async function GET(
     standings,
     voteCount: votes.length,
     votes: clientVotes,
+    state: poll.state,
+    closesAt: poll.closes_at,
   });
 }

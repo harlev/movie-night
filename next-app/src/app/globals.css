@@ -187,3 +187,13 @@ body::before {
 .animate-slot-pulse {
   animation: slot-pulse 2s ease-in-out infinite;
 }
+
+/* Countdown colon blink */
+@keyframes countdown-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.animate-countdown-blink {
+  animation: countdown-blink 1s ease-in-out infinite;
+}

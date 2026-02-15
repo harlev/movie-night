@@ -40,6 +40,7 @@ export async function GET(
     survey: {
       id: survey.id,
       state: survey.state,
+      closesAt: survey.closes_at,
       updatedAt: survey.updated_at,
     },
     ballotCount: allBallots.length,

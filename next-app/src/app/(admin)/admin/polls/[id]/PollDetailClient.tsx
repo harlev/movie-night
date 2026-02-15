@@ -11,10 +11,13 @@ import {
   searchMoviesForPollAction,
   togglePollVoteDisabledAction,
   togglePollArchivedAction,
+  updatePollClosesAtAction,
 } from '@/lib/actions/polls';
 import type { QuickPoll, QuickPollMovie } from '@/lib/types';
 import type { Standing } from '@/lib/services/scoring';
 import QRCodeDisplay from '@/components/QRCodeDisplay';
+import { utcToPacificLocal } from '@/lib/utils/closesAt';
+import CountdownTimer from '@/components/CountdownTimer';
 
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p';
 
@@ -123,6 +126,82 @@ function UpdateInfoForm({ poll }: { poll: QuickPoll }) {
         >
           {pending ? 'Saving...' : 'Save Changes'}
         </button>
+      </div>
+    </form>
+  );
+}
+
+function ClosesAtForm({ poll }: { poll: QuickPoll }) {
+  const [state, formAction, pending] = useActionState(updatePollClosesAtAction, null);
+  const [closesAt, setClosesAt] = useState(
+    poll.closes_at ? utcToPacificLocal(poll.closes_at) : ''
+  );
+
+  return (
+    <form action={formAction}>
+      <input type="hidden" name="pollId" value={poll.id} />
+      <div className="space-y-3">
+        <div>
+          <label className="block text-sm font-medium text-[var(--color-text)] mb-2">
+            Closing Time
+            <span className="ml-1.5 text-xs font-normal text-[var(--color-text-muted)]">Pacific Time</span>
+          </label>
+          <div className="flex items-center gap-2">
+            <input
+              type="datetime-local"
+              name="closesAt"
+              value={closesAt}
+              onChange={(e) => setClosesAt(e.target.value)}
+              className="flex-1 px-4 py-2 bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-lg text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)] transition-colors"
+            />
+            <button
+              type="submit"
+              disabled={pending}
+              className="px-4 py-2 bg-[var(--color-primary)] hover:bg-[var(--color-primary-dark)] text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+            >
+              {pending ? 'Saving...' : 'Save'}
+            </button>
+            {closesAt && (
+              <button
+                type="button"
+                onClick={() => {
+                  setClosesAt('');
+                  const form = document.createElement('form');
+                  form.style.display = 'none';
+                  const input1 = document.createElement('input');
+                  input1.name = 'pollId';
+                  input1.value = poll.id;
+                  const input2 = document.createElement('input');
+                  input2.name = 'closesAt';
+                  input2.value = '';
+                  form.appendChild(input1);
+                  form.appendChild(input2);
+                  document.body.appendChild(form);
+                  formAction(new FormData(form));
+                  document.body.removeChild(form);
+                }}
+                className="px-3 py-2 text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+        </div>
+
+        {poll.state === 'live' && poll.closes_at && (
+          <CountdownTimer closesAt={poll.closes_at} variant="compact" />
+        )}
+
+        {state?.error && (
+          <div className="bg-red-500/10 border border-red-500 text-red-400 rounded-lg p-3">
+            {state.error}
+          </div>
+        )}
+        {state?.success && (
+          <div className="bg-[var(--color-success)]/10 border border-[var(--color-success)] text-[var(--color-success)] rounded-lg p-3">
+            {state.message}
+          </div>
+        )}
       </div>
     </form>
   );
@@ -503,6 +582,14 @@ export default function PollDetailClient({
           </div>
         )}
       </div>
+
+      {/* Closing Time */}
+      {poll.state !== 'closed' && (
+        <div className="bg-[var(--color-surface)] rounded-lg p-6">
+          <h2 className="text-lg font-semibold text-[var(--color-text)] mb-4">Closing Time</h2>
+          <ClosesAtForm poll={poll} />
+        </div>
+      )}
 
       {/* State Controls */}
       <div className="bg-[var(--color-surface)] rounded-lg p-6">

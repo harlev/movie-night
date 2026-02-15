@@ -10,6 +10,7 @@ export async function createPoll(data: {
   description?: string;
   maxRankN?: number;
   createdBy: string;
+  closesAt?: string;
 }): Promise<QuickPoll> {
   const supabase = await createClient();
   const id = generateId();
@@ -19,6 +20,7 @@ export async function createPoll(data: {
     description: data.description || null,
     max_rank_n: data.maxRankN || 3,
     created_by: data.createdBy,
+    closes_at: data.closesAt || null,
   }).select().single();
   if (error) throw error;
   return poll;
@@ -36,10 +38,16 @@ export async function getAllPolls(): Promise<QuickPoll[]> {
   return data || [];
 }
 
-export async function updatePoll(id: string, data: Partial<Pick<QuickPoll, 'title' | 'description' | 'max_rank_n'>>): Promise<QuickPoll | null> {
+export async function updatePoll(id: string, data: Partial<Pick<QuickPoll, 'title' | 'description' | 'max_rank_n' | 'closes_at'>>): Promise<QuickPoll | null> {
   const supabase = await createClient();
   const { data: poll } = await supabase.from('quick_polls').update({ ...data, updated_at: new Date().toISOString() }).eq('id', id).select().single();
   return poll;
+}
+
+export async function getLivePolls(): Promise<QuickPoll[]> {
+  const admin = createAdminClient();
+  const { data } = await admin.from('quick_polls').select('*').eq('state', 'live').order('created_at', { ascending: false });
+  return data || [];
 }
 
 export async function updatePollState(id: string, state: 'draft' | 'live' | 'closed'): Promise<{ success: boolean; error?: string }> {

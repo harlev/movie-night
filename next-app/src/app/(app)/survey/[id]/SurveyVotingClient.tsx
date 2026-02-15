@@ -7,6 +7,7 @@ import type { Standing } from '@/lib/services/scoring';
 import { useBallot } from '@/hooks/useBallot';
 import { getRankBadgeClasses, getStandingBorderColor, shuffle } from '@/lib/utils/rankStyles';
 import SortableBallotList from '@/components/SortableBallotList';
+import CountdownTimer from '@/components/CountdownTimer';
 
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w92';
 const TMDB_IMAGE_BASE_GRID = 'https://image.tmdb.org/t/p/w185';
@@ -17,6 +18,7 @@ interface SurveyInfo {
   description: string | null;
   state: 'draft' | 'live' | 'frozen';
   maxRankN: number;
+  closesAt: string | null;
 }
 
 interface EntryMovie {
@@ -161,6 +163,19 @@ export default function SurveyVotingClient({
       {formState?.success && (
         <div className="bg-[var(--color-success)]/10 border border-[var(--color-success)]/50 text-[var(--color-success)] rounded-xl p-3">
           Your ballot has been submitted!
+        </div>
+      )}
+
+      {isLive && survey.closesAt && (
+        <div className="flex items-center justify-center gap-3 py-3 px-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)]/50">
+          <span className="text-xs uppercase tracking-widest text-[var(--color-text-muted)]">
+            Voting closes in
+          </span>
+          <CountdownTimer
+            closesAt={survey.closesAt}
+            variant="full"
+            onExpired={() => window.location.reload()}
+          />
         </div>
       )}
 

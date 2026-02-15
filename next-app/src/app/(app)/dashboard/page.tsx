@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { getLiveSurvey, getSurveyEntries } from '@/lib/queries/surveys';
+import { getLivePolls } from '@/lib/queries/polls';
 import { getAllMovies } from '@/lib/queries/movies';
 import { getAllUsers } from '@/lib/queries/profiles';
 import { getBallot, getAllBallots } from '@/lib/queries/ballots';
@@ -7,6 +8,7 @@ import { calculateStandings, type Standing } from '@/lib/services/scoring';
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import EmptyState from '@/components/ui/EmptyState';
+import CountdownTimer from '@/components/CountdownTimer';
 
 export const metadata: Metadata = {
   title: 'Dashboard - Movie Night',
@@ -21,8 +23,9 @@ export default async function DashboardPage() {
   } = await supabase.auth.getUser();
 
   // Fetch data in parallel
-  const [liveSurvey, allMovies, allUsers, frozenSurveysRes] = await Promise.all([
+  const [liveSurvey, livePolls, allMovies, allUsers, frozenSurveysRes] = await Promise.all([
     getLiveSurvey().catch(() => null),
+    getLivePolls().catch(() => []),
     getAllMovies(),
     getAllUsers(),
     (async () => {
@@ -46,6 +49,7 @@ export default async function DashboardPage() {
     hasVoted: boolean;
     topStandings: Standing[];
     ballotCount: number;
+    closesAt: string | null;
   } | null = null;
 
   if (liveSurvey && user) {
@@ -79,6 +83,7 @@ export default async function DashboardPage() {
       hasVoted: !!userBallot,
       topStandings: standings.filter((s) => s.totalPoints > 0).slice(0, 3),
       ballotCount: allBallotData.length,
+      closesAt: liveSurvey.closes_at,
     };
   }
 
@@ -171,6 +176,11 @@ export default async function DashboardPage() {
               <p className="text-[var(--color-text-muted)] text-sm">
                 Rank top {surveyData.maxRankN}
               </p>
+              {surveyData.closesAt && (
+                <div className="mt-1.5">
+                  <CountdownTimer closesAt={surveyData.closesAt} variant="compact" refreshOnExpired />
+                </div>
+              )}
             </div>
           </div>
 
@@ -242,6 +252,53 @@ export default async function DashboardPage() {
             title="No active survey"
             description="Check back later for the next voting round!"
           />
+        </div>
+      )}
+
+      {/* Active Polls */}
+      {livePolls.length > 0 && (
+        <div>
+          <p className="text-xs uppercase tracking-widest text-[var(--color-accent)] font-medium mb-3">Active Polls</p>
+          <div className="space-y-4">
+            {livePolls.map((poll) => (
+              <div
+                key={poll.id}
+                className="relative rounded-xl p-5 border border-[var(--color-accent)]/30 bg-gradient-to-br from-[var(--color-accent)]/5 to-transparent shadow-lg shadow-[var(--color-accent)]/5 overflow-hidden"
+              >
+                <div className="absolute -top-20 -right-20 w-40 h-40 bg-[var(--color-accent)]/10 rounded-full blur-3xl" />
+                <div className="relative">
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-[var(--color-success)]/10 text-[var(--color-success)] border border-[var(--color-success)]/20 shrink-0">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-success)] mr-1 animate-pulse" />
+                        Live
+                      </span>
+                      <h3 className="text-lg font-display font-semibold text-[var(--color-text)] truncate">
+                        {poll.title}
+                      </h3>
+                    </div>
+                    {poll.closes_at && (
+                      <CountdownTimer closesAt={poll.closes_at} variant="compact" refreshOnExpired />
+                    )}
+                  </div>
+                  {poll.description && (
+                    <p className="text-sm text-[var(--color-text-muted)] mb-3">{poll.description}</p>
+                  )}
+                  <div className="flex justify-end">
+                    <Link
+                      href={`/poll/${poll.id}`}
+                      className="px-5 py-2 bg-[var(--color-accent)] hover:bg-[var(--color-accent)]/80 text-white font-medium rounded-xl transition-all duration-150 active:scale-[0.97] shadow-md shadow-[var(--color-accent)]/20 inline-flex items-center gap-1.5 text-sm"
+                    >
+                      Vote
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                      </svg>
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

@@ -88,6 +88,7 @@ export default async function SurveyPage({ params }: PageProps) {
         description: survey.description,
         state: survey.state,
         maxRankN: survey.max_rank_n,
+        closesAt: survey.closes_at,
       }}
       entries={clientEntries}
       userBallotRanks={clientBallotRanks}

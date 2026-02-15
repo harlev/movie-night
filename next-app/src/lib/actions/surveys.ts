@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { createSurvey, updateSurvey, updateSurveyState, updateSurveyArchived, deleteSurvey, addSurveyEntry, removeSurveyEntry, getSurveyById, getSurveyEntries } from '@/lib/queries/surveys';
 import { removeBallotMovie } from '@/lib/queries/ballots';
+import { pacificToUTC } from '@/lib/utils/closesAt';
 
 export async function createSurveyAction(prevState: any, formData: FormData) {
   const title = (formData.get('title') as string)?.trim();
@@ -19,7 +20,10 @@ export async function createSurveyAction(prevState: any, formData: FormData) {
     return { error: 'Max rank must be between 1 and 10', title, description, maxRankN: maxRankNStr };
   }
 
-  const survey = await createSurvey({ title, description: description || undefined, maxRankN });
+  const closesAtLocal = (formData.get('closesAt') as string)?.trim();
+  const closesAt = closesAtLocal ? pacificToUTC(closesAtLocal) : undefined;
+
+  const survey = await createSurvey({ title, description: description || undefined, maxRankN, closesAt });
   redirect(`/admin/surveys/${survey.id}`);
 }
 
@@ -37,6 +41,21 @@ export async function updateSurveyAction(prevState: any, formData: FormData) {
   await updateSurvey(surveyId, { title, description: description || null, max_rank_n: maxRankN });
   revalidatePath(`/admin/surveys/${surveyId}`);
   return { success: true, message: 'Survey updated' };
+}
+
+export async function updateSurveyClosesAtAction(prevState: any, formData: FormData) {
+  const surveyId = formData.get('surveyId') as string;
+  const closesAtLocal = (formData.get('closesAt') as string)?.trim();
+
+  const survey = await getSurveyById(surveyId);
+  if (!survey) return { error: 'Survey not found' };
+  if (survey.state === 'frozen') return { error: 'Cannot update closing time of frozen survey' };
+
+  const closesAt = closesAtLocal ? pacificToUTC(closesAtLocal) : null;
+  await updateSurvey(surveyId, { closes_at: closesAt });
+  revalidatePath(`/admin/surveys/${surveyId}`);
+  revalidatePath('/dashboard');
+  return { success: true, message: closesAt ? 'Closing time updated' : 'Closing time cleared' };
 }
 
 export async function changeSurveyStateAction(prevState: any, formData: FormData) {

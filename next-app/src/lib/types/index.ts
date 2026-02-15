@@ -47,6 +47,7 @@ export interface Survey {
   created_at: string;
   updated_at: string;
   frozen_at: string | null;
+  closes_at: string | null;
 }
 
 export interface SurveyEntry {
@@ -121,6 +122,7 @@ export interface QuickPoll {
   created_at: string;
   updated_at: string;
   closed_at: string | null;
+  closes_at: string | null;
 }
 
 export interface QuickPollMovie {

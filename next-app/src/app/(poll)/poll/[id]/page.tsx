@@ -99,6 +99,7 @@ export default async function PollPage({ params }: PageProps) {
         description: poll.description,
         state: poll.state,
         maxRankN: poll.max_rank_n,
+        closesAt: poll.closes_at,
       }}
       movies={clientMovies}
       voterRanks={clientVoterRanks}

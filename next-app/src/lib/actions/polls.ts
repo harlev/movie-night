@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { searchMovies, getMovieDetails, createMetadataSnapshot, fetchMovieVideos } from '@/lib/services/tmdb';
+import { pacificToUTC } from '@/lib/utils/closesAt';
 import {
   createPoll,
   updatePoll,
@@ -39,7 +40,10 @@ export async function createPollAction(prevState: any, formData: FormData) {
     return { error: 'Max rank must be between 1 and 10', title, description, maxRankN: maxRankNStr };
   }
 
-  const poll = await createPoll({ title, description: description || undefined, maxRankN, createdBy: user.id });
+  const closesAtLocal = (formData.get('closesAt') as string)?.trim();
+  const closesAt = closesAtLocal ? pacificToUTC(closesAtLocal) : undefined;
+
+  const poll = await createPoll({ title, description: description || undefined, maxRankN, createdBy: user.id, closesAt });
 
   await createAdminLog({
     actorId: user.id,
@@ -66,6 +70,20 @@ export async function updatePollAction(prevState: any, formData: FormData) {
   await updatePoll(pollId, { title, description: description || null, max_rank_n: maxRankN });
   revalidatePath(`/admin/polls/${pollId}`);
   return { success: true, message: 'Poll updated' };
+}
+
+export async function updatePollClosesAtAction(prevState: any, formData: FormData) {
+  const pollId = formData.get('pollId') as string;
+  const closesAtLocal = (formData.get('closesAt') as string)?.trim();
+
+  const poll = await getPollById(pollId);
+  if (!poll) return { error: 'Poll not found' };
+  if (poll.state === 'closed') return { error: 'Cannot update closing time of closed poll' };
+
+  const closesAt = closesAtLocal ? pacificToUTC(closesAtLocal) : null;
+  await updatePoll(pollId, { closes_at: closesAt });
+  revalidatePath(`/admin/polls/${pollId}`);
+  return { success: true, message: closesAt ? 'Closing time updated' : 'Closing time cleared' };
 }
 
 export async function changePollStateAction(prevState: any, formData: FormData) {

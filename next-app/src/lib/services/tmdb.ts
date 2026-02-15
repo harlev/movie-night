@@ -146,6 +146,7 @@ export function createMetadataSnapshot(
   genres: string[];
   trailerKey: string | null;
   imdbId: string | null;
+  runtime: number | null;
 } {
   const genres =
     'genres' in movie
@@ -162,5 +163,6 @@ export function createMetadataSnapshot(
     genres,
     trailerKey,
     imdbId: 'imdb_id' in movie ? movie.imdb_id : null,
+    runtime: 'runtime' in movie ? movie.runtime : null,
   };
 }

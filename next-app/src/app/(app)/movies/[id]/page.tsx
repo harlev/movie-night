@@ -83,6 +83,11 @@ export default async function MovieDetailPage({ params }: PageProps) {
                   {meta.releaseDate.slice(0, 4)}
                 </span>
               )}
+              {meta?.runtime ? (
+                <span className="text-[var(--color-text-muted)]">
+                  {Math.floor(meta.runtime / 60)}h {meta.runtime % 60}m
+                </span>
+              ) : null}
               {meta?.voteAverage ? (
                 <span className="inline-flex items-center gap-1 text-[var(--color-warning)] bg-[var(--color-warning)]/10 px-2.5 py-0.5 rounded-lg">
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">

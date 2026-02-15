@@ -113,7 +113,7 @@ export async function toggleMovieArchiveAction(prevState: any, formData: FormDat
   return { success: true, archived: false };
 }
 
-export async function backfillImdbIdsAction(prevState: any) {
+export async function backfillMovieMetadataAction(prevState: any) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: 'Not authenticated' };
@@ -133,14 +133,26 @@ export async function backfillImdbIdsAction(prevState: any) {
 
   for (const movie of movies || []) {
     const snapshot = movie.metadata_snapshot as Record<string, unknown> | null;
-    if (snapshot?.imdbId) {
+    const hasImdbId = !!snapshot?.imdbId;
+    const hasRuntime = snapshot?.runtime != null;
+
+    if (hasImdbId && hasRuntime) {
       skipped++;
       continue;
     }
 
     try {
       const details = await getMovieDetails(movie.tmdb_id);
-      if (!details?.imdb_id) {
+      if (!details) {
+        skipped++;
+        continue;
+      }
+
+      const updates: Record<string, unknown> = {};
+      if (!hasImdbId && details.imdb_id) updates.imdbId = details.imdb_id;
+      if (!hasRuntime && details.runtime != null) updates.runtime = details.runtime;
+
+      if (Object.keys(updates).length === 0) {
         skipped++;
         continue;
       }
@@ -148,7 +160,7 @@ export async function backfillImdbIdsAction(prevState: any) {
       await admin
         .from('movies')
         .update({
-          metadata_snapshot: { ...snapshot, imdbId: details.imdb_id },
+          metadata_snapshot: { ...snapshot, ...updates },
           updated_at: new Date().toISOString(),
         })
         .eq('id', movie.id);
@@ -160,7 +172,7 @@ export async function backfillImdbIdsAction(prevState: any) {
 
   await createAdminLog({
     actorId: user.id,
-    action: 'backfill_imdb_ids',
+    action: 'backfill_movie_metadata',
     targetType: 'movie',
     targetId: 'bulk',
     details: { updated, skipped, failed },

@@ -5,7 +5,7 @@ import { getAllUsers } from '@/lib/queries/profiles';
 import { getAllMovies } from '@/lib/queries/movies';
 import { getAllSurveys, getLiveSurvey } from '@/lib/queries/surveys';
 import { getAllBallots } from '@/lib/queries/ballots';
-import BackfillImdbButton from './BackfillImdbButton';
+import BackfillMetadataButton from './BackfillMetadataButton';
 
 export const metadata: Metadata = {
   title: 'Admin Dashboard - Movie Night',
@@ -110,7 +110,7 @@ export default async function AdminDashboardPage() {
           >
             Manage Users
           </Link>
-          <BackfillImdbButton />
+          <BackfillMetadataButton />
         </div>
       </div>
     </div>

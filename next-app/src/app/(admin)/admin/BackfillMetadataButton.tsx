@@ -1,10 +1,10 @@
 'use client';
 
 import { useActionState } from 'react';
-import { backfillImdbIdsAction } from '@/lib/actions/movies';
+import { backfillMovieMetadataAction } from '@/lib/actions/movies';
 
-export default function BackfillImdbButton() {
-  const [state, formAction, isPending] = useActionState(backfillImdbIdsAction, null);
+export default function BackfillMetadataButton() {
+  const [state, formAction, isPending] = useActionState(backfillMovieMetadataAction, null);
 
   return (
     <div>
@@ -14,7 +14,7 @@ export default function BackfillImdbButton() {
           disabled={isPending}
           className="px-4 py-2 bg-[var(--color-surface-elevated)] hover:bg-[var(--color-border)] text-[var(--color-text)] text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
         >
-          {isPending ? 'Backfilling...' : 'Backfill IMDb IDs'}
+          {isPending ? 'Backfilling...' : 'Backfill Movie Metadata'}
         </button>
       </form>
       {state?.success && (

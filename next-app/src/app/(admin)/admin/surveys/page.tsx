@@ -91,9 +91,16 @@ export default async function AdminSurveysPage() {
                     </div>
                   </td>
                   <td className="px-4 py-4">
-                    <span className={`px-2 py-1 text-xs font-medium rounded ${getStateColor(survey.state)}`}>
-                      {survey.state}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className={`px-2 py-1 text-xs font-medium rounded ${getStateColor(survey.state)}`}>
+                        {survey.state}
+                      </span>
+                      {survey.archived && (
+                        <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-[var(--color-warning)]/10 text-[var(--color-warning)]">
+                          archived
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-4 text-[var(--color-text-muted)]">
                     {survey.movieCount}

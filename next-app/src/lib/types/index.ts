@@ -41,6 +41,7 @@ export interface Survey {
   description: string | null;
   state: 'draft' | 'live' | 'frozen';
   max_rank_n: number;
+  archived: boolean;
   created_at: string;
   updated_at: string;
   frozen_at: string | null;
@@ -113,6 +114,7 @@ export interface QuickPoll {
   description: string | null;
   state: 'draft' | 'live' | 'closed';
   max_rank_n: number;
+  archived: boolean;
   created_by: string;
   created_at: string;
   updated_at: string;

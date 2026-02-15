@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
-import { createSurvey, updateSurvey, updateSurveyState, deleteSurvey, addSurveyEntry, removeSurveyEntry, getSurveyById, getSurveyEntries } from '@/lib/queries/surveys';
+import { createSurvey, updateSurvey, updateSurveyState, updateSurveyArchived, deleteSurvey, addSurveyEntry, removeSurveyEntry, getSurveyById, getSurveyEntries } from '@/lib/queries/surveys';
 import { removeBallotMovie } from '@/lib/queries/ballots';
 
 export async function createSurveyAction(prevState: any, formData: FormData) {
@@ -109,4 +109,20 @@ export async function deleteSurveyAction(prevState: any, formData: FormData) {
 
   await deleteSurvey(surveyId);
   redirect('/admin/surveys');
+}
+
+export async function toggleSurveyArchivedAction(prevState: any, formData: FormData) {
+  const surveyId = formData.get('surveyId') as string;
+  const archived = formData.get('archived') === 'true';
+
+  const survey = await getSurveyById(surveyId);
+  if (!survey) return { error: 'Survey not found' };
+  if (survey.state !== 'frozen') return { error: 'Can only archive frozen surveys' };
+
+  await updateSurveyArchived(surveyId, archived);
+  revalidatePath(`/admin/surveys/${surveyId}`);
+  revalidatePath('/admin/surveys');
+  revalidatePath('/history');
+  revalidatePath('/leaderboard');
+  return { success: true, message: archived ? 'Survey archived' : 'Survey unarchived' };
 }

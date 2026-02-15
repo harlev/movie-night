@@ -30,7 +30,8 @@ export default async function DashboardPage() {
       const { count } = await s
         .from('surveys')
         .select('*', { count: 'exact', head: true })
-        .eq('state', 'frozen');
+        .eq('state', 'frozen')
+        .eq('archived', false);
       return count || 0;
     })(),
   ]);

@@ -9,6 +9,7 @@ import {
   createPoll,
   updatePoll,
   updatePollState,
+  updatePollArchived,
   deletePoll,
   getPollById,
   getPollMovies,
@@ -218,6 +219,21 @@ export async function togglePollVoteDisabledAction(prevState: any, formData: For
   await togglePollVoteDisabled(voteId, disabled);
   revalidatePath(`/admin/polls/${pollId}`);
   return { success: true };
+}
+
+export async function togglePollArchivedAction(prevState: any, formData: FormData) {
+  const pollId = formData.get('pollId') as string;
+  const archived = formData.get('archived') === 'true';
+
+  const poll = await getPollById(pollId);
+  if (!poll) return { error: 'Poll not found' };
+  if (poll.state !== 'closed') return { error: 'Can only archive closed polls' };
+
+  await updatePollArchived(pollId, archived);
+  revalidatePath(`/admin/polls/${pollId}`);
+  revalidatePath('/admin/polls');
+  revalidatePath('/leaderboard');
+  return { success: true, message: archived ? 'Poll archived' : 'Poll unarchived' };
 }
 
 // ── Public Action (no auth required) ──

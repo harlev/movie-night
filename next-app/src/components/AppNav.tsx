@@ -17,6 +17,7 @@ const navItems = [
   { href: '/dashboard', label: 'Dashboard' },
   { href: '/movies', label: 'Movies' },
   { href: '/history', label: 'History' },
+  { href: '/leaderboard', label: 'Leaderboard' },
 ];
 
 function UserAvatar({ name }: { name: string }) {

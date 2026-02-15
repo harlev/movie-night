@@ -53,6 +53,11 @@ export async function updatePollState(id: string, state: 'draft' | 'live' | 'clo
   return { success: true };
 }
 
+export async function updatePollArchived(id: string, archived: boolean): Promise<void> {
+  const supabase = await createClient();
+  await supabase.from('quick_polls').update({ archived, updated_at: new Date().toISOString() }).eq('id', id);
+}
+
 export async function deletePoll(id: string): Promise<void> {
   const supabase = await createClient();
   await supabase.from('quick_polls').delete().eq('id', id);

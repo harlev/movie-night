@@ -8,6 +8,7 @@ import {
   addMovieToSurveyAction,
   removeMovieFromSurveyAction,
   deleteSurveyAction,
+  toggleSurveyArchivedAction,
 } from '@/lib/actions/surveys';
 import type { Survey, Movie } from '@/lib/types';
 
@@ -127,6 +128,7 @@ function UpdateInfoForm({ survey }: { survey: Survey }) {
 function StateControls({ survey, entryCount }: { survey: Survey; entryCount: number }) {
   const [stateResult, changeStateAction, statePending] = useActionState(changeSurveyStateAction, null);
   const [deleteResult, deleteAction, deletePending] = useActionState(deleteSurveyAction, null);
+  const [archiveResult, archiveAction, archivePending] = useActionState(toggleSurveyArchivedAction, null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const canGoLive = survey.state === 'draft' && entryCount > 0;
@@ -159,6 +161,20 @@ function StateControls({ survey, entryCount }: { survey: Survey; entryCount: num
               className="px-4 py-2 bg-[var(--color-secondary)] hover:bg-[var(--color-secondary)]/80 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
             >
               Freeze Survey
+            </button>
+          </form>
+        )}
+
+        {survey.state === 'frozen' && (
+          <form action={archiveAction}>
+            <input type="hidden" name="surveyId" value={survey.id} />
+            <input type="hidden" name="archived" value={survey.archived ? 'false' : 'true'} />
+            <button
+              type="submit"
+              disabled={archivePending}
+              className="px-4 py-2 bg-[var(--color-text-muted)]/20 hover:bg-[var(--color-text-muted)]/30 text-[var(--color-text)] text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+            >
+              {archivePending ? (survey.archived ? 'Unarchiving...' : 'Archiving...') : (survey.archived ? 'Unarchive' : 'Archive')}
             </button>
           </form>
         )}
@@ -214,6 +230,18 @@ function StateControls({ survey, entryCount }: { survey: Survey; entryCount: num
       {deleteResult?.error && (
         <div className="bg-red-500/10 border border-red-500 text-red-400 rounded-lg p-3 mt-3">
           {deleteResult.error}
+        </div>
+      )}
+
+      {archiveResult?.error && (
+        <div className="bg-red-500/10 border border-red-500 text-red-400 rounded-lg p-3 mt-3">
+          {archiveResult.error}
+        </div>
+      )}
+
+      {archiveResult?.success && (
+        <div className="bg-[var(--color-success)]/10 border border-[var(--color-success)] text-[var(--color-success)] rounded-lg p-3 mt-3">
+          {archiveResult.message}
         </div>
       )}
 
@@ -397,9 +425,16 @@ export default function SurveyDetailClient({
           </Link>
           <h1 className="text-2xl font-bold text-[var(--color-text)] mt-2">{survey.title}</h1>
         </div>
-        <span className={`px-3 py-1 text-sm font-medium rounded ${getStateColor(survey.state)}`}>
-          {survey.state}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className={`px-3 py-1 text-sm font-medium rounded ${getStateColor(survey.state)}`}>
+            {survey.state}
+          </span>
+          {survey.archived && (
+            <span className="px-2 py-1 text-xs font-medium rounded bg-[var(--color-warning)]/10 text-[var(--color-warning)]">
+              archived
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Survey Info */}

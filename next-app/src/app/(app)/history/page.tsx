@@ -24,11 +24,12 @@ export default async function HistoryPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Get all frozen surveys
+  // Get all frozen, non-archived surveys
   const { data: frozenSurveys } = await supabase
     .from('surveys')
     .select('*')
     .eq('state', 'frozen')
+    .eq('archived', false)
     .order('frozen_at', { ascending: false });
 
   // Get live survey

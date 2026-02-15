@@ -63,6 +63,11 @@ export async function updateSurveyState(id: string, state: 'draft' | 'live' | 'f
   return { success: true };
 }
 
+export async function updateSurveyArchived(id: string, archived: boolean): Promise<void> {
+  const supabase = await createClient();
+  await supabase.from('surveys').update({ archived, updated_at: new Date().toISOString() }).eq('id', id);
+}
+
 export async function deleteSurvey(id: string): Promise<void> {
   const supabase = await createClient();
   await supabase.from('surveys').delete().eq('id', id);

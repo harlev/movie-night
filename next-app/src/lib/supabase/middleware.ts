@@ -68,16 +68,24 @@ export async function updateSession(request: NextRequest) {
   }
 
   // Set voter cookie for /poll/* routes (Quick Polls)
+  // Logged-in users always get their user ID as voter ID (consistent across devices).
+  // Anonymous users get a random ID (created once, persisted via cookie).
   if (pathname.startsWith('/poll/')) {
-    if (!request.cookies.get('qp_voter_id')?.value) {
-      const voterId = generateId();
-      supabaseResponse.cookies.set('qp_voter_id', voterId, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        path: '/',
-        maxAge: 60 * 60 * 24 * 365, // 1 year
-      });
+    const cookieOpts = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax' as const,
+      path: '/',
+      maxAge: 60 * 60 * 24 * 365, // 1 year
+    };
+
+    if (user) {
+      // Always set to user ID so it stays in sync across devices
+      if (request.cookies.get('qp_voter_id')?.value !== user.id) {
+        supabaseResponse.cookies.set('qp_voter_id', user.id, cookieOpts);
+      }
+    } else if (!request.cookies.get('qp_voter_id')?.value) {
+      supabaseResponse.cookies.set('qp_voter_id', generateId(), cookieOpts);
     }
   }
 

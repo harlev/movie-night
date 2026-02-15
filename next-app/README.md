@@ -90,11 +90,16 @@ src/
 
 ## Local Development Setup
 
+There are two ways to set up Supabase for local development:
+- **Option A: Local Supabase** (recommended) — runs a full Supabase stack locally via Docker
+- **Option B: Cloud Supabase** — uses a hosted Supabase project
+
 ### Prerequisites
 
 - Node.js 18+
 - npm
-- A [Supabase](https://supabase.com) project (free tier works)
+- [Docker](https://docs.docker.com/get-docker/) (required for local Supabase)
+- [Supabase CLI](https://supabase.com/docs/guides/cli/getting-started) (`npm install -g supabase`)
 - A [TMDb API key](https://developer.themoviedb.org/docs/getting-started) (free)
 
 ### 1. Clone and install
@@ -107,6 +112,44 @@ npm install
 
 ### 2. Set up Supabase
 
+#### Option A: Local Supabase (recommended)
+
+This runs PostgreSQL, Auth, REST API, and Studio locally in Docker containers.
+
+```bash
+# Start local Supabase (first run downloads Docker images)
+supabase start
+```
+
+This will print the local URLs and keys when it finishes:
+
+```
+API URL: http://127.0.0.1:54321
+anon key: eyJ...
+service_role key: eyJ...
+Studio URL: http://127.0.0.1:54323
+```
+
+The schema and all migrations are applied automatically via `supabase/seed.sql`.
+
+To reset the database (re-applies seed):
+
+```bash
+supabase db reset
+```
+
+To stop the local stack:
+
+```bash
+supabase stop
+```
+
+**Local Supabase Studio** is available at `http://localhost:54323` — use it to browse data, manage users, and run SQL queries.
+
+> **Note:** Local Supabase uses email confirmations disabled by default (`supabase/config.toml`), so magic link emails won't actually be sent. Use the **Inbucket** email testing tool at `http://localhost:54324` to view magic link emails, or use the Studio dashboard to create users directly.
+
+#### Option B: Cloud Supabase
+
 1. Create a new project at [supabase.com](https://supabase.com)
 2. Go to **SQL Editor** and run the full schema:
    - `supabase/schema.sql` — creates all tables, RLS policies, functions, and triggers
@@ -115,6 +158,8 @@ npm install
    - `supabase/migrations/20260215_poll_vote_disabled.sql` — vote disable feature
 
 #### Configure Supabase Auth
+
+For **cloud Supabase** (local handles this automatically):
 
 1. Go to **Authentication > Providers**:
    - Enable **Email** (magic link / OTP)
@@ -139,13 +184,13 @@ npm install
 cp .env.local.example .env.local
 ```
 
-Edit `.env.local`:
+Edit `.env.local` with the values from either `supabase start` output (local) or Supabase dashboard (cloud):
 
 ```env
-# Supabase (from Project Settings > API)
-NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+# Supabase — use values from `supabase start` output or Supabase dashboard
+NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<from supabase start output>
+SUPABASE_SERVICE_ROLE_KEY=<from supabase start output>
 
 # TMDb (from themoviedb.org)
 TMDB_API_KEY=your-tmdb-api-key
@@ -156,9 +201,9 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
 
 | Variable | Where to find it | Exposed to browser? |
 |----------|-----------------|-------------------|
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase > Settings > API | Yes |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase > Settings > API | Yes |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase > Settings > API | No (server only) |
+| `NEXT_PUBLIC_SUPABASE_URL` | `supabase start` output or Supabase > Settings > API | Yes |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `supabase start` output or Supabase > Settings > API | Yes |
+| `SUPABASE_SERVICE_ROLE_KEY` | `supabase start` output or Supabase > Settings > API | No (server only) |
 | `TMDB_API_KEY` | themoviedb.org account | No (server only) |
 | `NEXT_PUBLIC_SITE_URL` | Your deployment URL | Yes |
 
@@ -170,6 +215,7 @@ npm run dev
 
 1. Open `http://localhost:3000/bootstrap`
 2. Enter a display name and sign in via Google or magic link
+   - With local Supabase: check `http://localhost:54324` (Inbucket) for the magic link email
 3. The first user is automatically assigned the `admin` role
 4. Bootstrap is disabled once a profile exists
 
@@ -188,7 +234,7 @@ npm run start     # Start production server
 
 ## Docker Development
 
-You can run the app in Docker instead of installing Node.js locally.
+You can run the Next.js app in Docker instead of installing Node.js locally. This works alongside local Supabase (`supabase start` runs its own containers separately).
 
 ### Prerequisites
 
@@ -198,7 +244,10 @@ You can run the app in Docker instead of installing Node.js locally.
 ### Quick start with Docker Compose
 
 ```bash
-cd next-app
+# 1. Start local Supabase (if using local)
+supabase start
+
+# 2. Start the Next.js app
 docker compose up
 ```
 
@@ -206,6 +255,8 @@ This builds the image, installs dependencies, and starts the dev server at `http
 - **Hot reload** — source files are mounted as a volume, so edits are reflected immediately
 - **File watching** — `WATCHPACK_POLLING=true` ensures file changes are detected inside the container
 - **Isolated node_modules** — dependencies live inside the container (not on your host)
+
+> **Note:** When using local Supabase with Docker, set `NEXT_PUBLIC_SUPABASE_URL=http://host.docker.internal:54321` in `.env.local` so the container can reach the Supabase API on the host.
 
 To rebuild after changing `package.json`:
 

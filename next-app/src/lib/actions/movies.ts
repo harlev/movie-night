@@ -4,26 +4,10 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
-import { searchMovies, getMovieDetails, createMetadataSnapshot, fetchMovieVideos } from '@/lib/services/tmdb';
+import { getMovieDetails, createMetadataSnapshot, fetchMovieVideos } from '@/lib/services/tmdb';
 import { createMovie, getMovieByTmdbId, createMovieComment } from '@/lib/queries/movies';
 import { getUserById } from '@/lib/queries/profiles';
 import { createAdminLog } from '@/lib/queries/admin';
-
-export async function searchMoviesAction(prevState: any, formData: FormData) {
-  const query = formData.get('query') as string;
-
-  if (!query || query.length < 2) {
-    return { error: 'Search query must be at least 2 characters' };
-  }
-
-  try {
-    const result = await searchMovies(query);
-    return { searchResults: result.movies, query };
-  } catch (error) {
-    console.error('TMDb search error:', error);
-    return { error: 'Failed to search movies' };
-  }
-}
 
 export async function suggestMovieAction(prevState: any, formData: FormData) {
   const supabase = await createClient();

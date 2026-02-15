@@ -186,6 +186,70 @@ npm run build     # Production build
 npm run start     # Start production server
 ```
 
+## Docker Development
+
+You can run the app in Docker instead of installing Node.js locally.
+
+### Prerequisites
+
+- [Docker](https://docs.docker.com/get-docker/) and Docker Compose
+- A configured `.env.local` file (see [Configure environment variables](#3-configure-environment-variables))
+
+### Quick start with Docker Compose
+
+```bash
+cd next-app
+docker compose up
+```
+
+This builds the image, installs dependencies, and starts the dev server at `http://localhost:3000` with:
+- **Hot reload** — source files are mounted as a volume, so edits are reflected immediately
+- **File watching** — `WATCHPACK_POLLING=true` ensures file changes are detected inside the container
+- **Isolated node_modules** — dependencies live inside the container (not on your host)
+
+To rebuild after changing `package.json`:
+
+```bash
+docker compose up --build
+```
+
+To run in the background:
+
+```bash
+docker compose up -d
+docker compose logs -f    # follow logs
+docker compose down       # stop
+```
+
+### Using Docker directly (without Compose)
+
+Build the image:
+
+```bash
+docker build -t movie-night .
+```
+
+Run the container:
+
+```bash
+docker run -p 3000:3000 \
+  --env-file .env.local \
+  -v $(pwd):/app \
+  -v /app/node_modules \
+  -e WATCHPACK_POLLING=true \
+  movie-night
+```
+
+### Running commands inside the container
+
+```bash
+# One-off commands
+docker compose exec app npm run build
+
+# Open a shell
+docker compose exec app sh
+```
+
 ## Database Schema Overview
 
 ### Core Tables

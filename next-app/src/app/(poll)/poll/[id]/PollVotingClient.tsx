@@ -7,6 +7,15 @@ import PollAuthModal from './PollAuthModal';
 
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w92';
 
+function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
 interface PollInfo {
   id: string;
   title: string;
@@ -75,6 +84,7 @@ export default function PollVotingClient({
     }
   }
 
+  const [shuffledMovies] = useState(() => shuffle(movies));
   const [ballot, setBallot] = useState<Map<number, string>>(initialBallot);
   const [voterName, setVoterName] = useState(initialVoterName || '');
   const [lastChangedRank, setLastChangedRank] = useState<number | null>(null);
@@ -315,10 +325,10 @@ export default function PollVotingClient({
   const moviesSection = (
     <div className="bg-[var(--color-surface)] rounded-xl p-3 sm:p-6 border border-[var(--color-border)]/50 shadow-lg shadow-black/20 overflow-hidden">
       <h2 className="text-base sm:text-lg font-display font-semibold text-[var(--color-text)] mb-3">
-        Movies ({movies.length})
+        Movies ({shuffledMovies.length})
       </h2>
       <div className="space-y-1.5 max-h-80 sm:max-h-96 overflow-y-auto">
-        {movies.map((movie) => {
+        {shuffledMovies.map((movie) => {
           const selectedRank = isMovieSelected(movie.id);
 
           return (

@@ -7,6 +7,15 @@ import type { Standing } from '@/lib/services/scoring';
 
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w92';
 
+function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
 interface SurveyInfo {
   id: string;
   title: string;
@@ -75,6 +84,7 @@ export default function SurveyVotingClient({
     }
   }
 
+  const [shuffledEntries] = useState(() => shuffle(entries));
   const [ballot, setBallot] = useState<Map<number, string>>(initialBallot);
   const [lastChangedRank, setLastChangedRank] = useState<number | null>(null);
   const isLive = survey.state === 'live';
@@ -339,10 +349,10 @@ export default function SurveyVotingClient({
           {/* Available Movies */}
           <div className="bg-[var(--color-surface)] rounded-xl p-6 border border-[var(--color-border)]/50 shadow-lg shadow-black/20">
             <h2 className="text-lg font-display font-semibold text-[var(--color-text)] mb-4">
-              Movies ({entries.length})
+              Movies ({shuffledEntries.length})
             </h2>
             <div className="space-y-2 max-h-96 overflow-y-auto">
-              {entries.map((entry) => {
+              {shuffledEntries.map((entry) => {
                 const selectedRank = isMovieSelected(entry.movie.id);
 
                 return (

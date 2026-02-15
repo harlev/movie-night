@@ -111,9 +111,14 @@ export async function GET(request: Request) {
 
   // New user arriving from a poll — auto-create profile (no invite needed)
   if (safeNext && safeNext.startsWith('/poll/')) {
-    const displayName =
-      user.user_metadata?.full_name?.trim() ||
-      user.email!.split('@')[0];
+    const emailPrefix = user.email!.split('@')[0];
+    const fullName = user.user_metadata?.full_name?.trim();
+    // Google OAuth provides a real full_name; magic link users may get a
+    // generic default from Supabase (e.g. "user"), so only use full_name
+    // if it looks like an actual name (contains a space, like "John Doe").
+    const displayName = (fullName && fullName.includes(' '))
+      ? fullName
+      : emailPrefix;
 
     await admin.from('profiles').insert({
       id: user.id,

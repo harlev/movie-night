@@ -1,20 +1,14 @@
 'use client';
 
-import { useState, useEffect, useActionState, useCallback } from 'react';
+import { useState, useEffect, useRef, useActionState, useCallback } from 'react';
 import { submitPollVoteAction } from '@/lib/actions/polls';
 import type { Standing } from '@/lib/services/scoring';
 import PollAuthModal from './PollAuthModal';
+import { useBallot } from '@/hooks/useBallot';
+import { getRankBadgeClasses, getStandingBorderColor, shuffle } from '@/lib/utils/rankStyles';
+import SortableBallotList from '@/components/SortableBallotList';
 
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w92';
-
-function shuffle<T>(arr: T[]): T[] {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
 
 interface PollInfo {
   id: string;
@@ -51,20 +45,6 @@ interface PollVotingClientProps {
   hasExistingVote: boolean;
 }
 
-function getRankBadgeClasses(rank: number): string {
-  if (rank === 1) return 'bg-yellow-500/20 text-yellow-500 ring-1 ring-yellow-500/30';
-  if (rank === 2) return 'bg-gray-300/20 text-gray-300 ring-1 ring-gray-300/30';
-  if (rank === 3) return 'bg-orange-400/20 text-orange-400 ring-1 ring-orange-400/30';
-  return 'bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)]';
-}
-
-function getStandingBorderColor(position: number): string {
-  if (position === 1) return 'border-l-yellow-500';
-  if (position === 2) return 'border-l-gray-300';
-  if (position === 3) return 'border-l-orange-400';
-  return 'border-l-transparent';
-}
-
 export default function PollVotingClient({
   poll,
   movies,
@@ -77,21 +57,43 @@ export default function PollVotingClient({
   pointsBreakdown,
   hasExistingVote,
 }: PollVotingClientProps) {
-  const initialBallot = new Map<number, string>();
-  if (voterRanks) {
-    for (const { rank, movieId } of voterRanks) {
-      initialBallot.set(rank, movieId);
-    }
-  }
+  const isLive = poll.state === 'live';
 
-  const [shuffledMovies] = useState(() => shuffle(movies));
-  const [ballot, setBallot] = useState<Map<number, string>>(initialBallot);
+  const [shuffledMovies, setShuffledMovies] = useState(movies);
+  const hasShuffled = useRef(false);
+  useEffect(() => {
+    if (!hasShuffled.current) {
+      hasShuffled.current = true;
+      setShuffledMovies(shuffle(movies));
+    }
+  }, [movies]);
   const [voterName, setVoterName] = useState(initialVoterName || '');
-  const [lastChangedRank, setLastChangedRank] = useState<number | null>(null);
   const [liveStandings, setLiveStandings] = useState<Standing[]>(standings);
   const [liveVotes, setLiveVotes] = useState<ClientVote[]>(allVotes);
   const [mobileTab, setMobileTab] = useState<'vote' | 'results'>('vote');
-  const isLive = poll.state === 'live';
+
+  const {
+    ballot,
+    lastChangedRank,
+    setRank,
+    clearBallot,
+    handleMovieClick,
+    getBallotAsArray,
+    isMovieSelected,
+    filledRankItems,
+    firstEmptySlot,
+    isBallotComplete,
+    reorderBallot,
+  } = useBallot({
+    maxRankN: poll.maxRankN,
+    initialRanks: voterRanks,
+    isLive,
+  });
+
+  const getMovieById = useCallback(
+    (id: string): PollMovie | undefined => movies.find((m) => m.id === id),
+    [movies]
+  );
 
   const refreshResults = useCallback(async () => {
     try {
@@ -120,69 +122,6 @@ export default function PollVotingClient({
       refreshResults();
     }
   }, [formState, refreshResults]);
-
-  const setRank = useCallback(
-    (rank: number, movieId: string) => {
-      setBallot((prev) => {
-        const newBallot = new Map(prev);
-        for (const [r, m] of newBallot) {
-          if (m === movieId) {
-            newBallot.delete(r);
-          }
-        }
-        if (prev.get(rank) === movieId) {
-          return newBallot;
-        }
-        newBallot.set(rank, movieId);
-        return newBallot;
-      });
-      setLastChangedRank(rank);
-      setTimeout(() => setLastChangedRank(null), 200);
-    },
-    []
-  );
-
-  const clearBallot = useCallback(() => {
-    setBallot(new Map());
-  }, []);
-
-  const getMovieForRank = (rank: number): string | undefined => ballot.get(rank);
-
-  const getMovieById = (id: string): PollMovie | undefined => movies.find((m) => m.id === id);
-
-  const isMovieSelected = (movieId: string): number | null => {
-    for (const [rank, mid] of ballot) {
-      if (mid === movieId) return rank;
-    }
-    return null;
-  };
-
-  const getBallotAsArray = (): Array<{ rank: number; movieId: string }> => {
-    return Array.from(ballot.entries()).map(([rank, movieId]) => ({ rank, movieId }));
-  };
-
-  const handleMovieClick = (movieId: string) => {
-    if (!isLive) return;
-    for (let r = 1; r <= poll.maxRankN; r++) {
-      if (!ballot.has(r)) {
-        setRank(r, movieId);
-        return;
-      }
-    }
-    setRank(poll.maxRankN, movieId);
-  };
-
-  let firstEmptySlot: number | null = null;
-  if (isLive) {
-    for (let r = 1; r <= poll.maxRankN; r++) {
-      if (!ballot.has(r)) {
-        firstEmptySlot = r;
-        break;
-      }
-    }
-  }
-
-  const isBallotComplete = ballot.size === poll.maxRankN;
 
   // ── Shared sub-components rendered inline ──
 
@@ -231,65 +170,18 @@ export default function PollVotingClient({
         </div>
       </div>
 
-      {/* Rank slots */}
-      <div className="space-y-1.5">
-        {Array.from({ length: poll.maxRankN }, (_, i) => {
-          const rank = i + 1;
-          const movieId = getMovieForRank(rank);
-          const movie = movieId ? getMovieById(movieId) : null;
-          const isFirstEmpty = firstEmptySlot === rank;
-          const justChanged = lastChangedRank === rank;
-
-          return (
-            <div
-              key={rank}
-              className={`flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg sm:rounded-xl border-2 transition-all duration-200 ${
-                movie
-                  ? 'border-[var(--color-primary)]/40 bg-gradient-to-r from-[var(--color-primary)]/10 to-transparent'
-                  : isFirstEmpty
-                    ? 'border-dashed border-[var(--color-border)] animate-slot-pulse'
-                    : 'border-dashed border-[var(--color-border)]'
-              } ${justChanged ? 'animate-ballot-pop' : ''}`}
-            >
-              <span className={`w-7 h-7 sm:w-8 sm:h-8 flex-shrink-0 flex items-center justify-center rounded-full font-bold text-xs sm:text-sm ${getRankBadgeClasses(rank)}`}>
-                {rank}
-              </span>
-              {movie ? (
-                <>
-                  <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
-                    {movie.metadata_snapshot?.posterPath && (
-                      <img
-                        src={`${TMDB_IMAGE_BASE}${movie.metadata_snapshot.posterPath}`}
-                        alt={movie.title}
-                        className="w-8 h-12 sm:w-10 sm:h-15 object-cover rounded flex-shrink-0"
-                      />
-                    )}
-                    <span className="font-medium text-sm sm:text-base text-[var(--color-text)] truncate">
-                      {movie.title}
-                    </span>
-                  </div>
-                  {isLive && movieId && (
-                    <button
-                      type="button"
-                      onClick={() => setRank(rank, movieId)}
-                      className="p-1 flex-shrink-0 text-[var(--color-text-muted)] hover:text-[var(--color-error)] transition-colors"
-                      aria-label={`Remove from rank ${rank}`}
-                    >
-                      <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  )}
-                </>
-              ) : (
-                <span className="text-[var(--color-text-muted)] italic text-xs sm:text-sm">
-                  {isFirstEmpty ? 'Tap a movie below' : 'Empty'}
-                </span>
-              )}
-            </div>
-          );
-        })}
-      </div>
+      {/* Rank slots with drag-and-drop */}
+      <SortableBallotList
+        filledRankItems={filledRankItems}
+        maxRankN={poll.maxRankN}
+        isLive={isLive}
+        firstEmptySlot={firstEmptySlot}
+        lastChangedRank={lastChangedRank}
+        getMovieById={getMovieById}
+        onRemove={setRank}
+        onReorder={reorderBallot}
+        compact
+      />
 
       {isLive ? (
         <form action={formAction} className="mt-3">

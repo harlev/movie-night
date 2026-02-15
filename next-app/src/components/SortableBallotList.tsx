@@ -42,6 +42,8 @@ interface SortableBallotListProps {
   onReorder: (activeMovieId: string, overMovieId: string) => void;
   /** Compact mobile sizing */
   compact?: boolean;
+  /** Stable id for DndContext to avoid hydration mismatches */
+  dndId?: string;
 }
 
 export default function SortableBallotList({
@@ -54,6 +56,7 @@ export default function SortableBallotList({
   onRemove,
   onReorder,
   compact,
+  dndId,
 }: SortableBallotListProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
 
@@ -146,6 +149,7 @@ export default function SortableBallotList({
   return (
     <div className="space-y-1.5">
       <DndContext
+        id={dndId}
         sensors={sensors}
         collisionDetection={closestCenter}
         onDragStart={handleDragStart}

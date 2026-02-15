@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useActionState, useCallback } from 'react';
+import { useState, useEffect, useRef, useActionState, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { submitBallotAction } from '@/lib/actions/ballots';
 import type { Standing } from '@/lib/services/scoring';
@@ -9,6 +9,7 @@ import { getRankBadgeClasses, getStandingBorderColor, shuffle } from '@/lib/util
 import SortableBallotList from '@/components/SortableBallotList';
 
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w92';
+const TMDB_IMAGE_BASE_GRID = 'https://image.tmdb.org/t/p/w185';
 
 interface SurveyInfo {
   id: string;
@@ -90,6 +91,30 @@ export default function SurveyVotingClient({
     (id: string): EntryMovie | undefined => entries.find((e) => e.movie.id === id)?.movie,
     [entries]
   );
+
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
+  const [filterQuery, setFilterQuery] = useState('');
+
+  // Initialize viewMode from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('survey-view-mode');
+    if (saved === 'list' || saved === 'grid') {
+      setViewMode(saved);
+    }
+  }, []);
+
+  // Persist viewMode to localStorage
+  useEffect(() => {
+    localStorage.setItem('survey-view-mode', viewMode);
+  }, [viewMode]);
+
+  const filteredEntries = useMemo(() => {
+    if (!filterQuery.trim()) return shuffledEntries;
+    const query = filterQuery.toLowerCase().trim();
+    return shuffledEntries.filter((entry) =>
+      entry.movie.title.toLowerCase().includes(query)
+    );
+  }, [shuffledEntries, filterQuery]);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -182,6 +207,7 @@ export default function SurveyVotingClient({
                 getMovieById={getMovieById}
                 onRemove={setRank}
                 onReorder={reorderBallot}
+                dndId="survey-ballot"
               />
             </div>
 
@@ -216,58 +242,186 @@ export default function SurveyVotingClient({
 
           {/* Available Movies */}
           <div className="bg-[var(--color-surface)] rounded-xl p-6 border border-[var(--color-border)]/50 shadow-lg shadow-black/20">
-            <h2 className="text-lg font-display font-semibold text-[var(--color-text)] mb-4">
-              Movies ({shuffledEntries.length})
-            </h2>
-            <div className="space-y-2 max-h-96 overflow-y-auto">
-              {shuffledEntries.map((entry) => {
-                const selectedRank = isMovieSelected(entry.movie.id);
-
-                return (
-                  <button
-                    key={entry.movie.id}
-                    type="button"
-                    disabled={!isLive}
-                    onClick={() => handleMovieClick(entry.movie.id)}
-                    className={`w-full flex items-center gap-3 p-3 rounded-xl text-left transition-all duration-150 ${
-                      selectedRank !== null
-                        ? 'bg-[var(--color-primary)]/10 border-l-4 border-l-[var(--color-primary)]'
-                        : 'bg-[var(--color-surface-elevated)] hover:bg-[var(--color-border)] border-l-4 border-l-transparent'
-                    } ${!isLive ? 'cursor-default' : 'active:scale-[0.98]'}`}
-                  >
-                    {entry.movie.metadata_snapshot?.posterPath ? (
-                      <img
-                        src={`${TMDB_IMAGE_BASE}${entry.movie.metadata_snapshot.posterPath}`}
-                        alt={entry.movie.title}
-                        className="w-12 h-18 object-cover rounded-lg"
-                      />
-                    ) : (
-                      <div className="w-12 h-18 bg-[var(--color-border)] rounded-lg flex items-center justify-center">
-                        <svg className="w-5 h-5 text-[var(--color-text-muted)]/30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
-                          <rect x="2" y="4" width="20" height="16" rx="2" />
-                          <path d="M2 8h20M2 16h20" />
-                        </svg>
-                      </div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-[var(--color-text)] truncate">
-                        {entry.movie.title}
-                      </p>
-                      {entry.movie.metadata_snapshot?.releaseDate && (
-                        <p className="text-xs text-[var(--color-text-muted)]">
-                          {entry.movie.metadata_snapshot.releaseDate.slice(0, 4)}
-                        </p>
-                      )}
-                    </div>
-                    {selectedRank !== null && (
-                      <span className={`w-7 h-7 flex items-center justify-center rounded-full text-sm font-bold ${getRankBadgeClasses(selectedRank)}`}>
-                        {selectedRank}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
+            {/* Header row with title + view toggle */}
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-display font-semibold text-[var(--color-text)]">
+                Movies{' '}
+                <span className="text-sm font-normal text-[var(--color-text-muted)]">
+                  {filterQuery.trim()
+                    ? `${filteredEntries.length} of ${shuffledEntries.length}`
+                    : `(${shuffledEntries.length})`}
+                </span>
+              </h2>
+              <div className="flex items-center gap-1 bg-[var(--color-surface-elevated)] rounded-lg p-1">
+                <button
+                  type="button"
+                  onClick={() => setViewMode('list')}
+                  className={`p-1.5 rounded-md transition-colors ${
+                    viewMode === 'list'
+                      ? 'bg-[var(--color-primary)]/20 text-[var(--color-primary)]'
+                      : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
+                  }`}
+                  title="List view"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('grid')}
+                  className={`p-1.5 rounded-md transition-colors ${
+                    viewMode === 'grid'
+                      ? 'bg-[var(--color-primary)]/20 text-[var(--color-primary)]'
+                      : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
+                  }`}
+                  title="Grid view"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
+                  </svg>
+                </button>
+              </div>
             </div>
+
+            {/* Filter bar */}
+            <div className="relative mb-4">
+              <input
+                type="text"
+                value={filterQuery}
+                onChange={(e) => setFilterQuery(e.target.value)}
+                placeholder="Filter movies..."
+                className="w-full px-4 py-2 bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-xl text-[var(--color-text)] placeholder:text-[var(--color-text-muted)]/60 focus:outline-none focus:border-[var(--color-primary)] focus:ring-1 focus:ring-[var(--color-primary)] transition-all text-sm"
+              />
+              {filterQuery && (
+                <button
+                  type="button"
+                  onClick={() => setFilterQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
+            </div>
+
+            {/* Empty filter state */}
+            {filteredEntries.length === 0 && filterQuery.trim() ? (
+              <p className="text-[var(--color-text-muted)] text-center py-6 text-sm">
+                No movies match &ldquo;{filterQuery.trim()}&rdquo;
+              </p>
+            ) : viewMode === 'list' ? (
+              /* List view */
+              <div className="space-y-2 max-h-96 overflow-y-auto">
+                {filteredEntries.map((entry) => {
+                  const selectedRank = isMovieSelected(entry.movie.id);
+
+                  return (
+                    <button
+                      key={entry.movie.id}
+                      type="button"
+                      disabled={!isLive}
+                      onClick={() => handleMovieClick(entry.movie.id)}
+                      className={`w-full flex items-center gap-3 p-3 rounded-xl text-left transition-all duration-150 ${
+                        selectedRank !== null
+                          ? 'bg-[var(--color-primary)]/10 border-l-4 border-l-[var(--color-primary)]'
+                          : 'bg-[var(--color-surface-elevated)] hover:bg-[var(--color-border)] border-l-4 border-l-transparent'
+                      } ${!isLive ? 'cursor-default' : 'active:scale-[0.98]'}`}
+                    >
+                      {entry.movie.metadata_snapshot?.posterPath ? (
+                        <img
+                          src={`${TMDB_IMAGE_BASE}${entry.movie.metadata_snapshot.posterPath}`}
+                          alt={entry.movie.title}
+                          className="w-12 h-18 object-cover rounded-lg"
+                        />
+                      ) : (
+                        <div className="w-12 h-18 bg-[var(--color-border)] rounded-lg flex items-center justify-center">
+                          <svg className="w-5 h-5 text-[var(--color-text-muted)]/30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+                            <rect x="2" y="4" width="20" height="16" rx="2" />
+                            <path d="M2 8h20M2 16h20" />
+                          </svg>
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-[var(--color-text)] truncate">
+                          {entry.movie.title}
+                        </p>
+                        {entry.movie.metadata_snapshot?.releaseDate && (
+                          <p className="text-xs text-[var(--color-text-muted)]">
+                            {entry.movie.metadata_snapshot.releaseDate.slice(0, 4)}
+                          </p>
+                        )}
+                      </div>
+                      {selectedRank !== null && (
+                        <span className={`w-7 h-7 flex items-center justify-center rounded-full text-sm font-bold ${getRankBadgeClasses(selectedRank)}`}>
+                          {selectedRank}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              /* Grid view */
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-96 overflow-y-auto">
+                {filteredEntries.map((entry) => {
+                  const selectedRank = isMovieSelected(entry.movie.id);
+
+                  return (
+                    <button
+                      key={entry.movie.id}
+                      type="button"
+                      disabled={!isLive}
+                      onClick={() => handleMovieClick(entry.movie.id)}
+                      className={`relative rounded-xl overflow-hidden text-left transition-all duration-200 ${
+                        selectedRank !== null
+                          ? 'ring-2 ring-[var(--color-primary)] shadow-lg shadow-[var(--color-primary)]/20'
+                          : 'border border-[var(--color-border)]/50 opacity-70 hover:opacity-100'
+                      } ${!isLive ? 'cursor-default' : 'active:scale-[0.97]'}`}
+                    >
+                      {/* Poster */}
+                      {entry.movie.metadata_snapshot?.posterPath ? (
+                        <img
+                          src={`${TMDB_IMAGE_BASE_GRID}${entry.movie.metadata_snapshot.posterPath}`}
+                          alt={entry.movie.title}
+                          className="w-full aspect-[2/3] object-cover"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="w-full aspect-[2/3] bg-[var(--color-surface-elevated)] flex items-center justify-center">
+                          <svg className="w-10 h-10 text-[var(--color-text-muted)]/30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+                            <rect x="2" y="4" width="20" height="16" rx="2" />
+                            <path d="M2 8h20M2 16h20" />
+                          </svg>
+                        </div>
+                      )}
+                      {/* Rank badge overlay */}
+                      {selectedRank !== null && (
+                        <span className={`absolute top-2 right-2 w-7 h-7 flex items-center justify-center rounded-full text-sm font-bold shadow-md ${getRankBadgeClasses(selectedRank)}`}>
+                          {selectedRank}
+                        </span>
+                      )}
+                      {/* Title + year */}
+                      <div className={`p-2 ${selectedRank !== null ? 'bg-[var(--color-primary)]/10' : 'bg-[var(--color-surface-elevated)]'}`}>
+                        <p className="font-medium text-[var(--color-text)] text-sm truncate">
+                          {entry.movie.title}
+                        </p>
+                        {entry.movie.metadata_snapshot?.releaseDate && (
+                          <p className="text-xs text-[var(--color-text-muted)]">
+                            {entry.movie.metadata_snapshot.releaseDate.slice(0, 4)}
+                          </p>
+                        )}
+                      </div>
+                      {/* Selected accent bar */}
+                      {selectedRank !== null && (
+                        <div className="h-0.5 bg-[var(--color-primary)]" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
 

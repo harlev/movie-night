@@ -35,7 +35,7 @@ export async function GET(request: Request) {
   // Check if user already has a profile
   const { data: existingProfile } = await admin
     .from('profiles')
-    .select('id, status')
+    .select('id, status, display_name')
     .eq('id', user.id)
     .single();
 
@@ -45,6 +45,46 @@ export async function GET(request: Request) {
       await supabase.auth.signOut();
       return NextResponse.redirect(`${origin}/login?error=account_disabled`);
     }
+
+    // The DB trigger may have created this profile with an email-prefix name.
+    // If we have a better display name from cookies or OAuth metadata, update it.
+    let betterName: string | null = null;
+
+    const bootstrapCookie = cookieStore.get('pending_bootstrap');
+    if (bootstrapCookie) {
+      try {
+        const { displayName } = JSON.parse(bootstrapCookie.value);
+        if (displayName?.trim()) betterName = displayName.trim();
+      } catch { /* ignore */ }
+    }
+
+    if (!betterName) {
+      const signupCookie = cookieStore.get('pending_signup');
+      if (signupCookie) {
+        try {
+          const { displayName } = JSON.parse(signupCookie.value);
+          if (displayName?.trim()) betterName = displayName.trim();
+        } catch { /* ignore */ }
+      }
+    }
+
+    if (!betterName) {
+      const fullName = user.user_metadata?.full_name?.trim();
+      if (fullName && fullName.includes(' ')) {
+        betterName = fullName;
+      }
+    }
+
+    // Only update if we found a better name AND the current one looks like
+    // a trigger default (email prefix) rather than a user-chosen name.
+    const emailPrefix = user.email!.split('@')[0];
+    if (betterName && existingProfile.display_name === emailPrefix) {
+      await admin
+        .from('profiles')
+        .update({ display_name: betterName })
+        .eq('id', user.id);
+    }
+
     // Clear any stale cookies
     cookieStore.delete('pending_signup');
     cookieStore.delete('pending_bootstrap');

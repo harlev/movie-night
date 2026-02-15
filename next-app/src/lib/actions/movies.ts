@@ -113,6 +113,63 @@ export async function toggleMovieArchiveAction(prevState: any, formData: FormDat
   return { success: true, archived: false };
 }
 
+export async function backfillImdbIdsAction(prevState: any) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: 'Not authenticated' };
+
+  const profile = await getUserById(user.id);
+  if (!profile || profile.role !== 'admin') return { error: 'Admin access required' };
+
+  const admin = createAdminClient();
+  const { data: movies, error } = await admin
+    .from('movies')
+    .select('id, tmdb_id, metadata_snapshot');
+  if (error) return { error: 'Failed to fetch movies' };
+
+  let updated = 0;
+  let skipped = 0;
+  let failed = 0;
+
+  for (const movie of movies || []) {
+    const snapshot = movie.metadata_snapshot as Record<string, unknown> | null;
+    if (snapshot?.imdbId) {
+      skipped++;
+      continue;
+    }
+
+    try {
+      const details = await getMovieDetails(movie.tmdb_id);
+      if (!details?.imdb_id) {
+        skipped++;
+        continue;
+      }
+
+      await admin
+        .from('movies')
+        .update({
+          metadata_snapshot: { ...snapshot, imdbId: details.imdb_id },
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', movie.id);
+      updated++;
+    } catch {
+      failed++;
+    }
+  }
+
+  await createAdminLog({
+    actorId: user.id,
+    action: 'backfill_imdb_ids',
+    targetType: 'movie',
+    targetId: 'bulk',
+    details: { updated, skipped, failed },
+  });
+
+  revalidatePath('/movies');
+  return { success: true, updated, skipped, failed };
+}
+
 export async function addCommentAction(prevState: any, formData: FormData) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();

@@ -110,10 +110,25 @@ export default async function MovieDetailPage({ params }: PageProps) {
               <p className="text-[var(--color-text-muted)] mt-4 leading-relaxed">{meta.overview}</p>
             )}
 
-            <MovieDetailClient
-              trailerKey={meta?.trailerKey || null}
-              movieTitle={movie.title}
-            />
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <MovieDetailClient
+                trailerKey={meta?.trailerKey || null}
+                movieTitle={movie.title}
+              />
+              {meta?.imdbId && (
+                <a
+                  href={`https://www.imdb.com/title/${meta.imdbId}/`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-[#F5C518] hover:bg-[#E0B000] text-black text-sm font-medium rounded-xl transition-all duration-150 active:scale-[0.97]"
+                >
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M14.31 9.588v.005c-.077-.048-.227-.07-.42-.07v4.815c.27 0 .44-.06.5-.165.062-.105.093-.39.093-.855v-2.98c0-.345-.013-.575-.04-.69a.534.534 0 0 0-.133-.26zM22.416 0H1.584C.708 0 0 .708 0 1.584v20.832C0 23.292.708 24 1.584 24h20.832c.876 0 1.584-.708 1.584-1.584V1.584C24 .708 23.292 0 22.416 0zM4.8 18.372H2.4V5.676h2.4v12.696zm6.6 0H9.6l-.024-7.164-.936 7.164H7.32l-.984-6.984-.024 6.984H4.92V5.676h2.52c.104.56.204 1.164.312 1.824l.348 2.016.6-3.84h2.7v12.696zm5.52-3.96c0 .636-.024 1.104-.06 1.404-.04.296-.144.564-.312.804a1.63 1.63 0 0 1-.744.588c-.312.12-.744.18-1.308.18H12.6V5.676h2.04c.496 0 .876.036 1.14.12.264.08.48.216.648.408.168.188.28.396.324.624.048.228.072.612.072 1.152v5.028l-.004.004zm4.68.48c0 .636-.06 1.08-.18 1.332a1.601 1.601 0 0 1-.828.756c-.132.06-.42.096-.54.096-.18 0-.36-.036-.54-.108-.18-.076-.312-.18-.396-.312l-.024.348H18V5.676h1.92v4.356c.168-.22.38-.384.636-.492.252-.108.384-.108.636-.108.3 0 .564.06.792.18.228.12.396.288.504.504.108.22.172.44.2.664.024.22.036.564.036 1.032v3.6l-.004.004z" />
+                  </svg>
+                  IMDb
+                </a>
+              )}
+            </div>
 
             <div className="mt-6 pt-4 border-t border-[var(--color-border)]/50 flex items-center justify-between">
               <p className="text-sm text-[var(--color-text-muted)]">

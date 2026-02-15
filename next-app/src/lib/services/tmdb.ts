@@ -14,6 +14,7 @@ export interface TMDbMovieDetails extends Omit<TMDbMovie, 'genre_ids'> {
   genres: Array<{ id: number; name: string }>;
   runtime: number | null;
   tagline: string | null;
+  imdb_id: string | null;
 }
 
 export interface TMDbSearchResponse {
@@ -144,6 +145,7 @@ export function createMetadataSnapshot(
   voteAverage: number | null;
   genres: string[];
   trailerKey: string | null;
+  imdbId: string | null;
 } {
   const genres =
     'genres' in movie
@@ -158,6 +160,7 @@ export function createMetadataSnapshot(
     overview: movie.overview,
     voteAverage: movie.vote_average,
     genres,
-    trailerKey
+    trailerKey,
+    imdbId: 'imdb_id' in movie ? movie.imdb_id : null,
   };
 }

@@ -19,6 +19,7 @@ export interface Movie {
     voteAverage: number | null;
     genres: string[];
     trailerKey?: string | null;
+    imdbId?: string | null;
   } | null;
   suggested_by: string;
   hidden: boolean;
@@ -133,6 +134,7 @@ export interface QuickPollMovie {
     voteAverage: number | null;
     genres: string[];
     trailerKey?: string | null;
+    imdbId?: string | null;
   } | null;
   created_at: string;
 }

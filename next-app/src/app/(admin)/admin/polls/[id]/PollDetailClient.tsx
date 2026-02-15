@@ -45,6 +45,7 @@ function getStandingBorderColor(position: number): string {
 interface VoteInfo {
   voteId: string;
   voterName: string;
+  voterEmail: string | null;
   disabled: boolean;
   ranks: Array<{ rank: number; movieId: string; movieTitle: string }>;
 }
@@ -618,9 +619,14 @@ export default function PollDetailClient({
                 className={`p-3 bg-[var(--color-surface-elevated)] rounded-lg transition-opacity ${vote.disabled ? 'opacity-50' : ''}`}
               >
                 <div className="flex items-center justify-between mb-2">
-                  <p className={`font-medium text-[var(--color-text)] ${vote.disabled ? 'line-through' : ''}`}>
-                    {vote.voterName}
-                  </p>
+                  <div>
+                    <p className={`font-medium text-[var(--color-text)] ${vote.disabled ? 'line-through' : ''}`}>
+                      {vote.voterName}
+                    </p>
+                    {vote.voterEmail && (
+                      <p className="text-xs text-[var(--color-text-muted)]">{vote.voterEmail}</p>
+                    )}
+                  </div>
                   <ToggleVoteButton pollId={poll.id} voteId={vote.voteId} disabled={vote.disabled} />
                 </div>
                 {vote.ranks.length > 0 ? (

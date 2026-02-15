@@ -1,7 +1,7 @@
 'use client';
 
-import { useActionState } from 'react';
-import { updateUserStatusAction, updateUserRoleAction } from '@/lib/actions/users';
+import { useActionState, useState } from 'react';
+import { updateUserStatusAction, updateUserRoleAction, updateUserNameAction } from '@/lib/actions/users';
 import type { Profile } from '@/lib/types';
 
 function formatDate(dateStr: string): string {
@@ -60,6 +60,65 @@ function StatusToggle({ user }: { user: Profile }) {
   );
 }
 
+function EditableName({ user }: { user: Profile }) {
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(user.display_name);
+  const [state, formAction, pending] = useActionState(updateUserNameAction, null);
+
+  if (!editing) {
+    return (
+      <div className="group flex items-center gap-1">
+        <p className="font-medium text-[var(--color-text)]">{user.display_name}</p>
+        <button
+          type="button"
+          onClick={() => { setName(user.display_name); setEditing(true); }}
+          className="opacity-0 group-hover:opacity-100 p-0.5 text-[var(--color-text-muted)] hover:text-[var(--color-primary)] transition-all"
+          title="Edit name"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+          </svg>
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <form
+      action={async (formData) => {
+        await formAction(formData);
+        setEditing(false);
+      }}
+      className="flex items-center gap-1.5"
+    >
+      <input type="hidden" name="userId" value={user.id} />
+      <input
+        type="text"
+        name="displayName"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        autoFocus
+        onKeyDown={(e) => { if (e.key === 'Escape') setEditing(false); }}
+        className="px-2 py-1 text-sm bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)] w-36"
+      />
+      <button
+        type="submit"
+        disabled={pending || !name.trim()}
+        className="px-2 py-1 text-xs bg-[var(--color-primary)] text-white rounded hover:bg-[var(--color-primary-dark)] disabled:opacity-50 transition-colors"
+      >
+        {pending ? '...' : 'Save'}
+      </button>
+      <button
+        type="button"
+        onClick={() => setEditing(false)}
+        className="px-2 py-1 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
+      >
+        Cancel
+      </button>
+    </form>
+  );
+}
+
 export default function UserActions({ users }: { users: Profile[] }) {
   return (
     <div className="bg-[var(--color-surface)] rounded-lg overflow-hidden">
@@ -86,7 +145,7 @@ export default function UserActions({ users }: { users: Profile[] }) {
             <tr key={user.id} className="hover:bg-[var(--color-surface-elevated)]/50">
               <td className="px-4 py-4">
                 <div>
-                  <p className="font-medium text-[var(--color-text)]">{user.display_name}</p>
+                  <EditableName user={user} />
                   <p className="text-sm text-[var(--color-text-muted)]">{user.email}</p>
                 </div>
               </td>

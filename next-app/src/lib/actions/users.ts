@@ -38,6 +38,36 @@ export async function updateProfileAction(prevState: any, formData: FormData) {
   return { success: true, message: 'Display name updated' };
 }
 
+export async function updateUserNameAction(prevState: any, formData: FormData) {
+  const supabase = await createClient();
+  const { data: { user: currentUser } } = await supabase.auth.getUser();
+  if (!currentUser) return { error: 'Not authenticated' };
+
+  const userId = formData.get('userId') as string;
+  const displayName = (formData.get('displayName') as string)?.trim();
+
+  if (!userId || !displayName) return { error: 'Name is required' };
+  if (displayName.length > 50) return { error: 'Name must be 50 characters or less' };
+
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from('profiles')
+    .update({ display_name: displayName, updated_at: new Date().toISOString() })
+    .eq('id', userId);
+  if (error) return { error: 'Failed to update name' };
+
+  await createAdminLog({
+    actorId: currentUser.id,
+    action: 'user_name_changed',
+    targetType: 'user',
+    targetId: userId,
+    details: { newName: displayName },
+  });
+
+  revalidatePath('/admin/users');
+  return { success: true, message: 'Name updated' };
+}
+
 export async function updateUserStatusAction(prevState: any, formData: FormData) {
   const supabase = await createClient();
   const { data: { user: currentUser } } = await supabase.auth.getUser();

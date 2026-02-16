@@ -39,6 +39,9 @@ export default async function DashboardPage() {
     })(),
   ]);
 
+  const currentUser = user ? allUsers.find((u) => u.id === user.id) : null;
+  const isViewer = currentUser?.role === 'viewer';
+
   // Get live survey extra data
   let surveyData: {
     id: string;
@@ -225,7 +228,11 @@ export default async function DashboardPage() {
           )}
 
           <div className="relative flex items-center justify-between">
-            {surveyData.hasVoted ? (
+            {isViewer ? (
+              <span className="text-[var(--color-secondary)] text-sm">
+                Viewing as read-only
+              </span>
+            ) : surveyData.hasVoted ? (
               <span className="text-[var(--color-success)] text-sm inline-flex items-center gap-1.5">
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
@@ -241,7 +248,7 @@ export default async function DashboardPage() {
               href={`/survey/${surveyData.id}`}
               className="px-5 py-2.5 bg-[var(--color-primary)] hover:bg-[var(--color-primary-dark)] text-white font-medium rounded-xl transition-all duration-150 active:scale-[0.97] shadow-md shadow-[var(--color-primary)]/20"
             >
-              {surveyData.hasVoted ? 'Update Vote' : 'Vote Now'}
+              {isViewer ? 'View Survey' : surveyData.hasVoted ? 'Update Vote' : 'Vote Now'}
             </Link>
           </div>
         </div>
@@ -255,8 +262,8 @@ export default async function DashboardPage() {
         </div>
       )}
 
-      {/* Active Polls */}
-      {livePolls.length > 0 && (
+      {/* Active Polls (hidden for viewers) */}
+      {!isViewer && livePolls.length > 0 && (
         <div>
           <p className="text-xs uppercase tracking-widest text-[var(--color-accent)] font-medium mb-3">Active Polls</p>
           <div className="space-y-4">
@@ -356,9 +363,9 @@ export default async function DashboardPage() {
             <EmptyState
               icon="movies"
               title="No movies yet"
-              description="Be the first to suggest a movie for the group!"
-              actionLabel="Suggest a Movie"
-              actionHref="/movies/suggest"
+              description={isViewer ? 'No movies have been suggested yet.' : 'Be the first to suggest a movie for the group!'}
+              actionLabel={isViewer ? undefined : 'Suggest a Movie'}
+              actionHref={isViewer ? undefined : '/movies/suggest'}
             />
           </div>
         )}

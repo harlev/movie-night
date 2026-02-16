@@ -3,7 +3,7 @@ create table public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   email text not null unique,
   display_name text not null,
-  role text not null default 'member' check (role in ('admin', 'member')),
+  role text not null default 'member' check (role in ('admin', 'member', 'viewer')),
   status text not null default 'active' check (status in ('active', 'disabled')),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -17,6 +17,7 @@ create table public.invites (
   expires_at timestamptz not null,
   status text not null default 'active' check (status in ('active', 'expired')),
   use_count integer not null default 0,
+  role text not null default 'member' check (role in ('member', 'viewer')),
   created_at timestamptz not null default now()
 );
 
@@ -171,7 +172,14 @@ declare
   v_ballot_id text;
   v_previous_ranks jsonb;
   v_rank record;
+  v_user_role text;
 begin
+  -- Block viewers from submitting ballots
+  select role into v_user_role from public.profiles where id = p_user_id;
+  if v_user_role = 'viewer' then
+    raise exception 'Viewers cannot submit ballots';
+  end if;
+
   -- Check for existing ballot
   select id into v_ballot_id from public.ballots
   where survey_id = p_survey_id and user_id = p_user_id;
@@ -280,13 +288,17 @@ create policy "invite_uses_insert" on public.invite_uses for insert to authentic
 
 -- Movies: authenticated can read non-hidden, insert own
 create policy "movies_select" on public.movies for select to authenticated using (true);
-create policy "movies_insert" on public.movies for insert to authenticated with check (suggested_by = auth.uid());
+create policy "movies_insert" on public.movies for insert to authenticated
+  with check (suggested_by = auth.uid()
+    and (select role from public.profiles where id = auth.uid()) != 'viewer');
 create policy "movies_update" on public.movies for update to authenticated
   using ((select role from public.profiles where id = auth.uid()) = 'admin');
 
 -- Movie comments: authenticated can read, insert own
 create policy "movie_comments_select" on public.movie_comments for select to authenticated using (true);
-create policy "movie_comments_insert" on public.movie_comments for insert to authenticated with check (user_id = auth.uid());
+create policy "movie_comments_insert" on public.movie_comments for insert to authenticated
+  with check (user_id = auth.uid()
+    and (select role from public.profiles where id = auth.uid()) != 'viewer');
 
 -- Surveys: authenticated can read, admins can manage
 create policy "surveys_select" on public.surveys for select to authenticated using (true);
@@ -306,7 +318,9 @@ create policy "survey_entries_update" on public.survey_entries for update to aut
 
 -- Ballots: authenticated can read all, insert/update own
 create policy "ballots_select" on public.ballots for select to authenticated using (true);
-create policy "ballots_insert" on public.ballots for insert to authenticated with check (user_id = auth.uid());
+create policy "ballots_insert" on public.ballots for insert to authenticated
+  with check (user_id = auth.uid()
+    and (select role from public.profiles where id = auth.uid()) != 'viewer');
 create policy "ballots_update" on public.ballots for update to authenticated using (user_id = auth.uid());
 
 -- Ballot ranks: authenticated can read all, insert/delete own ballot's ranks

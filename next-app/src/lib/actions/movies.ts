@@ -14,6 +14,9 @@ export async function suggestMovieAction(prevState: any, formData: FormData) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: 'Not authenticated' };
 
+  const profile = await getUserById(user.id);
+  if (profile?.role === 'viewer') return { error: 'Viewers cannot suggest movies' };
+
   const tmdbIdStr = formData.get('tmdbId') as string;
   if (!tmdbIdStr) return { error: 'No movie selected' };
 
@@ -170,6 +173,9 @@ export async function addCommentAction(prevState: any, formData: FormData) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: 'Not authenticated' };
+
+  const profile = await getUserById(user.id);
+  if (profile?.role === 'viewer') return { error: 'Viewers cannot post comments' };
 
   const movieId = formData.get('movieId') as string;
   const content = (formData.get('content') as string)?.trim();

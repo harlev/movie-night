@@ -99,6 +99,10 @@ export default function NewInvitePage() {
             </div>
 
             <p className="text-sm text-[var(--color-text-muted)]">
+              Role:{' '}
+              <span className="text-[var(--color-text)] capitalize">{state.invite.role || 'member'}</span>
+            </p>
+            <p className="text-sm text-[var(--color-text-muted)]">
               Expires:{' '}
               {new Date(state.invite.expires_at).toLocaleDateString('en-US', {
                 year: 'numeric',
@@ -150,6 +154,24 @@ export default function NewInvitePage() {
                 <option value="14">14 days</option>
                 <option value="30">30 days</option>
               </select>
+            </div>
+
+            <div className="mb-6">
+              <label htmlFor="role" className="block text-sm font-medium text-[var(--color-text)] mb-2">
+                Role
+              </label>
+              <select
+                id="role"
+                name="role"
+                defaultValue="member"
+                className="w-full px-4 py-2 bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-lg text-[var(--color-text)]"
+              >
+                <option value="member">Member</option>
+                <option value="viewer">Viewer</option>
+              </select>
+              <p className="text-xs text-[var(--color-text-muted)] mt-1">
+                Viewers can browse content but cannot suggest movies, vote, or comment.
+              </p>
             </div>
 
             <button

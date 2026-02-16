@@ -3,7 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import type { Invite, InviteUse } from '@/lib/types';
 import { generateId, generateInviteCode } from '@/lib/utils/id';
 
-export async function createInvite(createdBy: string, expiresInDays: number = 7): Promise<Invite> {
+export async function createInvite(createdBy: string, expiresInDays: number = 7, role: 'member' | 'viewer' = 'member'): Promise<Invite> {
   const supabase = await createClient();
   const id = generateId();
   const code = generateInviteCode();
@@ -14,6 +14,7 @@ export async function createInvite(createdBy: string, expiresInDays: number = 7)
     code,
     created_by: createdBy,
     expires_at: expiresAt.toISOString(),
+    role,
   }).select().single();
   if (error) throw error;
   return invite;

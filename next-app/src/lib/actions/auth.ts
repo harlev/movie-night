@@ -9,7 +9,7 @@ import { validateInviteCode } from '@/lib/queries/invites';
 
 // --- Cookie helpers ---
 
-async function setPendingSignupCookie(data: { inviteCode: string; displayName: string }) {
+async function setPendingSignupCookie(data: { inviteCode: string; displayName: string; role: 'member' | 'viewer' }) {
   const cookieStore = await cookies();
   cookieStore.set('pending_signup', JSON.stringify(data), {
     httpOnly: true,
@@ -51,7 +51,8 @@ export async function validateInviteAndSetCookie(prevState: any, formData: FormD
     return { error: inviteValidation.error || 'Invalid invite code', inviteCode, displayName };
   }
 
-  await setPendingSignupCookie({ inviteCode, displayName });
+  const inviteRole = inviteValidation.invite.role || 'member';
+  await setPendingSignupCookie({ inviteCode, displayName, role: inviteRole as 'member' | 'viewer' });
 
   return { success: true, inviteCode, displayName };
 }

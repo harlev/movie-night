@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getSurveyById, getSurveyEntries } from '@/lib/queries/surveys';
 import { getBallot, getAllBallots } from '@/lib/queries/ballots';
+import { getUserById } from '@/lib/queries/profiles';
 import { calculateStandings, getPointsBreakdown } from '@/lib/services/scoring';
 import type { Metadata } from 'next';
 import SurveyVotingClient from './SurveyVotingClient';
@@ -34,10 +35,11 @@ export default async function SurveyPage({ params }: PageProps) {
     notFound();
   }
 
-  const [entries, userBallot, allBallots] = await Promise.all([
+  const [entries, userBallot, allBallots, profile] = await Promise.all([
     getSurveyEntries(survey.id),
     getBallot(survey.id, user.id),
     getAllBallots(survey.id),
+    getUserById(user.id),
   ]);
 
   // Calculate standings
@@ -96,6 +98,7 @@ export default async function SurveyPage({ params }: PageProps) {
       standings={standings}
       pointsBreakdown={pointsBreakdown}
       hasExistingBallot={!!userBallot}
+      userRole={profile?.role}
     />
   );
 }

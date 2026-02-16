@@ -23,6 +23,10 @@ export async function createClient() {
           }
         },
       },
+      global: {
+        fetch: (input, init) =>
+          fetch(input, { ...init, cache: 'no-store' }),
+      },
     }
   );
 }

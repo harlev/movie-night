@@ -132,13 +132,15 @@ export async function GET(request: Request) {
       // Re-validate invite code (could have expired)
       const inviteValidation = await validateInviteCode(inviteCode);
       if (inviteValidation.valid && inviteValidation.invite) {
-        await admin.from('profiles').insert({
+        const inviteRole = inviteValidation.invite.role || 'member';
+        // Use upsert to handle race condition with handle_new_user trigger
+        await admin.from('profiles').upsert({
           id: user.id,
           email: user.email!.toLowerCase(),
           display_name: resolvedName,
-          role: 'member',
+          role: inviteRole,
           status: 'active',
-        });
+        }, { onConflict: 'id' });
         await recordInviteUse(inviteValidation.invite.id, user.id);
         cookieStore.delete('pending_signup');
         return NextResponse.redirect(`${origin}${safeNext || '/dashboard'}`);

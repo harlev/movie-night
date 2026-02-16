@@ -158,6 +158,9 @@ export default function InviteActions({ invites }: { invites: InviteWithDetails[
               Status
             </th>
             <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wider">
+              Role
+            </th>
+            <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wider">
               Created By
             </th>
             <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wider">
@@ -191,6 +194,11 @@ export default function InviteActions({ invites }: { invites: InviteWithDetails[
                     className={`px-2 py-1 text-xs font-medium rounded ${getStatusColor(invite.status, invite.expires_at)}`}
                   >
                     {getDisplayStatus(invite.status, invite.expires_at)}
+                  </span>
+                </td>
+                <td className="px-4 py-4">
+                  <span className={`text-xs font-medium capitalize ${invite.role === 'viewer' ? 'text-[var(--color-secondary)]' : 'text-[var(--color-text-muted)]'}`}>
+                    {invite.role || 'member'}
                   </span>
                 </td>
                 <td className="px-4 py-4 text-sm text-[var(--color-text-muted)]">
@@ -231,7 +239,7 @@ export default function InviteActions({ invites }: { invites: InviteWithDetails[
               </tr>
               {expandedInvites.has(invite.id) && invite.users.length > 0 && (
                 <tr className="bg-[var(--color-surface-elevated)]/30">
-                  <td colSpan={6} className="px-4 py-3">
+                  <td colSpan={7} className="px-4 py-3">
                     <div className="pl-4 border-l-2 border-[var(--color-border)]">
                       <p className="text-xs font-medium text-[var(--color-text-muted)] mb-2">
                         Users who joined with this invite:
@@ -255,7 +263,7 @@ export default function InviteActions({ invites }: { invites: InviteWithDetails[
               )}
               {qrExpanded.has(invite.id) && (
                 <tr className="bg-[var(--color-surface-elevated)]/30">
-                  <td colSpan={6} className="px-4 py-4">
+                  <td colSpan={7} className="px-4 py-4">
                     <div className="flex justify-center">
                       <QRCodeDisplay
                         url={`${window.location.origin}/signup?code=${invite.code}`}

@@ -15,14 +15,19 @@ export async function createInviteAction(prevState: any, formData: FormData) {
     return { error: 'Expiration must be between 1 and 30 days' };
   }
 
-  const invite = await createInvite(user.id, expiresInDays);
+  const role = (formData.get('role') as string) || 'member';
+  if (!['member', 'viewer'].includes(role)) {
+    return { error: 'Invalid role' };
+  }
+
+  const invite = await createInvite(user.id, expiresInDays, role as 'member' | 'viewer');
 
   await createAdminLog({
     actorId: user.id,
     action: 'invite_created',
     targetType: 'invite',
     targetId: invite.id,
-    details: { code: invite.code, expiresInDays },
+    details: { code: invite.code, expiresInDays, role },
   });
 
   return { success: true, invite };

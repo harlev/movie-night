@@ -4,11 +4,15 @@ import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { getSurveyById, getSurveyEntries } from '@/lib/queries/surveys';
 import { submitBallot } from '@/lib/queries/ballots';
+import { getUserById } from '@/lib/queries/profiles';
 
 export async function submitBallotAction(prevState: any, formData: FormData) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: 'Not authenticated' };
+
+  const profile = await getUserById(user.id);
+  if (profile?.role === 'viewer') return { error: 'Viewers cannot submit ballots' };
 
   const surveyId = formData.get('surveyId') as string;
   const ranksJson = formData.get('ranks') as string;

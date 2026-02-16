@@ -11,9 +11,11 @@ type SortOption = 'newest' | 'title' | 'rating';
 
 interface MoviesGridProps {
   movies: (Movie & { suggestedByName: string })[];
+  userRole?: 'admin' | 'member' | 'viewer';
 }
 
-export default function MoviesGrid({ movies }: MoviesGridProps) {
+export default function MoviesGrid({ movies, userRole }: MoviesGridProps) {
+  const isViewer = userRole === 'viewer';
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<SortOption>('newest');
 
@@ -52,12 +54,21 @@ export default function MoviesGrid({ movies }: MoviesGridProps) {
           <h1 className="text-2xl font-display font-bold text-[var(--color-text)]">Movies</h1>
           <p className="text-[var(--color-text-muted)] mt-1">{movies.length} movies suggested</p>
         </div>
-        <Link
-          href="/movies/suggest"
-          className="px-4 py-2 bg-[var(--color-primary)] hover:bg-[var(--color-primary-dark)] text-white font-medium rounded-xl transition-all duration-150 active:scale-[0.97] shadow-md shadow-[var(--color-primary)]/20"
-        >
-          Suggest Movie
-        </Link>
+        {isViewer ? (
+          <span
+            className="px-4 py-2 bg-[var(--color-primary)]/50 text-white/60 font-medium rounded-xl cursor-not-allowed"
+            title="Viewers cannot suggest movies"
+          >
+            Suggest Movie
+          </span>
+        ) : (
+          <Link
+            href="/movies/suggest"
+            className="px-4 py-2 bg-[var(--color-primary)] hover:bg-[var(--color-primary-dark)] text-white font-medium rounded-xl transition-all duration-150 active:scale-[0.97] shadow-md shadow-[var(--color-primary)]/20"
+          >
+            Suggest Movie
+          </Link>
+        )}
       </div>
 
       {/* Filters */}
@@ -155,9 +166,9 @@ export default function MoviesGrid({ movies }: MoviesGridProps) {
           <EmptyState
             icon="movies"
             title="No movies yet"
-            description="Be the first to suggest a movie for the group!"
-            actionLabel="Suggest a Movie"
-            actionHref="/movies/suggest"
+            description={isViewer ? 'No movies have been suggested yet.' : 'Be the first to suggest a movie for the group!'}
+            actionLabel={isViewer ? undefined : 'Suggest a Movie'}
+            actionHref={isViewer ? undefined : '/movies/suggest'}
           />
         </div>
       )}

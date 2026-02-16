@@ -106,10 +106,10 @@ export async function updateUserRoleAction(prevState: any, formData: FormData) {
   if (!currentUser) return { error: 'Not authenticated' };
 
   const userId = formData.get('userId') as string;
-  const role = formData.get('role') as 'admin' | 'member';
+  const role = formData.get('role') as 'admin' | 'member' | 'viewer';
 
-  if (!userId || !['admin', 'member'].includes(role)) return { error: 'Invalid request' };
-  if (userId === currentUser.id && role === 'member') return { error: 'Cannot remove your own admin role' };
+  if (!userId || !['admin', 'member', 'viewer'].includes(role)) return { error: 'Invalid request' };
+  if (userId === currentUser.id && role !== 'admin') return { error: 'Cannot remove your own admin role' };
 
   const admin = createAdminClient();
   const { data: user, error } = await admin

@@ -2,7 +2,7 @@ export interface Profile {
   id: string;
   email: string;
   display_name: string;
-  role: 'admin' | 'member';
+  role: 'admin' | 'member' | 'viewer';
   status: 'active' | 'disabled';
   created_at: string;
   updated_at: string;
@@ -91,6 +91,7 @@ export interface Invite {
   expires_at: string;
   status: 'active' | 'expired';
   use_count: number;
+  role: 'member' | 'viewer';
   created_at: string;
 }
 

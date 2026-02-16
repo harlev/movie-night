@@ -150,7 +150,7 @@ export default async function MovieDetailPage({ params }: PageProps) {
       </div>
 
       {/* Comments Section */}
-      <MovieCommentSection movieId={movie.id} comments={comments} />
+      <MovieCommentSection movieId={movie.id} comments={comments} userRole={currentProfile?.role} />
 
       {/* TMDb Attribution */}
       <p className="text-center text-xs text-[var(--color-text-muted)]">

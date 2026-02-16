@@ -48,6 +48,7 @@ interface SurveyVotingClientProps {
   standings: Standing[];
   pointsBreakdown: Array<{ rank: number; points: number; label: string }>;
   hasExistingBallot: boolean;
+  userRole?: 'admin' | 'member' | 'viewer';
 }
 
 export default function SurveyVotingClient({
@@ -58,8 +59,10 @@ export default function SurveyVotingClient({
   standings,
   pointsBreakdown,
   hasExistingBallot,
+  userRole,
 }: SurveyVotingClientProps) {
   const isLive = survey.state === 'live';
+  const canVote = isLive && userRole !== 'viewer';
 
   const [shuffledEntries, setShuffledEntries] = useState(entries);
   const hasShuffled = useRef(false);
@@ -185,7 +188,7 @@ export default function SurveyVotingClient({
           <div className="bg-[var(--color-surface)] rounded-xl p-6 border border-[var(--color-border)]/50 shadow-lg shadow-black/20">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-display font-semibold text-[var(--color-text)]">Your Ballot</h2>
-              {isLive && ballot.size > 0 && (
+              {canVote && ballot.size > 0 && (
                 <button
                   type="button"
                   onClick={clearBallot}
@@ -226,7 +229,7 @@ export default function SurveyVotingClient({
               />
             </div>
 
-            {isLive ? (
+            {canVote ? (
               <form action={formAction} className="mt-4">
                 <input type="hidden" name="surveyId" value={survey.id} />
                 <input
@@ -248,6 +251,10 @@ export default function SurveyVotingClient({
                       : 'Submit Ballot'}
                 </button>
               </form>
+            ) : userRole === 'viewer' ? (
+              <p className="mt-4 text-center text-sm text-[var(--color-text-muted)]">
+                Viewers cannot vote on surveys.
+              </p>
             ) : (
               <p className="mt-4 text-center text-sm text-[var(--color-text-muted)]">
                 This survey is closed for voting.
@@ -336,13 +343,13 @@ export default function SurveyVotingClient({
                     <button
                       key={entry.movie.id}
                       type="button"
-                      disabled={!isLive}
+                      disabled={!canVote}
                       onClick={() => handleMovieClick(entry.movie.id)}
                       className={`w-full flex items-center gap-3 p-3 rounded-xl text-left transition-all duration-150 ${
                         selectedRank !== null
                           ? 'bg-[var(--color-primary)]/10 border-l-4 border-l-[var(--color-primary)]'
                           : 'bg-[var(--color-surface-elevated)] hover:bg-[var(--color-border)] border-l-4 border-l-transparent'
-                      } ${!isLive ? 'cursor-default' : 'active:scale-[0.98]'}`}
+                      } ${!canVote ? 'cursor-default' : 'active:scale-[0.98]'}`}
                     >
                       {entry.movie.metadata_snapshot?.posterPath ? (
                         <img
@@ -387,13 +394,13 @@ export default function SurveyVotingClient({
                     <button
                       key={entry.movie.id}
                       type="button"
-                      disabled={!isLive}
+                      disabled={!canVote}
                       onClick={() => handleMovieClick(entry.movie.id)}
                       className={`relative rounded-xl overflow-hidden text-left transition-all duration-200 ${
                         selectedRank !== null
                           ? 'ring-2 ring-[var(--color-primary)] shadow-lg shadow-[var(--color-primary)]/20'
                           : 'border border-[var(--color-border)]/50 opacity-70 hover:opacity-100'
-                      } ${!isLive ? 'cursor-default' : 'active:scale-[0.97]'}`}
+                      } ${!canVote ? 'cursor-default' : 'active:scale-[0.97]'}`}
                     >
                       {/* Poster */}
                       {entry.movie.metadata_snapshot?.posterPath ? (

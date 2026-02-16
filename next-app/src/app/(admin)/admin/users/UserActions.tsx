@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useState } from 'react';
+import { useActionState, useState, useTransition } from 'react';
 import { updateUserStatusAction, updateUserRoleAction, updateUserNameAction } from '@/lib/actions/users';
 import type { Profile } from '@/lib/types';
 
@@ -13,27 +13,32 @@ function formatDate(dateStr: string): string {
 }
 
 function RoleForm({ user }: { user: Profile }) {
-  const [state, formAction, pending] = useActionState(updateUserRoleAction, null);
+  const [role, setRole] = useState(user.role);
+  const [isPending, startTransition] = useTransition();
+
+  function handleChange(newRole: string) {
+    setRole(newRole as Profile['role']);
+    startTransition(async () => {
+      const formData = new FormData();
+      formData.set('userId', user.id);
+      formData.set('role', newRole);
+      await updateUserRoleAction(null, formData);
+    });
+  }
 
   return (
-    <form action={formAction} className="inline">
-      <input type="hidden" name="userId" value={user.id} />
-      <select
-        name="role"
-        defaultValue={user.role}
-        onChange={(e) => {
-          const form = e.currentTarget.form;
-          if (form) form.requestSubmit();
-        }}
-        disabled={pending}
-        className={`text-xs px-2 py-1 rounded bg-[var(--color-surface-elevated)] border border-[var(--color-border)] text-[var(--color-text)] ${
-          user.role === 'admin' ? 'text-[var(--color-warning)]' : ''
-        }`}
-      >
-        <option value="member">Member</option>
-        <option value="admin">Admin</option>
-      </select>
-    </form>
+    <select
+      value={role}
+      onChange={(e) => handleChange(e.target.value)}
+      disabled={isPending}
+      className={`text-xs px-2 py-1 rounded bg-[var(--color-surface-elevated)] border border-[var(--color-border)] text-[var(--color-text)] ${
+        role === 'admin' ? 'text-[var(--color-warning)]' : role === 'viewer' ? 'text-[var(--color-secondary)]' : ''
+      }`}
+    >
+      <option value="member">Member</option>
+      <option value="viewer">Viewer</option>
+      <option value="admin">Admin</option>
+    </select>
   );
 }
 

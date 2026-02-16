@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { submitBallotAction } from '@/lib/actions/ballots';
 import type { Standing } from '@/lib/services/scoring';
 import { useBallot } from '@/hooks/useBallot';
-import { getRankBadgeClasses, getStandingBorderColor, shuffle } from '@/lib/utils/rankStyles';
+import { getRankBadgeClasses, getRankOverlayClasses, getStandingBorderColor, shuffle } from '@/lib/utils/rankStyles';
 import SortableBallotList from '@/components/SortableBallotList';
 import CountdownTimer from '@/components/CountdownTimer';
 
@@ -402,28 +402,31 @@ export default function SurveyVotingClient({
                           : 'border border-[var(--color-border)]/50 opacity-70 hover:opacity-100'
                       } ${!canVote ? 'cursor-default' : 'active:scale-[0.97]'}`}
                     >
-                      {/* Poster */}
-                      {entry.movie.metadata_snapshot?.posterPath ? (
-                        <img
-                          src={`${TMDB_IMAGE_BASE_GRID}${entry.movie.metadata_snapshot.posterPath}`}
-                          alt={entry.movie.title}
-                          className="w-full aspect-[2/3] object-cover"
-                          loading="lazy"
-                        />
-                      ) : (
-                        <div className="w-full aspect-[2/3] bg-[var(--color-surface-elevated)] flex items-center justify-center">
-                          <svg className="w-10 h-10 text-[var(--color-text-muted)]/30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
-                            <rect x="2" y="4" width="20" height="16" rx="2" />
-                            <path d="M2 8h20M2 16h20" />
-                          </svg>
-                        </div>
-                      )}
-                      {/* Rank badge overlay */}
-                      {selectedRank !== null && (
-                        <span className={`absolute top-2 right-2 w-7 h-7 flex items-center justify-center rounded-full text-sm font-bold shadow-md ${getRankBadgeClasses(selectedRank)}`}>
-                          {selectedRank}
-                        </span>
-                      )}
+                      {/* Poster with selection overlay */}
+                      <div className="relative">
+                        {entry.movie.metadata_snapshot?.posterPath ? (
+                          <img
+                            src={`${TMDB_IMAGE_BASE_GRID}${entry.movie.metadata_snapshot.posterPath}`}
+                            alt={entry.movie.title}
+                            className="w-full aspect-[2/3] object-cover"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div className="w-full aspect-[2/3] bg-[var(--color-surface-elevated)] flex items-center justify-center">
+                            <svg className="w-10 h-10 text-[var(--color-text-muted)]/30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+                              <rect x="2" y="4" width="20" height="16" rx="2" />
+                              <path d="M2 8h20M2 16h20" />
+                            </svg>
+                          </div>
+                        )}
+                        {selectedRank !== null && (
+                          <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                            <span className={`text-4xl font-display font-black ${getRankOverlayClasses(selectedRank)}`}>
+                              {selectedRank}
+                            </span>
+                          </div>
+                        )}
+                      </div>
                       {/* Title + year */}
                       <div className={`p-2 ${selectedRank !== null ? 'bg-[var(--color-primary)]/10' : 'bg-[var(--color-surface-elevated)]'}`}>
                         <p className="font-medium text-[var(--color-text)] text-sm truncate">

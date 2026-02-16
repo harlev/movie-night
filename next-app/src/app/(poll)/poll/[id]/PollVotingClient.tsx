@@ -5,7 +5,7 @@ import { submitPollVoteAction } from '@/lib/actions/polls';
 import type { Standing } from '@/lib/services/scoring';
 import PollAuthModal from './PollAuthModal';
 import { useBallot } from '@/hooks/useBallot';
-import { getRankBadgeClasses, getStandingBorderColor, shuffle } from '@/lib/utils/rankStyles';
+import { getRankBadgeClasses, getRankOverlayClasses, getStandingBorderColor, shuffle } from '@/lib/utils/rankStyles';
 import SortableBallotList from '@/components/SortableBallotList';
 import CountdownTimer from '@/components/CountdownTimer';
 
@@ -380,26 +380,31 @@ export default function PollVotingClient({
                     : 'border border-[var(--color-border)]/50 opacity-70 hover:opacity-100'
                 } ${!isLive ? 'cursor-default' : 'active:scale-[0.97]'}`}
               >
-                {movie.metadata_snapshot?.posterPath ? (
-                  <img
-                    src={`${TMDB_IMAGE_BASE_GRID}${movie.metadata_snapshot.posterPath}`}
-                    alt={movie.title}
-                    className="w-full aspect-[2/3] object-cover"
-                    loading="lazy"
-                  />
-                ) : (
-                  <div className="w-full aspect-[2/3] bg-[var(--color-surface-elevated)] flex items-center justify-center">
-                    <svg className="w-8 h-8 sm:w-10 sm:h-10 text-[var(--color-text-muted)]/30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
-                      <rect x="2" y="4" width="20" height="16" rx="2" />
-                      <path d="M2 8h20M2 16h20" />
-                    </svg>
-                  </div>
-                )}
-                {selectedRank !== null && (
-                  <span className={`absolute top-1.5 right-1.5 sm:top-2 sm:right-2 w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded-full text-xs sm:text-sm font-bold shadow-md ${getRankBadgeClasses(selectedRank)}`}>
-                    {selectedRank}
-                  </span>
-                )}
+                {/* Poster with selection overlay */}
+                <div className="relative">
+                  {movie.metadata_snapshot?.posterPath ? (
+                    <img
+                      src={`${TMDB_IMAGE_BASE_GRID}${movie.metadata_snapshot.posterPath}`}
+                      alt={movie.title}
+                      className="w-full aspect-[2/3] object-cover"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="w-full aspect-[2/3] bg-[var(--color-surface-elevated)] flex items-center justify-center">
+                      <svg className="w-8 h-8 sm:w-10 sm:h-10 text-[var(--color-text-muted)]/30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+                        <rect x="2" y="4" width="20" height="16" rx="2" />
+                        <path d="M2 8h20M2 16h20" />
+                      </svg>
+                    </div>
+                  )}
+                  {selectedRank !== null && (
+                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                      <span className={`text-3xl sm:text-4xl font-display font-black ${getRankOverlayClasses(selectedRank)}`}>
+                        {selectedRank}
+                      </span>
+                    </div>
+                  )}
+                </div>
                 <div className={`p-1.5 sm:p-2 ${selectedRank !== null ? 'bg-[var(--color-primary)]/10' : 'bg-[var(--color-surface-elevated)]'}`}>
                   <p className="font-medium text-[var(--color-text)] text-xs sm:text-sm truncate">
                     {movie.title}

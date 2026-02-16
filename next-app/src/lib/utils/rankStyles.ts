@@ -5,6 +5,13 @@ export function getRankBadgeClasses(rank: number): string {
   return 'bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)]';
 }
 
+export function getRankOverlayClasses(rank: number): string {
+  if (rank === 1) return 'text-yellow-500 drop-shadow-[0_2px_8px_rgba(234,179,8,0.5)]';
+  if (rank === 2) return 'text-gray-300 drop-shadow-[0_2px_8px_rgba(209,213,219,0.4)]';
+  if (rank === 3) return 'text-orange-400 drop-shadow-[0_2px_8px_rgba(251,146,60,0.5)]';
+  return 'text-[var(--color-text-muted)]';
+}
+
 export function getStandingBorderColor(position: number): string {
   if (position === 1) return 'border-l-yellow-500';
   if (position === 2) return 'border-l-gray-300';

@@ -38,6 +38,17 @@ export async function getAllPolls(): Promise<QuickPoll[]> {
   return data || [];
 }
 
+export async function getClosedPolls(): Promise<QuickPoll[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from('quick_polls')
+    .select('*')
+    .eq('state', 'closed')
+    .eq('archived', false)
+    .order('closed_at', { ascending: false });
+  return data || [];
+}
+
 export async function updatePoll(id: string, data: Partial<Pick<QuickPoll, 'title' | 'description' | 'max_rank_n' | 'closes_at'>>): Promise<QuickPoll | null> {
   const supabase = await createClient();
   const { data: poll } = await supabase.from('quick_polls').update({ ...data, updated_at: new Date().toISOString() }).eq('id', id).select().single();

@@ -11,6 +11,7 @@ import {
   toggleSurveyArchivedAction,
   updateSurveyClosesAtAction,
 } from '@/lib/actions/surveys';
+import { bulkAddSuggestedToSurveyAction } from '@/lib/actions/suggestions';
 import type { Survey, Movie } from '@/lib/types';
 import { utcToPacificLocal } from '@/lib/utils/closesAt';
 import CountdownTimer from '@/components/CountdownTimer';
@@ -57,6 +58,7 @@ interface SurveyDetailClientProps {
   ballotCount: number;
   availableMovies: AvailableMovie[];
   ballots: BallotInfo[];
+  suggestionCounts: Record<string, number>;
 }
 
 function UpdateInfoForm({ survey }: { survey: Survey }) {
@@ -334,16 +336,17 @@ function StateControls({ survey, entryCount }: { survey: Survey; entryCount: num
   );
 }
 
-function MoviePicker({ surveyId, availableMovies }: { surveyId: string; availableMovies: AvailableMovie[] }) {
+function MoviePicker({ surveyId, availableMovies, suggestionCounts }: { surveyId: string; availableMovies: AvailableMovie[]; suggestionCounts: Record<string, number> }) {
   const [state, formAction, pending] = useActionState(addMovieToSurveyAction, null);
   const [search, setSearch] = useState('');
   const [addingId, setAddingId] = useState<string | null>(null);
 
-  const filtered = search.trim()
+  const filtered = (search.trim()
     ? availableMovies.filter((m) =>
         m.title.toLowerCase().includes(search.toLowerCase())
       )
-    : availableMovies;
+    : availableMovies
+  ).sort((a, b) => (suggestionCounts[b.id] || 0) - (suggestionCounts[a.id] || 0));
 
   return (
     <div className="mb-6">
@@ -390,7 +393,11 @@ function MoviePicker({ surveyId, availableMovies }: { surveyId: string; availabl
                 <button
                   type="submit"
                   disabled={pending}
-                  className="group w-full text-left relative rounded-lg overflow-hidden border border-transparent hover:border-[var(--color-primary)]/60 transition-all duration-200 disabled:opacity-40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
+                  className={`group w-full text-left relative rounded-lg overflow-hidden border transition-all duration-200 disabled:opacity-40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] ${
+                    suggestionCounts[movie.id]
+                      ? 'border-[var(--color-primary)]/60'
+                      : 'border-transparent hover:border-[var(--color-primary)]/60'
+                  }`}
                 >
                   {/* Poster */}
                   <div className="aspect-[2/3] bg-[var(--color-surface-elevated)] relative">
@@ -432,6 +439,16 @@ function MoviePicker({ surveyId, availableMovies }: { surveyId: string; availabl
                           <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                         </svg>
                         {movie.voteAverage.toFixed(1)}
+                      </div>
+                    )}
+
+                    {/* Suggestion count badge */}
+                    {suggestionCounts[movie.id] && (
+                      <div className="absolute bottom-1.5 right-1.5 bg-[var(--color-primary)] text-white text-[10px] font-bold px-1.5 py-0.5 rounded flex items-center gap-0.5">
+                        <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
+                        </svg>
+                        {suggestionCounts[movie.id]}
                       </div>
                     )}
                   </div>
@@ -483,13 +500,57 @@ function RemoveMovieButton({ surveyId, entryId, movieId }: { surveyId: string; e
   );
 }
 
+function BulkAddSuggestedBanner({ surveyId, suggestedAvailableIds }: { surveyId: string; suggestedAvailableIds: string[] }) {
+  const [state, formAction, pending] = useActionState(bulkAddSuggestedToSurveyAction, null);
+
+  if (suggestedAvailableIds.length === 0) return null;
+
+  return (
+    <div className="flex items-center justify-between bg-[var(--color-primary)]/10 border border-[var(--color-primary)]/30 rounded-lg p-3 mb-4">
+      <div className="flex items-center gap-2">
+        <svg className="w-4 h-4 text-[var(--color-primary)]" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
+        </svg>
+        <span className="text-sm text-[var(--color-text)]">
+          {suggestedAvailableIds.length} nominated movie{suggestedAvailableIds.length !== 1 ? 's' : ''} available
+        </span>
+      </div>
+      <form action={formAction}>
+        <input type="hidden" name="surveyId" value={surveyId} />
+        <input type="hidden" name="movieIds" value={JSON.stringify(suggestedAvailableIds)} />
+        <button
+          type="submit"
+          disabled={pending}
+          className="px-3 py-1.5 bg-[var(--color-primary)] hover:bg-[var(--color-primary-dark)] text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+        >
+          {pending ? 'Adding...' : 'Add All Nominated'}
+        </button>
+      </form>
+      {state?.success && (
+        <span className="text-xs text-[var(--color-success)] ml-2">
+          Added {state.added}, skipped {state.skipped}
+        </span>
+      )}
+      {state?.error && (
+        <span className="text-xs text-[var(--color-error)] ml-2">{state.error}</span>
+      )}
+    </div>
+  );
+}
+
 export default function SurveyDetailClient({
   survey,
   entries,
   ballotCount,
   availableMovies,
   ballots,
+  suggestionCounts,
 }: SurveyDetailClientProps) {
+  // Compute suggested movies that are available (not yet in survey)
+  const suggestedAvailableIds = availableMovies
+    .filter((m) => suggestionCounts[m.id])
+    .map((m) => m.id);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -618,7 +679,8 @@ export default function SurveyDetailClient({
             Available Movies
             <span className="ml-2 text-sm font-normal text-[var(--color-text-muted)]">({availableMovies.length})</span>
           </h2>
-          <MoviePicker surveyId={survey.id} availableMovies={availableMovies} />
+          <BulkAddSuggestedBanner surveyId={survey.id} suggestedAvailableIds={suggestedAvailableIds} />
+          <MoviePicker surveyId={survey.id} availableMovies={availableMovies} suggestionCounts={suggestionCounts} />
         </div>
       )}
 

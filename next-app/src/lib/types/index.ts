@@ -102,11 +102,18 @@ export interface InviteUse {
   used_at: string;
 }
 
+export interface MovieSuggestion {
+  id: string;
+  movie_id: string;
+  user_id: string;
+  created_at: string;
+}
+
 export interface AdminLog {
   id: string;
   actor_id: string;
   action: string;
-  target_type: 'user' | 'movie' | 'survey' | 'invite' | 'poll';
+  target_type: 'user' | 'movie' | 'survey' | 'invite' | 'poll' | 'suggestion';
   target_id: string;
   details: Record<string, unknown> | null;
   created_at: string;

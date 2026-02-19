@@ -51,6 +51,16 @@ create table public.movie_comments (
   updated_at timestamptz not null default now()
 );
 
+-- Movie suggestions (for next week voting)
+create table public.movie_suggestions (
+  id text primary key,
+  movie_id text not null references public.movies(id) on delete cascade,
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  unique(movie_id, user_id)
+);
+create index movie_suggestions_movie_id_idx on public.movie_suggestions(movie_id);
+
 -- Surveys table
 create table public.surveys (
   id text primary key,
@@ -109,7 +119,7 @@ create table public.admin_logs (
   id text primary key,
   actor_id uuid not null references public.profiles(id),
   action text not null,
-  target_type text not null check (target_type in ('user', 'movie', 'survey', 'invite')),
+  target_type text not null check (target_type in ('user', 'movie', 'survey', 'invite', 'poll', 'suggestion')),
   target_id text not null,
   details jsonb,
   created_at timestamptz not null default now()
@@ -267,6 +277,7 @@ alter table public.survey_entries enable row level security;
 alter table public.ballots enable row level security;
 alter table public.ballot_ranks enable row level security;
 alter table public.ballot_change_logs enable row level security;
+alter table public.movie_suggestions enable row level security;
 alter table public.admin_logs enable row level security;
 
 -- RLS Policies
@@ -331,6 +342,22 @@ create policy "ballot_ranks_delete" on public.ballot_ranks for delete to authent
 -- Ballot change logs: authenticated can read
 create policy "ballot_change_logs_select" on public.ballot_change_logs for select to authenticated using (true);
 create policy "ballot_change_logs_insert" on public.ballot_change_logs for insert to authenticated with check (true);
+
+-- Movie suggestions: authenticated can read, members/admins can insert own, users can delete own, admins can delete any
+create policy "movie_suggestions_select" on public.movie_suggestions
+  for select to authenticated using (true);
+create policy "movie_suggestions_insert" on public.movie_suggestions
+  for insert to authenticated
+  with check (
+    user_id = auth.uid()
+    and (select role from public.profiles where id = auth.uid()) != 'viewer'
+  );
+create policy "movie_suggestions_delete_own" on public.movie_suggestions
+  for delete to authenticated
+  using (user_id = auth.uid());
+create policy "movie_suggestions_delete_admin" on public.movie_suggestions
+  for delete to authenticated
+  using ((select role from public.profiles where id = auth.uid()) = 'admin');
 
 -- Admin logs: admins can read and insert
 create policy "admin_logs_select" on public.admin_logs for select to authenticated

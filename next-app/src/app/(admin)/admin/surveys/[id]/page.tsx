@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { getSurveyById, getSurveyEntries } from '@/lib/queries/surveys';
 import { getAllMovies } from '@/lib/queries/movies';
 import { getAllBallots } from '@/lib/queries/ballots';
+import { getSuggestionCounts } from '@/lib/queries/suggestions';
 import SurveyDetailClient from './SurveyDetailClient';
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
@@ -21,9 +22,12 @@ export default async function SurveyDetailPage({ params }: { params: Promise<{ i
     notFound();
   }
 
-  const entries = await getSurveyEntries(survey.id);
-  const allMovies = await getAllMovies();
-  const ballots = await getAllBallots(survey.id);
+  const [entries, allMovies, ballots, suggestionCounts] = await Promise.all([
+    getSurveyEntries(survey.id),
+    getAllMovies(),
+    getAllBallots(survey.id),
+    getSuggestionCounts(),
+  ]);
 
   // Filter out movies already in survey
   const entryMovieIds = new Set(entries.map((e) => e.movie_id));
@@ -44,6 +48,7 @@ export default async function SurveyDetailPage({ params }: { params: Promise<{ i
       ballotCount={ballots.length}
       availableMovies={availableMovies}
       ballots={ballots}
+      suggestionCounts={suggestionCounts}
     />
   );
 }

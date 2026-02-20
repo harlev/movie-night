@@ -12,6 +12,13 @@ export function getRankOverlayClasses(rank: number): string {
   return 'text-[var(--color-text-muted)]';
 }
 
+export function getRankRingClasses(rank: number): string {
+  if (rank === 1) return 'ring-2 ring-yellow-500 shadow-lg shadow-yellow-500/30';
+  if (rank === 2) return 'ring-2 ring-gray-300 shadow-lg shadow-gray-300/20';
+  if (rank === 3) return 'ring-2 ring-orange-400 shadow-lg shadow-orange-400/30';
+  return 'ring-2 ring-[var(--color-primary)] shadow-lg shadow-[var(--color-primary)]/20';
+}
+
 export function getStandingBorderColor(position: number): string {
   if (position === 1) return 'border-l-yellow-500';
   if (position === 2) return 'border-l-gray-300';

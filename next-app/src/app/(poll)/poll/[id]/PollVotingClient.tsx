@@ -5,7 +5,7 @@ import { submitPollVoteAction } from '@/lib/actions/polls';
 import type { Standing } from '@/lib/services/scoring';
 import PollAuthModal from './PollAuthModal';
 import { useBallot } from '@/hooks/useBallot';
-import { getRankBadgeClasses, getRankOverlayClasses, getStandingBorderColor, shuffle } from '@/lib/utils/rankStyles';
+import { getRankBadgeClasses, getRankOverlayClasses, getRankRingClasses, getStandingBorderColor, shuffle } from '@/lib/utils/rankStyles';
 import SortableBallotList from '@/components/SortableBallotList';
 import CountdownTimer from '@/components/CountdownTimer';
 
@@ -376,7 +376,7 @@ export default function PollVotingClient({
                 onClick={() => handleMovieClick(movie.id)}
                 className={`relative rounded-lg sm:rounded-xl overflow-hidden text-left transition-all duration-200 ${
                   selectedRank !== null
-                    ? 'ring-2 ring-[var(--color-primary)] shadow-lg shadow-[var(--color-primary)]/20'
+                    ? getRankRingClasses(selectedRank)
                     : 'border border-[var(--color-border)]/50 opacity-70 hover:opacity-100'
                 } ${!isLive ? 'cursor-default' : 'active:scale-[0.97]'}`}
               >
@@ -398,11 +398,12 @@ export default function PollVotingClient({
                     </div>
                   )}
                   {selectedRank !== null && (
-                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                      <span className={`text-3xl sm:text-4xl font-display font-black ${getRankOverlayClasses(selectedRank)}`}>
+                    <>
+                      <div className="absolute inset-0 bg-black/40" />
+                      <div className={`absolute top-1.5 left-1.5 sm:top-2 sm:left-2 w-7 h-7 sm:w-9 sm:h-9 flex items-center justify-center rounded-full text-xs sm:text-sm font-bold ${getRankBadgeClasses(selectedRank)}`}>
                         {selectedRank}
-                      </span>
-                    </div>
+                      </div>
+                    </>
                   )}
                 </div>
                 <div className={`p-1.5 sm:p-2 ${selectedRank !== null ? 'bg-[var(--color-primary)]/10' : 'bg-[var(--color-surface-elevated)]'}`}>
@@ -415,9 +416,6 @@ export default function PollVotingClient({
                     </p>
                   )}
                 </div>
-                {selectedRank !== null && (
-                  <div className="h-0.5 bg-[var(--color-primary)]" />
-                )}
               </button>
             );
           })}

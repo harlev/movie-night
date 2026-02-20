@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { submitBallotAction } from '@/lib/actions/ballots';
 import type { Standing } from '@/lib/services/scoring';
 import { useBallot } from '@/hooks/useBallot';
-import { getRankBadgeClasses, getRankOverlayClasses, getStandingBorderColor, shuffle } from '@/lib/utils/rankStyles';
+import { getRankBadgeClasses, getRankOverlayClasses, getRankRingClasses, getStandingBorderColor, shuffle } from '@/lib/utils/rankStyles';
 import SortableBallotList from '@/components/SortableBallotList';
 import CountdownTimer from '@/components/CountdownTimer';
 
@@ -398,7 +398,7 @@ export default function SurveyVotingClient({
                       onClick={() => handleMovieClick(entry.movie.id)}
                       className={`relative rounded-xl overflow-hidden text-left transition-all duration-200 ${
                         selectedRank !== null
-                          ? 'ring-2 ring-[var(--color-primary)] shadow-lg shadow-[var(--color-primary)]/20'
+                          ? getRankRingClasses(selectedRank)
                           : 'border border-[var(--color-border)]/50 opacity-70 hover:opacity-100'
                       } ${!canVote ? 'cursor-default' : 'active:scale-[0.97]'}`}
                     >
@@ -420,11 +420,12 @@ export default function SurveyVotingClient({
                           </div>
                         )}
                         {selectedRank !== null && (
-                          <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                            <span className={`text-4xl font-display font-black ${getRankOverlayClasses(selectedRank)}`}>
+                          <>
+                            <div className="absolute inset-0 bg-black/40" />
+                            <div className={`absolute top-2 left-2 w-9 h-9 flex items-center justify-center rounded-full text-sm font-bold ${getRankBadgeClasses(selectedRank)}`}>
                               {selectedRank}
-                            </span>
-                          </div>
+                            </div>
+                          </>
                         )}
                       </div>
                       {/* Title + year */}
@@ -438,10 +439,6 @@ export default function SurveyVotingClient({
                           </p>
                         )}
                       </div>
-                      {/* Selected accent bar */}
-                      {selectedRank !== null && (
-                        <div className="h-0.5 bg-[var(--color-primary)]" />
-                      )}
                     </button>
                   );
                 })}

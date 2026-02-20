@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { getMovieById, getMovieComments } from '@/lib/queries/movies';
+import { getSuggestedMovies } from '@/lib/queries/suggestions';
 import { getUserById } from '@/lib/queries/profiles';
 import { createClient } from '@/lib/supabase/server';
 import Link from 'next/link';
@@ -7,6 +8,7 @@ import type { Metadata } from 'next';
 import MovieDetailClient from './MovieDetailClient';
 import MovieCommentSection from './MovieCommentSection';
 import ArchiveMovieButton from './ArchiveMovieButton';
+import NominateMovieButton from './NominateMovieButton';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -41,11 +43,16 @@ export default async function MovieDetailPage({ params }: PageProps) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  const [suggester, comments, currentProfile] = await Promise.all([
+  const [suggester, comments, currentProfile, suggestions] = await Promise.all([
     getUserById(movie.suggested_by),
     getMovieComments(movie.id),
     user ? getUserById(user.id) : null,
+    user ? getSuggestedMovies(user.id) : [],
   ]);
+
+  const movieSuggestion = suggestions.find((s) => s.movie_id === movie.id);
+  const isNominated = movieSuggestion?.current_user_suggested ?? false;
+  const nominationCount = movieSuggestion?.suggestion_count ?? 0;
 
   const suggestedByName = suggester?.display_name || 'Unknown';
   const meta = movie.metadata_snapshot;
@@ -132,6 +139,13 @@ export default async function MovieDetailPage({ params }: PageProps) {
                   </svg>
                   IMDb
                 </a>
+              )}
+              {currentProfile && currentProfile.role !== 'viewer' && (
+                <NominateMovieButton
+                  movieId={movie.id}
+                  nominated={isNominated}
+                  nominationCount={nominationCount}
+                />
               )}
             </div>
 

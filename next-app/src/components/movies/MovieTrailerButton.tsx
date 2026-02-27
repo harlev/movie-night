@@ -2,12 +2,12 @@
 
 import { useState, useEffect, useCallback } from 'react';
 
-interface MovieDetailClientProps {
+interface MovieTrailerButtonProps {
   trailerKey: string | null | undefined;
   movieTitle: string;
 }
 
-export default function MovieDetailClient({ trailerKey, movieTitle }: MovieDetailClientProps) {
+export default function MovieTrailerButton({ trailerKey, movieTitle }: MovieTrailerButtonProps) {
   const [showTrailer, setShowTrailer] = useState(false);
 
   const handleEscape = useCallback(
@@ -42,7 +42,6 @@ export default function MovieDetailClient({ trailerKey, movieTitle }: MovieDetai
         Watch Trailer
       </button>
 
-      {/* Trailer Modal */}
       {showTrailer && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 animate-fade-in"

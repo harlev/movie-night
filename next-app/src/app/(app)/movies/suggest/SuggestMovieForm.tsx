@@ -2,7 +2,10 @@
 
 import { useActionState, useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { suggestMovieAction } from '@/lib/actions/movies';
+import { parseSuggestMovieQuery } from '@/lib/utils/suggestSearch';
+import MovieDetailsCard, { type MovieDetailsMetadata } from '@/components/movies/MovieDetailsCard';
 
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w200';
 
@@ -11,23 +14,36 @@ interface SearchResult {
   title: string;
   poster_path: string | null;
   release_date: string | null;
-  overview: string | null;
+}
+
+interface SelectedMovie {
+  tmdbId: number;
+  title: string;
+  metadata: MovieDetailsMetadata;
+}
+
+interface DetailsResponse {
+  id: number;
+  title: string;
+  metadata: MovieDetailsMetadata;
 }
 
 export default function SuggestMovieForm() {
-  const [searchQuery, setSearchQuery] = useState('');
+  const searchParams = useSearchParams();
+  const [searchQuery, setSearchQuery] = useState(() => parseSuggestMovieQuery(searchParams));
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [isLoadingSelection, setIsLoadingSelection] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
-  const [selectedMovie, setSelectedMovie] = useState<SearchResult | null>(null);
+  const [selectedMovie, setSelectedMovie] = useState<SelectedMovie | null>(null);
   const [searchError, setSearchError] = useState<string | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const selectionRequestRef = useRef(0);
 
   const [suggestState, suggestAction, isSuggesting] = useActionState(suggestMovieAction, null);
 
-  // Debounced search
   useEffect(() => {
     if (searchQuery.length < 2) {
       setResults([]);
@@ -63,7 +79,6 @@ export default function SuggestMovieForm() {
     };
   }, [searchQuery]);
 
-  // Close dropdown on outside click
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
@@ -74,11 +89,37 @@ export default function SuggestMovieForm() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  function handleSelect(movie: SearchResult) {
-    setSelectedMovie(movie);
+  async function handleSelect(movie: SearchResult) {
+    const requestId = selectionRequestRef.current + 1;
+    selectionRequestRef.current = requestId;
+
     setShowDropdown(false);
     setSearchQuery('');
     setResults([]);
+    setSearchError(null);
+    setSelectedMovie(null);
+    setIsLoadingSelection(true);
+
+    try {
+      const res = await fetch(`/api/movies/details?tmdbId=${movie.id}`);
+      if (!res.ok) throw new Error('Failed to fetch details');
+
+      const details = (await res.json()) as DetailsResponse;
+      if (selectionRequestRef.current !== requestId) return;
+
+      setSelectedMovie({
+        tmdbId: details.id,
+        title: details.title,
+        metadata: details.metadata,
+      });
+    } catch {
+      if (selectionRequestRef.current !== requestId) return;
+      setSearchError('Failed to load movie details');
+    } finally {
+      if (selectionRequestRef.current === requestId) {
+        setIsLoadingSelection(false);
+      }
+    }
   }
 
   const error = suggestState?.error || searchError;
@@ -112,7 +153,6 @@ export default function SuggestMovieForm() {
         </div>
       )}
 
-      {/* Search Input with Autocomplete */}
       <div className="bg-[var(--color-surface)] rounded-xl p-6 border border-[var(--color-border)]/50 shadow-lg shadow-black/20">
         <div ref={containerRef} className="relative">
           <div className="relative">
@@ -141,7 +181,6 @@ export default function SuggestMovieForm() {
             )}
           </div>
 
-          {/* Dropdown Results */}
           {showDropdown && results.length > 0 && (
             <div className="absolute z-50 left-0 right-0 mt-2 bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-xl shadow-xl shadow-black/30 max-h-80 overflow-y-auto">
               {results.map((movie) => (
@@ -178,7 +217,6 @@ export default function SuggestMovieForm() {
             </div>
           )}
 
-          {/* No results message */}
           {showDropdown && searchQuery.length >= 2 && !isSearching && results.length === 0 && !searchError && (
             <div className="absolute z-50 left-0 right-0 mt-2 bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-xl shadow-xl shadow-black/30 px-4 py-6 text-center">
               <p className="text-[var(--color-text-muted)] text-sm">No movies found for &ldquo;{searchQuery}&rdquo;</p>
@@ -187,44 +225,20 @@ export default function SuggestMovieForm() {
         </div>
       </div>
 
-      {/* Selected Movie Confirmation */}
-      {selectedMovie && (
+      {isLoadingSelection && (
         <div className="bg-[var(--color-surface)] rounded-xl p-6 border border-[var(--color-border)]/50 shadow-lg shadow-black/20 animate-fade-in-up">
-          <h2 className="text-lg font-display font-semibold text-[var(--color-text)] mb-4">
-            Confirm Selection
-          </h2>
-          <div className="flex gap-6">
-            {selectedMovie.poster_path ? (
-              <img
-                src={`${TMDB_IMAGE_BASE}${selectedMovie.poster_path}`}
-                alt={selectedMovie.title}
-                className="w-32 h-48 object-cover rounded-xl"
-              />
-            ) : (
-              <div className="w-32 h-48 bg-[var(--color-surface-elevated)] rounded-xl flex items-center justify-center">
-                <svg className="w-10 h-10 text-[var(--color-text-muted)]/30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
-                  <rect x="2" y="4" width="20" height="16" rx="2" />
-                  <path d="M2 8h20M2 16h20" />
-                  <path d="M6 4v4M6 16v4M18 4v4M18 16v4" />
-                </svg>
-              </div>
-            )}
-            <div className="flex-1">
-              <h3 className="text-xl font-display font-semibold text-[var(--color-text)]">
-                {selectedMovie.title}
-              </h3>
-              {selectedMovie.release_date && (
-                <p className="text-[var(--color-text-muted)]">
-                  {selectedMovie.release_date.slice(0, 4)}
-                </p>
-              )}
-              {selectedMovie.overview && (
-                <p className="text-[var(--color-text-muted)] mt-2 text-sm leading-relaxed">
-                  {selectedMovie.overview}
-                </p>
-              )}
-              <form action={suggestAction} className="mt-4">
-                <input type="hidden" name="tmdbId" value={selectedMovie.id} />
+          <p className="text-[var(--color-text-muted)]">Loading full movie details...</p>
+        </div>
+      )}
+
+      {selectedMovie && (
+        <div className="animate-fade-in-up">
+          <MovieDetailsCard
+            title={selectedMovie.title}
+            metadata={selectedMovie.metadata}
+            primaryAction={
+              <form action={suggestAction}>
+                <input type="hidden" name="tmdbId" value={selectedMovie.tmdbId} />
                 <button
                   type="submit"
                   disabled={isSuggesting}
@@ -233,12 +247,11 @@ export default function SuggestMovieForm() {
                   {isSuggesting ? 'Adding...' : 'Add This Movie'}
                 </button>
               </form>
-            </div>
-          </div>
+            }
+          />
         </div>
       )}
 
-      {/* TMDb Attribution */}
       <p className="text-center text-xs text-[var(--color-text-muted)]">
         Movie data provided by{' '}
         <a

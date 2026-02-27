@@ -2,7 +2,9 @@
 
 import { useActionState, useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { suggestMovieAction } from '@/lib/actions/movies';
+import { parseSuggestMovieQuery } from '@/lib/utils/suggestSearch';
 
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w200';
 
@@ -15,7 +17,8 @@ interface SearchResult {
 }
 
 export default function SuggestMovieForm() {
-  const [searchQuery, setSearchQuery] = useState('');
+  const searchParams = useSearchParams();
+  const [searchQuery, setSearchQuery] = useState(() => parseSuggestMovieQuery(searchParams));
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);

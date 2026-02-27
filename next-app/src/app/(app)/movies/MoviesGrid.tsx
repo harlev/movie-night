@@ -5,6 +5,7 @@ import Link from 'next/link';
 import type { Movie } from '@/lib/types';
 import type { SuggestionData } from '@/lib/queries/suggestions';
 import EmptyState from '@/components/ui/EmptyState';
+import { buildSuggestMovieHref } from '@/lib/utils/suggestSearch';
 import SuggestedSection from './SuggestedSection';
 import SuggestButton from './SuggestButton';
 
@@ -22,7 +23,9 @@ interface MoviesGridProps {
 export default function MoviesGrid({ movies, userRole, suggestions, currentUserId }: MoviesGridProps) {
   const isViewer = userRole === 'viewer';
   const [searchQuery, setSearchQuery] = useState('');
+  const [suggestMovieQuery, setSuggestMovieQuery] = useState('');
   const [sortBy, setSortBy] = useState<SortOption>('newest');
+  const suggestMovieHref = buildSuggestMovieHref(suggestMovieQuery);
 
   // Build suggestion lookup map
   const suggestionMap = useMemo(() => {
@@ -63,7 +66,7 @@ export default function MoviesGrid({ movies, userRole, suggestions, currentUserI
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-display font-bold text-[var(--color-text)]">Movies</h1>
           <p className="text-[var(--color-text-muted)] mt-1">{movies.length} movies suggested</p>
@@ -76,12 +79,22 @@ export default function MoviesGrid({ movies, userRole, suggestions, currentUserI
             Suggest Movie
           </span>
         ) : (
-          <Link
-            href="/movies/suggest"
-            className="px-4 py-2 bg-[var(--color-primary)] hover:bg-[var(--color-primary-dark)] text-white font-medium rounded-xl transition-all duration-150 active:scale-[0.97] shadow-md shadow-[var(--color-primary)]/20"
-          >
-            Suggest Movie
-          </Link>
+          <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
+            <input
+              type="text"
+              value={suggestMovieQuery}
+              onChange={(e) => setSuggestMovieQuery(e.target.value)}
+              placeholder="Search movies on TMDb..."
+              className="w-full sm:w-80 px-4 py-2.5 bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-xl text-[var(--color-text)] placeholder:text-[var(--color-text-muted)]/60 focus:outline-none focus:border-[var(--color-primary)] focus:ring-1 focus:ring-[var(--color-primary)] transition-all"
+              autoComplete="off"
+            />
+            <Link
+              href={suggestMovieHref}
+              className="inline-flex justify-center px-4 py-2 bg-[var(--color-primary)] hover:bg-[var(--color-primary-dark)] text-white font-medium rounded-xl transition-all duration-150 active:scale-[0.97] shadow-md shadow-[var(--color-primary)]/20 whitespace-nowrap"
+            >
+              Suggest Movie
+            </Link>
+          </div>
         )}
       </div>
 
@@ -212,7 +225,7 @@ export default function MoviesGrid({ movies, userRole, suggestions, currentUserI
             title="No movies yet"
             description={isViewer ? 'No movies have been suggested yet.' : 'Be the first to suggest a movie for the group!'}
             actionLabel={isViewer ? undefined : 'Suggest a Movie'}
-            actionHref={isViewer ? undefined : '/movies/suggest'}
+            actionHref={isViewer ? undefined : suggestMovieHref}
           />
         </div>
       )}

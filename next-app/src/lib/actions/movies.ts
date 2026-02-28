@@ -8,6 +8,7 @@ import { getMovieDetails, createMetadataSnapshot, fetchMovieVideos } from '@/lib
 import { createMovie, getMovieByTmdbId, createMovieComment } from '@/lib/queries/movies';
 import { getUserById } from '@/lib/queries/profiles';
 import { createAdminLog } from '@/lib/queries/admin';
+import { buildSuggestedMovieHref } from '@/lib/utils/suggestMovieFlow';
 
 export async function suggestMovieAction(prevState: any, formData: FormData) {
   const supabase = await createClient();
@@ -26,16 +27,15 @@ export async function suggestMovieAction(prevState: any, formData: FormData) {
   const existing = await getMovieByTmdbId(tmdbId);
   if (existing) {
     if (existing.hidden) {
-      // Un-archive the movie instead of rejecting
+      // Un-archive the movie instead of rejecting.
       const admin = createAdminClient();
       await admin
         .from('movies')
         .update({ hidden: false, updated_at: new Date().toISOString() })
         .eq('id', existing.id);
-      revalidatePath('/movies');
-      redirect(`/movies/${existing.id}`);
     }
-    return { error: 'This movie has already been suggested' };
+
+    redirect(buildSuggestedMovieHref(existing.id));
   }
 
   try {
@@ -50,7 +50,7 @@ export async function suggestMovieAction(prevState: any, formData: FormData) {
       suggestedBy: user.id,
     });
 
-    redirect(`/movies/${movie.id}`);
+    redirect(buildSuggestedMovieHref(movie.id));
   } catch (error: any) {
     if (error?.digest?.startsWith('NEXT_REDIRECT')) throw error;
     console.error('Error creating movie:', error);

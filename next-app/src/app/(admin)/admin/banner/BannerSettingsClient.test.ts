@@ -47,6 +47,17 @@ test('BannerSettingsClient includes mobile banner upload controls', () => {
   assert.equal(source.includes('New Mobile Banner Preview'), true);
 });
 
+test('BannerSettingsClient does not show current banner preview sections', () => {
+  const filePath = path.join(
+    process.cwd(),
+    'src/app/(admin)/admin/banner/BannerSettingsClient.tsx'
+  );
+  const source = readFileSync(filePath, 'utf8');
+
+  assert.equal(source.includes('Current Desktop Banner Preview'), false);
+  assert.equal(source.includes('Current Mobile Banner Preview'), false);
+});
+
 test('BannerSettingsClient refreshes the route after successful apply', () => {
   const filePath = path.join(
     process.cwd(),

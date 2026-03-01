@@ -7,15 +7,9 @@ import type { SiteBannerSettings } from '@/lib/queries/siteBanner';
 
 interface BannerSettingsClientProps {
   banner: SiteBannerSettings | null;
-  desktopBannerUrl: string | null;
-  mobileBannerUrl: string | null;
 }
 
-export default function BannerSettingsClient({
-  banner,
-  desktopBannerUrl,
-  mobileBannerUrl,
-}: BannerSettingsClientProps) {
+export default function BannerSettingsClient({ banner }: BannerSettingsClientProps) {
   const router = useRouter();
   const [desktopUploadState, desktopUploadAction, desktopUploadPending] = useActionState(
     uploadSiteBannerAction,
@@ -127,31 +121,7 @@ export default function BannerSettingsClient({
       </div>
 
       <div className="bg-[var(--color-surface)] rounded-lg p-6 space-y-4 border border-[var(--color-border)]">
-        <div>
-          <p className="text-sm font-medium text-[var(--color-text)] mb-2">Current Desktop Banner Preview</p>
-          {desktopBannerUrl ? (
-            <div className="relative aspect-[10/1] overflow-hidden rounded-lg border border-[var(--color-border)]/70">
-              <img src={desktopBannerUrl} alt="Current desktop site banner" className="h-full w-full object-cover object-center" />
-            </div>
-          ) : (
-            <div className="rounded-lg border border-dashed border-[var(--color-border)] p-4 text-sm text-[var(--color-text-muted)]">
-              No desktop banner image uploaded yet.
-            </div>
-          )}
-        </div>
-
-        <div>
-          <p className="text-sm font-medium text-[var(--color-text)] mb-2">Current Mobile Banner Preview</p>
-          {mobileBannerUrl ? (
-            <div className="relative aspect-[4/1] overflow-hidden rounded-lg border border-[var(--color-border)]/70">
-              <img src={mobileBannerUrl} alt="Current mobile site banner" className="h-full w-full object-cover object-center" />
-            </div>
-          ) : (
-            <div className="rounded-lg border border-dashed border-[var(--color-border)] p-4 text-sm text-[var(--color-text-muted)]">
-              No mobile banner uploaded yet. Mobile will use the desktop banner by default.
-            </div>
-          )}
-        </div>
+        <p className="text-sm font-medium text-[var(--color-text)]">Banner Visibility</p>
 
         <form action={toggleAction} className="flex flex-wrap items-center gap-3">
           <input type="hidden" name="enabled" value={bannerEnabled ? 'false' : 'true'} />

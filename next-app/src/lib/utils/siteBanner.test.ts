@@ -3,8 +3,10 @@ import test from 'node:test';
 import {
   buildSiteBannerPublicUrl,
   getSiteBannerValidationError,
+  SITE_BANNER_MOBILE_OBJECT_PATH,
   SITE_BANNER_MAX_BYTES,
-} from './siteBanner';
+  SITE_BANNER_OBJECT_PATH,
+} from './siteBanner.ts';
 
 test('getSiteBannerValidationError returns an error when no file is provided', () => {
   assert.equal(getSiteBannerValidationError(null), 'Please choose an image file to upload');
@@ -47,11 +49,15 @@ test('buildSiteBannerPublicUrl builds a versioned public storage URL', () => {
   assert.equal(
     buildSiteBannerPublicUrl({
       supabaseUrl: 'https://demo-project.supabase.co',
-      objectPath: 'banner/current',
+      objectPath: SITE_BANNER_OBJECT_PATH,
       updatedAt: '2026-02-28T12:00:00.000Z',
     }),
     'https://demo-project.supabase.co/storage/v1/object/public/site-assets/banner/current?v=2026-02-28T12%3A00%3A00.000Z'
   );
+});
+
+test('mobile object path constant is stable for mobile banner uploads', () => {
+  assert.equal(SITE_BANNER_MOBILE_OBJECT_PATH, 'banner/current-mobile');
 });
 
 test('buildSiteBannerPublicUrl returns null when URL input is incomplete', () => {

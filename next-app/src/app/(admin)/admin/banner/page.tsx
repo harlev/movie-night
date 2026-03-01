@@ -9,16 +9,22 @@ export const metadata: Metadata = {
 
 export default async function AdminBannerPage() {
   const banner = await getSiteBanner();
-  const bannerUrl = buildSiteBannerPublicUrl({
+  const desktopBannerUrl = buildSiteBannerPublicUrl({
     supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
     objectPath: banner?.image_path,
+    updatedAt: banner?.updated_at,
+  });
+  const mobileBannerUrl = buildSiteBannerPublicUrl({
+    supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    objectPath: banner?.mobile_image_path,
     updatedAt: banner?.updated_at,
   });
 
   return (
     <BannerSettingsClient
       banner={banner}
-      bannerUrl={bannerUrl}
+      desktopBannerUrl={desktopBannerUrl}
+      mobileBannerUrl={mobileBannerUrl}
     />
   );
 }

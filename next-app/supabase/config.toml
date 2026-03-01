@@ -1,5 +1,4 @@
-[project]
-id = "movie-night-local"
+project_id = "movie-night-local"
 
 [api]
 enabled = true

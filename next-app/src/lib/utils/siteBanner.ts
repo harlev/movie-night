@@ -1,5 +1,6 @@
 export const SITE_BANNER_BUCKET = 'site-assets';
 export const SITE_BANNER_OBJECT_PATH = 'banner/current';
+export const SITE_BANNER_MOBILE_OBJECT_PATH = 'banner/current-mobile';
 export const SITE_BANNER_MAX_BYTES = 4 * 1024 * 1024;
 
 const ALLOWED_BANNER_MIME_TYPES = new Set([

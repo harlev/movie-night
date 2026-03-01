@@ -26,6 +26,38 @@ test('BannerSettingsClient includes a staged new-banner preview section', () => 
   assert.equal(source.includes('New Banner Preview'), true);
 });
 
+test('BannerSettingsClient shows updated desktop ratio guidance', () => {
+  const filePath = path.join(
+    process.cwd(),
+    'src/app/(admin)/admin/banner/BannerSettingsClient.tsx'
+  );
+  const source = readFileSync(filePath, 'utf8');
+
+  assert.equal(source.includes('around 10:1'), true);
+});
+
+test('BannerSettingsClient includes mobile banner upload controls', () => {
+  const filePath = path.join(
+    process.cwd(),
+    'src/app/(admin)/admin/banner/BannerSettingsClient.tsx'
+  );
+  const source = readFileSync(filePath, 'utf8');
+
+  assert.equal(source.includes('Upload Mobile Banner Image'), true);
+  assert.equal(source.includes('New Mobile Banner Preview'), true);
+});
+
+test('BannerSettingsClient does not show current banner preview sections', () => {
+  const filePath = path.join(
+    process.cwd(),
+    'src/app/(admin)/admin/banner/BannerSettingsClient.tsx'
+  );
+  const source = readFileSync(filePath, 'utf8');
+
+  assert.equal(source.includes('Current Desktop Banner Preview'), false);
+  assert.equal(source.includes('Current Mobile Banner Preview'), false);
+});
+
 test('BannerSettingsClient refreshes the route after successful apply', () => {
   const filePath = path.join(
     process.cwd(),

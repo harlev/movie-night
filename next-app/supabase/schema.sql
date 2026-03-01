@@ -129,6 +129,7 @@ create table public.admin_logs (
 create table public.site_banners (
   id text primary key,
   image_path text,
+  mobile_image_path text,
   enabled boolean not null default false,
   updated_by uuid references public.profiles(id),
   created_at timestamptz not null default now(),

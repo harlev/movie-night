@@ -7,54 +7,105 @@ import type { SiteBannerSettings } from '@/lib/queries/siteBanner';
 
 interface BannerSettingsClientProps {
   banner: SiteBannerSettings | null;
-  bannerUrl: string | null;
 }
 
-export default function BannerSettingsClient({ banner, bannerUrl }: BannerSettingsClientProps) {
+export default function BannerSettingsClient({ banner }: BannerSettingsClientProps) {
   const router = useRouter();
-  const [uploadState, uploadAction, uploadPending] = useActionState(uploadSiteBannerAction, null);
+  const [desktopUploadState, desktopUploadAction, desktopUploadPending] = useActionState(
+    uploadSiteBannerAction,
+    null
+  );
+  const [mobileUploadState, mobileUploadAction, mobileUploadPending] = useActionState(
+    uploadSiteBannerAction,
+    null
+  );
   const [toggleState, toggleAction, togglePending] = useActionState(toggleSiteBannerAction, null);
-  const [stagedBannerUrl, setStagedBannerUrl] = useState<string | null>(null);
-  const [stagedBannerName, setStagedBannerName] = useState('');
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const hasHandledUploadSuccessRef = useRef(false);
+  const [stagedDesktopBannerUrl, setStagedDesktopBannerUrl] = useState<string | null>(null);
+  const [stagedDesktopBannerName, setStagedDesktopBannerName] = useState('');
+  const [stagedMobileBannerUrl, setStagedMobileBannerUrl] = useState<string | null>(null);
+  const [stagedMobileBannerName, setStagedMobileBannerName] = useState('');
+  const desktopFileInputRef = useRef<HTMLInputElement>(null);
+  const mobileFileInputRef = useRef<HTMLInputElement>(null);
+  const hasHandledDesktopUploadSuccessRef = useRef(false);
+  const hasHandledMobileUploadSuccessRef = useRef(false);
 
   const bannerEnabled = banner?.enabled ?? false;
-  const hasBannerImage = !!banner?.image_path;
+  const hasDesktopBannerImage = !!banner?.image_path;
 
   useEffect(() => {
     return () => {
-      if (stagedBannerUrl) URL.revokeObjectURL(stagedBannerUrl);
+      if (stagedDesktopBannerUrl) URL.revokeObjectURL(stagedDesktopBannerUrl);
+      if (stagedMobileBannerUrl) URL.revokeObjectURL(stagedMobileBannerUrl);
     };
-  }, [stagedBannerUrl]);
+  }, [stagedDesktopBannerUrl, stagedMobileBannerUrl]);
 
   useEffect(() => {
-    if (uploadPending) {
-      hasHandledUploadSuccessRef.current = false;
+    if (desktopUploadPending) {
+      hasHandledDesktopUploadSuccessRef.current = false;
     }
-  }, [uploadPending]);
+  }, [desktopUploadPending]);
 
   useEffect(() => {
-    if (!uploadPending && uploadState?.success && !hasHandledUploadSuccessRef.current) {
-      hasHandledUploadSuccessRef.current = true;
-      setStagedBannerUrl((previousUrl) => {
+    if (mobileUploadPending) {
+      hasHandledMobileUploadSuccessRef.current = false;
+    }
+  }, [mobileUploadPending]);
+
+  useEffect(() => {
+    if (
+      !desktopUploadPending &&
+      desktopUploadState?.success &&
+      !hasHandledDesktopUploadSuccessRef.current
+    ) {
+      hasHandledDesktopUploadSuccessRef.current = true;
+      setStagedDesktopBannerUrl((previousUrl) => {
         if (previousUrl) URL.revokeObjectURL(previousUrl);
         return null;
       });
-      setStagedBannerName('');
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
+      setStagedDesktopBannerName('');
+      if (desktopFileInputRef.current) {
+        desktopFileInputRef.current.value = '';
       }
       router.refresh();
     }
-  }, [uploadPending, uploadState, router]);
+  }, [desktopUploadPending, desktopUploadState, router]);
 
-  function handleBannerFileChange(event: ChangeEvent<HTMLInputElement>) {
+  useEffect(() => {
+    if (
+      !mobileUploadPending &&
+      mobileUploadState?.success &&
+      !hasHandledMobileUploadSuccessRef.current
+    ) {
+      hasHandledMobileUploadSuccessRef.current = true;
+      setStagedMobileBannerUrl((previousUrl) => {
+        if (previousUrl) URL.revokeObjectURL(previousUrl);
+        return null;
+      });
+      setStagedMobileBannerName('');
+      if (mobileFileInputRef.current) {
+        mobileFileInputRef.current.value = '';
+      }
+      router.refresh();
+    }
+  }, [mobileUploadPending, mobileUploadState, router]);
+
+  function handleDesktopBannerFileChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
-    setStagedBannerName(file?.name || '');
-    hasHandledUploadSuccessRef.current = false;
+    setStagedDesktopBannerName(file?.name || '');
+    hasHandledDesktopUploadSuccessRef.current = false;
 
-    setStagedBannerUrl((previousUrl) => {
+    setStagedDesktopBannerUrl((previousUrl) => {
+      if (previousUrl) URL.revokeObjectURL(previousUrl);
+      return file ? URL.createObjectURL(file) : null;
+    });
+  }
+
+  function handleMobileBannerFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    setStagedMobileBannerName(file?.name || '');
+    hasHandledMobileUploadSuccessRef.current = false;
+
+    setStagedMobileBannerUrl((previousUrl) => {
       if (previousUrl) URL.revokeObjectURL(previousUrl);
       return file ? URL.createObjectURL(file) : null;
     });
@@ -70,28 +121,13 @@ export default function BannerSettingsClient({ banner, bannerUrl }: BannerSettin
       </div>
 
       <div className="bg-[var(--color-surface)] rounded-lg p-6 space-y-4 border border-[var(--color-border)]">
-        <div>
-          <p className="text-sm font-medium text-[var(--color-text)] mb-2">Current Banner Preview</p>
-          {bannerUrl ? (
-            <div className="overflow-hidden rounded-lg border border-[var(--color-border)]/70">
-              <img
-                src={bannerUrl}
-                alt="Current site banner"
-                className="h-24 w-full object-cover object-center sm:h-28 lg:h-32"
-              />
-            </div>
-          ) : (
-            <div className="rounded-lg border border-dashed border-[var(--color-border)] p-4 text-sm text-[var(--color-text-muted)]">
-              No banner image uploaded yet.
-            </div>
-          )}
-        </div>
+        <p className="text-sm font-medium text-[var(--color-text)]">Banner Visibility</p>
 
         <form action={toggleAction} className="flex flex-wrap items-center gap-3">
           <input type="hidden" name="enabled" value={bannerEnabled ? 'false' : 'true'} />
           <button
             type="submit"
-            disabled={togglePending || (!bannerEnabled && !hasBannerImage)}
+            disabled={togglePending || (!bannerEnabled && !hasDesktopBannerImage)}
             className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors disabled:opacity-50 ${
               bannerEnabled
                 ? 'bg-[var(--color-secondary)] hover:bg-[var(--color-secondary)]/80 text-white'
@@ -118,60 +154,121 @@ export default function BannerSettingsClient({ banner, bannerUrl }: BannerSettin
       </div>
 
       <form
-        action={uploadAction}
+        action={desktopUploadAction}
         className="bg-[var(--color-surface)] rounded-lg p-6 space-y-4 border border-[var(--color-border)]"
       >
-        {stagedBannerUrl && (
+        <input type="hidden" name="variant" value="desktop" />
+        {stagedDesktopBannerUrl && (
           <div>
             <p className="text-sm font-medium text-[var(--color-text)] mb-2">New Banner Preview</p>
-            <div className="overflow-hidden rounded-lg border border-[var(--color-primary)]/50">
+            <div className="relative aspect-[10/1] overflow-hidden rounded-lg border border-[var(--color-primary)]/50">
               <img
-                src={stagedBannerUrl}
-                alt="New banner preview"
-                className="h-24 w-full object-cover object-center sm:h-28 lg:h-32"
+                src={stagedDesktopBannerUrl}
+                alt="New desktop banner preview"
+                className="h-full w-full object-cover object-center"
               />
             </div>
             <p className="mt-2 text-xs text-[var(--color-text-muted)] truncate">
-              Selected: {stagedBannerName}
+              Selected: {stagedDesktopBannerName}
             </p>
           </div>
         )}
 
         <div>
-          <label htmlFor="banner" className="block text-sm font-medium text-[var(--color-text)] mb-2">
-            Upload Banner Image
+          <label htmlFor="desktopBanner" className="block text-sm font-medium text-[var(--color-text)] mb-2">
+            Upload Desktop Banner Image
           </label>
           <input
-            ref={fileInputRef}
-            id="banner"
+            ref={desktopFileInputRef}
+            id="desktopBanner"
             type="file"
             name="banner"
             accept="image/png,image/jpeg,image/webp"
             required
-            onChange={handleBannerFileChange}
+            onChange={handleDesktopBannerFileChange}
             className="block w-full text-sm text-[var(--color-text-muted)] file:mr-3 file:px-3 file:py-2 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-[var(--color-primary)] file:text-white hover:file:bg-[var(--color-primary-dark)]"
           />
           <p className="mt-2 text-xs text-[var(--color-text-muted)]">
-            Recommended: wide image ratio (around 8:1). Max size: 4 MB. Allowed types: PNG, JPG, WEBP.
+            Recommended: wide image ratio (around 10:1). Max size: 4 MB. Allowed types: PNG, JPG, WEBP.
           </p>
         </div>
 
         <button
           type="submit"
-          disabled={uploadPending || !stagedBannerUrl}
+          disabled={desktopUploadPending || !stagedDesktopBannerUrl}
           className="px-4 py-2 bg-[var(--color-primary)] hover:bg-[var(--color-primary-dark)] text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
         >
-          {uploadPending ? 'Applying...' : 'Apply Banner'}
+          {desktopUploadPending ? 'Applying...' : 'Apply Desktop Banner'}
         </button>
 
-        {uploadState?.error && (
+        {desktopUploadState?.error && (
           <div className="bg-red-500/10 border border-red-500 text-red-400 rounded-lg p-3 text-sm">
-            {uploadState.error}
+            {desktopUploadState.error}
           </div>
         )}
-        {uploadState?.success && (
+        {desktopUploadState?.success && (
           <div className="bg-[var(--color-success)]/10 border border-[var(--color-success)] text-[var(--color-success)] rounded-lg p-3 text-sm">
-            {uploadState.message}
+            {desktopUploadState.message}
+          </div>
+        )}
+      </form>
+
+      <form
+        action={mobileUploadAction}
+        className="bg-[var(--color-surface)] rounded-lg p-6 space-y-4 border border-[var(--color-border)]"
+      >
+        <input type="hidden" name="variant" value="mobile" />
+        {stagedMobileBannerUrl && (
+          <div>
+            <p className="text-sm font-medium text-[var(--color-text)] mb-2">New Mobile Banner Preview</p>
+            <div className="relative aspect-[4/1] overflow-hidden rounded-lg border border-[var(--color-primary)]/50">
+              <img
+                src={stagedMobileBannerUrl}
+                alt="New mobile banner preview"
+                className="h-full w-full object-cover object-center"
+              />
+            </div>
+            <p className="mt-2 text-xs text-[var(--color-text-muted)] truncate">
+              Selected: {stagedMobileBannerName}
+            </p>
+          </div>
+        )}
+
+        <div>
+          <label htmlFor="mobileBanner" className="block text-sm font-medium text-[var(--color-text)] mb-2">
+            Upload Mobile Banner Image
+          </label>
+          <input
+            ref={mobileFileInputRef}
+            id="mobileBanner"
+            type="file"
+            name="banner"
+            accept="image/png,image/jpeg,image/webp"
+            required
+            onChange={handleMobileBannerFileChange}
+            className="block w-full text-sm text-[var(--color-text-muted)] file:mr-3 file:px-3 file:py-2 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-[var(--color-primary)] file:text-white hover:file:bg-[var(--color-primary-dark)]"
+          />
+          <p className="mt-2 text-xs text-[var(--color-text-muted)]">
+            Recommended: mobile image ratio (around 4:1). Max size: 4 MB. Allowed types: PNG, JPG, WEBP.
+          </p>
+        </div>
+
+        <button
+          type="submit"
+          disabled={mobileUploadPending || !stagedMobileBannerUrl}
+          className="px-4 py-2 bg-[var(--color-primary)] hover:bg-[var(--color-primary-dark)] text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+        >
+          {mobileUploadPending ? 'Applying...' : 'Apply Mobile Banner'}
+        </button>
+
+        {mobileUploadState?.error && (
+          <div className="bg-red-500/10 border border-red-500 text-red-400 rounded-lg p-3 text-sm">
+            {mobileUploadState.error}
+          </div>
+        )}
+        {mobileUploadState?.success && (
+          <div className="bg-[var(--color-success)]/10 border border-[var(--color-success)] text-[var(--color-success)] rounded-lg p-3 text-sm">
+            {mobileUploadState.message}
           </div>
         )}
       </form>

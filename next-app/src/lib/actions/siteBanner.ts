@@ -9,6 +9,7 @@ import { getSiteBanner } from '@/lib/queries/siteBanner';
 import {
   getSiteBannerValidationError,
   SITE_BANNER_BUCKET,
+  SITE_BANNER_MOBILE_OBJECT_PATH,
   SITE_BANNER_OBJECT_PATH,
 } from '@/lib/utils/siteBanner';
 
@@ -25,13 +26,16 @@ export async function uploadSiteBannerAction(prevState: any, formData: FormData)
   const bannerFile = formData.get('banner');
   if (!(bannerFile instanceof File)) return { error: 'Please choose an image file to upload' };
 
+  const variant = formData.get('variant') === 'mobile' ? 'mobile' : 'desktop';
+  const objectPath = variant === 'mobile' ? SITE_BANNER_MOBILE_OBJECT_PATH : SITE_BANNER_OBJECT_PATH;
+
   const validationError = getSiteBannerValidationError(bannerFile);
   if (validationError) return { error: validationError };
 
   const admin = createAdminClient();
   const { error: uploadError } = await admin.storage
     .from(SITE_BANNER_BUCKET)
-    .upload(SITE_BANNER_OBJECT_PATH, await bannerFile.arrayBuffer(), {
+    .upload(objectPath, await bannerFile.arrayBuffer(), {
       upsert: true,
       contentType: bannerFile.type,
       cacheControl: '3600',
@@ -41,12 +45,17 @@ export async function uploadSiteBannerAction(prevState: any, formData: FormData)
     return { error: 'Failed to upload banner image' };
   }
 
+  const currentBanner = await getSiteBanner();
   const now = new Date().toISOString();
+  const desktopPath = variant === 'desktop' ? objectPath : currentBanner?.image_path ?? null;
+  const mobilePath = variant === 'mobile' ? objectPath : currentBanner?.mobile_image_path ?? null;
+
   const { error: updateError } = await admin.from('site_banners').upsert(
     {
       id: 'main',
-      image_path: SITE_BANNER_OBJECT_PATH,
-      enabled: true,
+      image_path: desktopPath,
+      mobile_image_path: mobilePath,
+      enabled: desktopPath ? true : (currentBanner?.enabled ?? false),
       updated_by: user.id,
       updated_at: now,
     },
@@ -59,10 +68,11 @@ export async function uploadSiteBannerAction(prevState: any, formData: FormData)
 
   await createAdminLog({
     actorId: user.id,
-    action: 'site_banner_uploaded',
+    action: variant === 'mobile' ? 'site_banner_mobile_uploaded' : 'site_banner_uploaded',
     targetType: 'banner',
     targetId: 'main',
     details: {
+      variant,
       fileName: bannerFile.name,
       fileSize: bannerFile.size,
       mimeType: bannerFile.type,
@@ -72,7 +82,11 @@ export async function uploadSiteBannerAction(prevState: any, formData: FormData)
   revalidatePath('/admin/banner');
   revalidatePath('/dashboard');
   revalidatePath('/movies');
-  return { success: true, message: 'Banner uploaded and enabled' };
+  if (variant === 'mobile') {
+    return { success: true, message: 'Mobile banner uploaded' };
+  }
+
+  return { success: true, message: 'Desktop banner uploaded and enabled' };
 }
 
 export async function toggleSiteBannerAction(prevState: any, formData: FormData) {
@@ -98,6 +112,7 @@ export async function toggleSiteBannerAction(prevState: any, formData: FormData)
     {
       id: 'main',
       image_path: currentBanner?.image_path ?? null,
+      mobile_image_path: currentBanner?.mobile_image_path ?? null,
       enabled,
       updated_by: user.id,
       updated_at: now,

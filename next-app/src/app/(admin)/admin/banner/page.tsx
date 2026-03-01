@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import { getSiteBanner } from '@/lib/queries/siteBanner';
-import { buildSiteBannerPublicUrl } from '@/lib/utils/siteBanner';
 import BannerSettingsClient from './BannerSettingsClient';
 
 export const metadata: Metadata = {
@@ -9,16 +8,5 @@ export const metadata: Metadata = {
 
 export default async function AdminBannerPage() {
   const banner = await getSiteBanner();
-  const bannerUrl = buildSiteBannerPublicUrl({
-    supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
-    objectPath: banner?.image_path,
-    updatedAt: banner?.updated_at,
-  });
-
-  return (
-    <BannerSettingsClient
-      banner={banner}
-      bannerUrl={bannerUrl}
-    />
-  );
+  return <BannerSettingsClient banner={banner} />;
 }

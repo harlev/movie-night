@@ -5,10 +5,12 @@ import { getAllMovies } from '@/lib/queries/movies';
 import { getAllUsers } from '@/lib/queries/profiles';
 import { getBallot, getAllBallots } from '@/lib/queries/ballots';
 import { calculateStandings, type Standing } from '@/lib/services/scoring';
+import { getSiteBanner } from '@/lib/queries/siteBanner';
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import EmptyState from '@/components/ui/EmptyState';
 import CountdownTimer from '@/components/CountdownTimer';
+import SiteBanner from '@/components/SiteBanner';
 
 export const metadata: Metadata = {
   title: 'Dashboard - Movie Night',
@@ -23,7 +25,7 @@ export default async function DashboardPage() {
   } = await supabase.auth.getUser();
 
   // Fetch data in parallel
-  const [liveSurvey, livePolls, allMovies, allUsers, frozenSurveysRes] = await Promise.all([
+  const [liveSurvey, livePolls, allMovies, allUsers, frozenSurveysRes, siteBanner] = await Promise.all([
     getLiveSurvey().catch(() => null),
     getLivePolls().catch(() => []),
     getAllMovies(),
@@ -37,6 +39,7 @@ export default async function DashboardPage() {
         .eq('archived', false);
       return count || 0;
     })(),
+    getSiteBanner(),
   ]);
 
   const currentUser = user ? allUsers.find((u) => u.id === user.id) : null;
@@ -99,6 +102,8 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-8 stagger-children">
+      <SiteBanner banner={siteBanner} />
+
       {/* Header */}
       <div>
         <p className="text-xs uppercase tracking-widest text-[var(--color-primary)] font-medium mb-1">Now Showing</p>

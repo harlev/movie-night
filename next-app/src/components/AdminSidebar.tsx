@@ -18,6 +18,17 @@ const adminNavItems = [
     ),
   },
   {
+    href: '/admin/banner',
+    label: 'Banner',
+    icon: (
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <rect x="3" y="5" width="18" height="14" rx="2" />
+        <path d="M3 12h18" strokeLinecap="round" />
+        <path d="M7 9h4" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
     href: '/admin/surveys',
     label: 'Surveys',
     icon: (

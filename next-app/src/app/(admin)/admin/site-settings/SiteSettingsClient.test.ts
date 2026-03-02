@@ -13,6 +13,8 @@ test('SiteSettingsClient includes scheduling controls for next movie night', () 
 
   assert.equal(source.includes('Next Movie Night'), true);
   assert.equal(source.includes('Override Date'), true);
+  assert.equal(source.includes('siteSettings?.next_movie_night_override_date'), true);
+  assert.equal(source.includes('banner?.next_movie_night_override_date'), false);
   assert.equal(source.includes('Clear Override'), true);
 });
 

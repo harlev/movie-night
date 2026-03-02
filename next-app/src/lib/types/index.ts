@@ -113,7 +113,7 @@ export interface AdminLog {
   id: string;
   actor_id: string;
   action: string;
-  target_type: 'user' | 'movie' | 'survey' | 'invite' | 'poll' | 'suggestion' | 'banner';
+  target_type: 'user' | 'movie' | 'survey' | 'invite' | 'poll' | 'suggestion' | 'banner' | 'setting';
   target_id: string;
   details: Record<string, unknown> | null;
   created_at: string;

@@ -4,16 +4,18 @@ import { useActionState, useEffect, useRef, useState, type ChangeEvent } from 'r
 import { useRouter } from 'next/navigation';
 import {
   toggleSiteBannerAction,
-  updateNextMovieNightOverrideAction,
   uploadSiteBannerAction,
 } from '@/lib/actions/siteBanner';
+import { updateNextMovieNightOverrideAction } from '@/lib/actions/siteSettings';
 import type { SiteBannerSettings } from '@/lib/queries/siteBanner';
+import type { SiteSettings } from '@/lib/queries/siteSettings';
 
 interface SiteSettingsClientProps {
   banner: SiteBannerSettings | null;
+  siteSettings: SiteSettings | null;
 }
 
-export default function SiteSettingsClient({ banner }: SiteSettingsClientProps) {
+export default function SiteSettingsClient({ banner, siteSettings }: SiteSettingsClientProps) {
   const router = useRouter();
   const [desktopUploadState, desktopUploadAction, desktopUploadPending] = useActionState(
     uploadSiteBannerAction,
@@ -145,7 +147,7 @@ export default function SiteSettingsClient({ banner }: SiteSettingsClientProps) 
               id="overrideDate"
               type="date"
               name="overrideDate"
-              defaultValue={banner?.next_movie_night_override_date || ''}
+              defaultValue={siteSettings?.next_movie_night_override_date || ''}
               className="w-full md:w-auto px-3 py-2 bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-lg text-[var(--color-text)]"
             />
           </div>
@@ -162,7 +164,7 @@ export default function SiteSettingsClient({ banner }: SiteSettingsClientProps) 
           <input type="hidden" name="mode" value="clear" />
           <button
             type="submit"
-            disabled={overridePending || !banner?.next_movie_night_override_date}
+            disabled={overridePending || !siteSettings?.next_movie_night_override_date}
             className="px-4 py-2 bg-[var(--color-secondary)] hover:bg-[var(--color-secondary)]/80 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
           >
             Clear Override

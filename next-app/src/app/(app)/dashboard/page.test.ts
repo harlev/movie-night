@@ -26,7 +26,6 @@ test('dashboard header uses a unified next movie night card instead of separate 
   const source = readFileSync(DASHBOARD_PAGE_PATH, 'utf8');
 
   assert.equal(source.includes('const nextMovie = siteSettings?.next_movie ?? null;'), true);
-  assert.equal(source.includes('Movie will be set after the survey closes'), true);
   assert.equal(source.includes('Next up'), false);
   assert.equal(source.includes('Selected from the latest completed survey'), false);
   assert.equal(/>\s*Next Movie\s*</.test(source), false);

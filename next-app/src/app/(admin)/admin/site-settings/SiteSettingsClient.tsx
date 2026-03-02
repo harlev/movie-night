@@ -6,16 +6,24 @@ import {
   toggleSiteBannerAction,
   uploadSiteBannerAction,
 } from '@/lib/actions/siteBanner';
-import { updateNextMovieNightOverrideAction } from '@/lib/actions/siteSettings';
+import {
+  updateNextMovieNightOverrideAction,
+  updateNextMovieSelectionAction,
+} from '@/lib/actions/siteSettings';
 import type { SiteBannerSettings } from '@/lib/queries/siteBanner';
 import type { SiteSettings } from '@/lib/queries/siteSettings';
 
 interface SiteSettingsClientProps {
   banner: SiteBannerSettings | null;
   siteSettings: SiteSettings | null;
+  movieOptions: Array<{ id: string; title: string }>;
 }
 
-export default function SiteSettingsClient({ banner, siteSettings }: SiteSettingsClientProps) {
+export default function SiteSettingsClient({
+  banner,
+  siteSettings,
+  movieOptions,
+}: SiteSettingsClientProps) {
   const router = useRouter();
   const [desktopUploadState, desktopUploadAction, desktopUploadPending] = useActionState(
     uploadSiteBannerAction,
@@ -28,6 +36,10 @@ export default function SiteSettingsClient({ banner, siteSettings }: SiteSetting
   const [toggleState, toggleAction, togglePending] = useActionState(toggleSiteBannerAction, null);
   const [overrideState, overrideAction, overridePending] = useActionState(
     updateNextMovieNightOverrideAction,
+    null
+  );
+  const [nextMovieState, nextMovieAction, nextMoviePending] = useActionState(
+    updateNextMovieSelectionAction,
     null
   );
   const [stagedDesktopBannerUrl, setStagedDesktopBannerUrl] = useState<string | null>(null);
@@ -181,6 +193,70 @@ export default function SiteSettingsClient({ banner, siteSettings }: SiteSetting
             {overrideState.message}
           </div>
         )}
+
+        <div className="pt-2 border-t border-[var(--color-border)]/60 space-y-3">
+          <p className="text-sm font-medium text-[var(--color-text)]">Next Movie Selection</p>
+          <p className="text-sm text-[var(--color-text-muted)]">
+            Choose which movie appears in the dashboard hero card, or clear it to show date only.
+          </p>
+
+          {siteSettings?.next_movie?.title && (
+            <p className="text-sm text-[var(--color-text-muted)]">
+              Current: <span className="text-[var(--color-text)]">{siteSettings.next_movie.title}</span>
+            </p>
+          )}
+
+          <form action={nextMovieAction} className="space-y-3">
+            <input type="hidden" name="mode" value="set" />
+            <div>
+              <label htmlFor="movieId" className="block text-sm font-medium text-[var(--color-text)] mb-2">
+                Movie
+              </label>
+              <select
+                id="movieId"
+                name="movieId"
+                defaultValue={siteSettings?.next_movie_id || ''}
+                className="w-full md:w-auto min-w-[18rem] px-3 py-2 bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-lg text-[var(--color-text)]"
+              >
+                <option value="">Select a movie</option>
+                {movieOptions.map((movie) => (
+                  <option key={movie.id} value={movie.id}>
+                    {movie.title}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <button
+              type="submit"
+              disabled={nextMoviePending || movieOptions.length === 0}
+              className="px-4 py-2 bg-[var(--color-primary)] hover:bg-[var(--color-primary-dark)] text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+            >
+              {nextMoviePending ? 'Saving...' : 'Save Next Movie'}
+            </button>
+          </form>
+
+          <form action={nextMovieAction}>
+            <input type="hidden" name="mode" value="clear" />
+            <button
+              type="submit"
+              disabled={nextMoviePending || !siteSettings?.next_movie_id}
+              className="px-4 py-2 bg-[var(--color-secondary)] hover:bg-[var(--color-secondary)]/80 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+            >
+              Clear Next Movie
+            </button>
+          </form>
+
+          {nextMovieState?.error && (
+            <div className="bg-red-500/10 border border-red-500 text-red-400 rounded-lg p-3 text-sm">
+              {nextMovieState.error}
+            </div>
+          )}
+          {nextMovieState?.success && (
+            <div className="bg-[var(--color-success)]/10 border border-[var(--color-success)] text-[var(--color-success)] rounded-lg p-3 text-sm">
+              {nextMovieState.message}
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="bg-[var(--color-surface)] rounded-lg p-6 space-y-4 border border-[var(--color-border)]">

@@ -113,7 +113,7 @@ export default async function DashboardPage() {
       <h1 className="sr-only">Dashboard</h1>
 
       {/* Header */}
-      <div>
+      {nextMovie ? (
         <div className="rounded-2xl border border-[var(--color-border)]/60 bg-[var(--color-surface)]/90 p-4 sm:p-5 shadow-md shadow-black/20">
           <div className="grid gap-4 sm:gap-5 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
             <div className="min-w-0 space-y-2.5 sm:space-y-3">
@@ -123,57 +123,52 @@ export default async function DashboardPage() {
               <p className="text-xl sm:text-2xl font-display font-semibold text-[var(--color-text)]/90 leading-tight">
                 {nextMovieNightDateLabel}
               </p>
-              {nextMovie ? (
-                <div>
-                  <Link
-                    href={`/movies/${nextMovie.id}`}
-                    aria-label={`View details for ${nextMovie.title}`}
-                    className="group inline-flex max-w-full rounded-md transition-colors hover:text-[var(--color-primary-light)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-surface)]"
-                  >
-                    <span className="text-3xl sm:text-5xl font-display font-semibold text-[var(--color-text)] leading-[1.05] break-words transition-colors group-hover:text-[var(--color-primary-light)] group-focus-visible:text-[var(--color-primary-light)]">
-                      {nextMovie.title}
-                    </span>
-                  </Link>
-                </div>
-              ) : (
-                <p className="text-sm sm:text-base text-[var(--color-text-muted)]">
-                  Movie will be set after the survey closes
-                </p>
-              )}
-            </div>
-
-            <div className="justify-self-start md:justify-self-end">
-              {nextMovie ? (
+              <div>
                 <Link
                   href={`/movies/${nextMovie.id}`}
                   aria-label={`View details for ${nextMovie.title}`}
-                  className="group block rounded-lg transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-surface)]"
+                  className="group inline-flex max-w-full rounded-md transition-colors hover:text-[var(--color-primary-light)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-surface)]"
                 >
-                  {nextMovie.metadata_snapshot?.posterPath ? (
-                    <img
-                      src={`${TMDB_IMAGE_BASE}${nextMovie.metadata_snapshot.posterPath}`}
-                      alt={`Poster for ${nextMovie.title}`}
-                      className="w-24 h-36 sm:w-28 sm:h-[168px] rounded-lg object-cover border border-[var(--color-border)]/60 shadow-md shadow-black/20 transition-all duration-200 group-hover:border-[var(--color-primary)]/50 group-hover:shadow-lg group-hover:shadow-black/30 group-focus-visible:border-[var(--color-primary)]/50"
-                    />
-                  ) : (
-                    <div className="w-24 h-36 sm:w-28 sm:h-[168px] rounded-lg border border-[var(--color-border)]/60 bg-[var(--color-surface-elevated)] flex items-center justify-center transition-colors group-hover:border-[var(--color-primary)]/50 group-focus-visible:border-[var(--color-primary)]/50">
-                      <svg className="w-7 h-7 text-[var(--color-text-muted)]/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.2}>
-                        <rect x="2" y="4" width="20" height="16" rx="2" />
-                      </svg>
-                    </div>
-                  )}
+                  <span className="text-3xl sm:text-5xl font-display font-semibold text-[var(--color-text)] leading-[1.05] break-words transition-colors group-hover:text-[var(--color-primary-light)] group-focus-visible:text-[var(--color-primary-light)]">
+                    {nextMovie.title}
+                  </span>
                 </Link>
-              ) : (
-                <div className="w-24 h-36 sm:w-28 sm:h-[168px] rounded-lg border border-[var(--color-border)]/60 bg-[var(--color-surface-elevated)] flex items-center justify-center">
-                  <svg className="w-7 h-7 text-[var(--color-text-muted)]/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.2}>
-                    <rect x="2" y="4" width="20" height="16" rx="2" />
-                  </svg>
-                </div>
-              )}
+              </div>
+            </div>
+
+            <div className="justify-self-start md:justify-self-end">
+              <Link
+                href={`/movies/${nextMovie.id}`}
+                aria-label={`View details for ${nextMovie.title}`}
+                className="group block rounded-lg transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-surface)]"
+              >
+                {nextMovie.metadata_snapshot?.posterPath ? (
+                  <img
+                    src={`${TMDB_IMAGE_BASE}${nextMovie.metadata_snapshot.posterPath}`}
+                    alt={`Poster for ${nextMovie.title}`}
+                    className="w-24 h-36 sm:w-28 sm:h-[168px] rounded-lg object-cover border border-[var(--color-border)]/60 shadow-md shadow-black/20 transition-all duration-200 group-hover:border-[var(--color-primary)]/50 group-hover:shadow-lg group-hover:shadow-black/30 group-focus-visible:border-[var(--color-primary)]/50"
+                  />
+                ) : (
+                  <div className="w-24 h-36 sm:w-28 sm:h-[168px] rounded-lg border border-[var(--color-border)]/60 bg-[var(--color-surface-elevated)] flex items-center justify-center transition-colors group-hover:border-[var(--color-primary)]/50 group-focus-visible:border-[var(--color-primary)]/50">
+                    <svg className="w-7 h-7 text-[var(--color-text-muted)]/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.2}>
+                      <rect x="2" y="4" width="20" height="16" rx="2" />
+                    </svg>
+                  </div>
+                )}
+              </Link>
             </div>
           </div>
         </div>
-      </div>
+      ) : (
+        <div className="space-y-1.5">
+          <p className="text-[10px] sm:text-xs uppercase tracking-widest text-[var(--color-primary)] font-medium">
+            Next Movie Night
+          </p>
+          <p className="text-xl sm:text-2xl font-display font-semibold text-[var(--color-text)]/90 leading-tight">
+            {nextMovieNightDateLabel}
+          </p>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

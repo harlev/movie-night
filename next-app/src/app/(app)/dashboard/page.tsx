@@ -110,6 +110,7 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-8 stagger-children">
       <SiteBanner banner={siteBanner} />
+      <h1 className="sr-only">Dashboard</h1>
 
       {/* Header */}
       <div>

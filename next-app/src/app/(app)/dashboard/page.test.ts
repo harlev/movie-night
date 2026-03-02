@@ -10,6 +10,7 @@ test('dashboard header uses Next Movie Night label', () => {
 
   assert.equal(source.includes('Next Movie Night'), true);
   assert.equal(source.includes('Now Showing'), false);
+  assert.equal(source.includes('<h1 className="sr-only">Dashboard</h1>'), true);
   assert.equal(source.includes('Welcome back to F.C Movie Night'), false);
 });
 

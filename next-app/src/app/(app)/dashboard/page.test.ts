@@ -15,6 +15,6 @@ test('dashboard header uses Next Movie Night label', () => {
 test('dashboard header renders computed next movie night date', () => {
   const source = readFileSync(DASHBOARD_PAGE_PATH, 'utf8');
 
-  assert.equal(source.includes('const nextMovieNightDateLabel = getNextMovieNightDateLabel();'), true);
+  assert.equal(source.includes('const nextMovieNightDateLabel = getNextMovieNightLabel({'), true);
   assert.equal(source.includes('{nextMovieNightDateLabel}'), true);
 });

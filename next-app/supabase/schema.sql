@@ -130,6 +130,7 @@ create table public.site_banners (
   id text primary key,
   image_path text,
   mobile_image_path text,
+  next_movie_night_override_date date,
   enabled boolean not null default false,
   updated_by uuid references public.profiles(id),
   created_at timestamptz not null default now(),

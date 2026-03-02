@@ -6,6 +6,7 @@ import { getAllUsers } from '@/lib/queries/profiles';
 import { getBallot, getAllBallots } from '@/lib/queries/ballots';
 import { calculateStandings, type Standing } from '@/lib/services/scoring';
 import { getSiteBanner } from '@/lib/queries/siteBanner';
+import { getSiteSettings } from '@/lib/queries/siteSettings';
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import EmptyState from '@/components/ui/EmptyState';
@@ -26,7 +27,7 @@ export default async function DashboardPage() {
   } = await supabase.auth.getUser();
 
   // Fetch data in parallel
-  const [liveSurvey, livePolls, allMovies, allUsers, frozenSurveysRes, siteBanner] = await Promise.all([
+  const [liveSurvey, livePolls, allMovies, allUsers, frozenSurveysRes, siteBanner, siteSettings] = await Promise.all([
     getLiveSurvey().catch(() => null),
     getLivePolls().catch(() => []),
     getAllMovies(),
@@ -41,6 +42,7 @@ export default async function DashboardPage() {
       return count || 0;
     })(),
     getSiteBanner(),
+    getSiteSettings(),
   ]);
 
   const currentUser = user ? allUsers.find((u) => u.id === user.id) : null;
@@ -101,22 +103,75 @@ export default async function DashboardPage() {
     surveysCompleted: frozenSurveysRes,
   };
   const nextMovieNightDateLabel = getNextMovieNightLabel({
-    overrideDate: siteBanner?.next_movie_night_override_date ?? null,
+    overrideDate: siteSettings?.next_movie_night_override_date ?? null,
   });
+  const nextMovie = siteSettings?.next_movie ?? null;
 
   return (
     <div className="space-y-8 stagger-children">
       <SiteBanner banner={siteBanner} />
 
       {/* Header */}
-      <div className="space-y-1.5">
-        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-          <p className="text-xs uppercase tracking-widest text-[var(--color-primary)] font-medium">Next Movie Night:</p>
-          <p className="text-sm sm:text-base font-medium text-[var(--color-text)]/90">{nextMovieNightDateLabel}</p>
+      <div>
+        <div className="rounded-2xl border border-[var(--color-border)]/60 bg-[var(--color-surface)]/90 p-4 sm:p-5 shadow-md shadow-black/20">
+          <div className="grid gap-4 sm:gap-5 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+            <div className="min-w-0 space-y-2.5 sm:space-y-3">
+              <p className="text-[10px] sm:text-xs uppercase tracking-widest text-[var(--color-primary)] font-medium">
+                Next Movie Night
+              </p>
+              <p className="text-xl sm:text-2xl font-display font-semibold text-[var(--color-text)]/90 leading-tight">
+                {nextMovieNightDateLabel}
+              </p>
+              {nextMovie ? (
+                <div>
+                  <Link
+                    href={`/movies/${nextMovie.id}`}
+                    aria-label={`View details for ${nextMovie.title}`}
+                    className="group inline-flex max-w-full rounded-md transition-colors hover:text-[var(--color-primary-light)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-surface)]"
+                  >
+                    <span className="text-3xl sm:text-5xl font-display font-semibold text-[var(--color-text)] leading-[1.05] break-words transition-colors group-hover:text-[var(--color-primary-light)] group-focus-visible:text-[var(--color-primary-light)]">
+                      {nextMovie.title}
+                    </span>
+                  </Link>
+                </div>
+              ) : (
+                <p className="text-sm sm:text-base text-[var(--color-text-muted)]">
+                  Movie will be set after the survey closes
+                </p>
+              )}
+            </div>
+
+            <div className="justify-self-start md:justify-self-end">
+              {nextMovie ? (
+                <Link
+                  href={`/movies/${nextMovie.id}`}
+                  aria-label={`View details for ${nextMovie.title}`}
+                  className="group block rounded-lg transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-surface)]"
+                >
+                  {nextMovie.metadata_snapshot?.posterPath ? (
+                    <img
+                      src={`${TMDB_IMAGE_BASE}${nextMovie.metadata_snapshot.posterPath}`}
+                      alt={`Poster for ${nextMovie.title}`}
+                      className="w-24 h-36 sm:w-28 sm:h-[168px] rounded-lg object-cover border border-[var(--color-border)]/60 shadow-md shadow-black/20 transition-all duration-200 group-hover:border-[var(--color-primary)]/50 group-hover:shadow-lg group-hover:shadow-black/30 group-focus-visible:border-[var(--color-primary)]/50"
+                    />
+                  ) : (
+                    <div className="w-24 h-36 sm:w-28 sm:h-[168px] rounded-lg border border-[var(--color-border)]/60 bg-[var(--color-surface-elevated)] flex items-center justify-center transition-colors group-hover:border-[var(--color-primary)]/50 group-focus-visible:border-[var(--color-primary)]/50">
+                      <svg className="w-7 h-7 text-[var(--color-text-muted)]/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.2}>
+                        <rect x="2" y="4" width="20" height="16" rx="2" />
+                      </svg>
+                    </div>
+                  )}
+                </Link>
+              ) : (
+                <div className="w-24 h-36 sm:w-28 sm:h-[168px] rounded-lg border border-[var(--color-border)]/60 bg-[var(--color-surface-elevated)] flex items-center justify-center">
+                  <svg className="w-7 h-7 text-[var(--color-text-muted)]/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.2}>
+                    <rect x="2" y="4" width="20" height="16" rx="2" />
+                  </svg>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
-        <h1 className="text-2xl font-display font-bold text-[var(--color-text)]">
-          Welcome back to F.C Movie Night
-        </h1>
       </div>
 
       {/* Stats */}

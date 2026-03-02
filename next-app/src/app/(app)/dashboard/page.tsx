@@ -11,6 +11,7 @@ import type { Metadata } from 'next';
 import EmptyState from '@/components/ui/EmptyState';
 import CountdownTimer from '@/components/CountdownTimer';
 import SiteBanner from '@/components/SiteBanner';
+import { getNextMovieNightLabel } from '@/lib/utils/nextMovieNight';
 
 export const metadata: Metadata = {
   title: 'Dashboard - Movie Night',
@@ -99,16 +100,22 @@ export default async function DashboardPage() {
     totalUsers: allUsers.filter((u) => u.status === 'active').length,
     surveysCompleted: frozenSurveysRes,
   };
+  const nextMovieNightDateLabel = getNextMovieNightLabel({
+    overrideDate: siteBanner?.next_movie_night_override_date ?? null,
+  });
 
   return (
     <div className="space-y-8 stagger-children">
       <SiteBanner banner={siteBanner} />
 
       {/* Header */}
-      <div>
-        <p className="text-xs uppercase tracking-widest text-[var(--color-primary)] font-medium mb-1">Now Showing</p>
+      <div className="space-y-1.5">
+        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+          <p className="text-xs uppercase tracking-widest text-[var(--color-primary)] font-medium">Next Movie Night:</p>
+          <p className="text-sm sm:text-base font-medium text-[var(--color-text)]/90">{nextMovieNightDateLabel}</p>
+        </div>
         <h1 className="text-2xl font-display font-bold text-[var(--color-text)]">
-          Welcome back to Movie Night
+          Welcome back to F.C Movie Night
         </h1>
       </div>
 

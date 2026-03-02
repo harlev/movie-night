@@ -18,13 +18,12 @@ const adminNavItems = [
     ),
   },
   {
-    href: '/admin/banner',
-    label: 'Banner',
+    href: '/admin/site-settings',
+    label: 'Site Settings',
     icon: (
       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <rect x="3" y="5" width="18" height="14" rx="2" />
-        <path d="M3 12h18" strokeLinecap="round" />
-        <path d="M7 9h4" strokeLinecap="round" />
+        <circle cx="12" cy="12" r="3.5" />
+        <path d="M19.4 15a1.7 1.7 0 00.34 1.88l.03.03a2 2 0 01-2.83 2.83l-.03-.03A1.7 1.7 0 0015 20.4a1.7 1.7 0 00-1 1.56V22a2 2 0 01-4 0v-.04a1.7 1.7 0 00-1-1.56 1.7 1.7 0 00-1.88.34l-.03.03a2 2 0 01-2.83-2.83l.03-.03A1.7 1.7 0 004.6 15a1.7 1.7 0 00-1.56-1H3a2 2 0 010-4h.04a1.7 1.7 0 001.56-1A1.7 1.7 0 004.26 7.1l-.03-.03a2 2 0 012.83-2.83l.03.03A1.7 1.7 0 009 3.6a1.7 1.7 0 001-1.56V2a2 2 0 014 0v.04a1.7 1.7 0 001 1.56 1.7 1.7 0 001.88-.34l.03-.03a2 2 0 012.83 2.83l-.03.03A1.7 1.7 0 0019.4 9a1.7 1.7 0 001.56 1H21a2 2 0 010 4h-.04a1.7 1.7 0 00-1.56 1z" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     ),
   },

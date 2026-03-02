@@ -376,3 +376,10 @@ create policy "quick_poll_movies_delete" on public.quick_poll_movies for delete 
 -- ============================================================
 
 alter table public.quick_poll_votes add column if not exists disabled boolean not null default false;
+
+-- ============================================================
+-- Migration: 20260301_add_next_movie_night_override.sql
+-- ============================================================
+
+alter table if exists public.site_banners
+add column if not exists next_movie_night_override_date date;

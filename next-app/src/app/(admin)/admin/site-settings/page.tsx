@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { getSiteBanner } from '@/lib/queries/siteBanner';
+import { getSiteSettings } from '@/lib/queries/siteSettings';
 import SiteSettingsClient from './SiteSettingsClient';
 
 export const metadata: Metadata = {
@@ -7,6 +8,6 @@ export const metadata: Metadata = {
 };
 
 export default async function AdminSiteSettingsPage() {
-  const banner = await getSiteBanner();
-  return <SiteSettingsClient banner={banner} />;
+  const [banner, siteSettings] = await Promise.all([getSiteBanner(), getSiteSettings()]);
+  return <SiteSettingsClient banner={banner} siteSettings={siteSettings} />;
 }

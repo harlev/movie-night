@@ -29,6 +29,27 @@ body {
   position: relative;
 }
 
+/* Prevent iOS auto-zoom when focusing sub-16px form controls on mobile */
+@media (max-width: 640px) {
+  input:not([type]),
+  input[type='text'],
+  input[type='search'],
+  input[type='email'],
+  input[type='password'],
+  input[type='tel'],
+  input[type='url'],
+  input[type='number'],
+  input[type='date'],
+  input[type='datetime-local'],
+  input[type='month'],
+  input[type='time'],
+  input[type='week'],
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}
+
 /* Film grain overlay */
 body::before {
   content: '';

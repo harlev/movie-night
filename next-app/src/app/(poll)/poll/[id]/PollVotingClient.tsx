@@ -563,13 +563,14 @@ export default function PollVotingClient({
       )}
 
       {isLive && poll.closesAt && (
-        <div className="flex items-center justify-center gap-3 py-3 px-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)]/50">
-          <span className="text-xs uppercase tracking-widest text-[var(--color-text-muted)]">
+        <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 py-3 px-3 sm:px-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)]/50">
+          <span className="text-[11px] sm:text-xs uppercase tracking-[0.14em] sm:tracking-widest text-[var(--color-text-muted)]">
             Voting closes in
           </span>
           <CountdownTimer
             closesAt={poll.closesAt}
             variant="full"
+            className="min-w-0 max-w-full"
             onExpired={() => window.location.reload()}
           />
         </div>

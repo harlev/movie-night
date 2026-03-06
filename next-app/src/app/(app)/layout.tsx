@@ -25,7 +25,7 @@ export default async function AppLayout({
   }
 
   return (
-    <div className="min-h-screen bg-[var(--color-background)]">
+    <div className="min-h-screen bg-[var(--color-background)] overflow-x-hidden">
       <AppNav
         user={{
           displayName: profile.display_name,

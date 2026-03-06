@@ -56,18 +56,18 @@ function FullVariant({ closesAt }: { closesAt: string }) {
   ];
 
   return (
-    <div className="inline-flex items-center gap-1.5">
+    <div className="inline-flex max-w-full flex-wrap items-center justify-center gap-1.5">
       <ClockIcon className={`w-4 h-4 text-[var(--color-primary)]/60 shrink-0`} />
       {segments.map((seg, i) => (
-        <div key={seg.label} className="flex items-center gap-1.5">
+        <div key={seg.label} className="flex items-center gap-1.5 min-w-0">
           {i > 0 && (
             <span className="text-[var(--color-primary)]/40 font-bold animate-countdown-blink">:</span>
           )}
-          <div className={`bg-[var(--color-surface-elevated)] rounded-lg px-3 py-1.5 border ${urgency.border || 'border-[var(--color-border)]/30'} text-center`}>
-            <div className={`font-mono text-lg font-bold tabular-nums leading-tight ${urgency.digit}`}>
+          <div className={`bg-[var(--color-surface-elevated)] rounded-lg px-2 sm:px-3 py-1.5 border ${urgency.border || 'border-[var(--color-border)]/30'} text-center`}>
+            <div className={`font-mono text-base sm:text-lg font-bold tabular-nums leading-tight ${urgency.digit}`}>
               {String(seg.value).padStart(2, '0')}
             </div>
-            <div className="text-[9px] uppercase tracking-widest text-[var(--color-text-muted)] leading-tight">
+            <div className="text-[8px] sm:text-[9px] uppercase tracking-[0.14em] sm:tracking-widest text-[var(--color-text-muted)] leading-tight">
               {seg.label}
             </div>
           </div>

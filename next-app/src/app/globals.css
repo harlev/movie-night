@@ -218,3 +218,12 @@ body::before {
 .animate-countdown-blink {
   animation: countdown-blink 1s ease-in-out infinite;
 }
+
+@keyframes rank-in {
+  from { transform: scale(0); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.animate-rank-in {
+  animation: rank-in 0.2s ease-out;
+}

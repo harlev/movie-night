@@ -129,6 +129,68 @@ export function useBallot({ maxRankN, initialRanks, isLive }: UseBallotOptions) 
 
   const isBallotComplete = ballot.size === maxRankN;
 
+  // Toggle a movie: if selected, remove and compact ranks; if not, add at first empty slot
+  const toggleMovie = useCallback(
+    (movieId: string) => {
+      if (!isLive) return;
+
+      setBallot((prev) => {
+        const newBallot = new Map(prev);
+
+        // Check if movie is already selected
+        let existingRank: number | null = null;
+        for (const [r, m] of newBallot) {
+          if (m === movieId) {
+            existingRank = r;
+            break;
+          }
+        }
+
+        if (existingRank !== null) {
+          // Remove and compact: shift higher ranks down
+          newBallot.delete(existingRank);
+          const compacted = new Map<number, string>();
+          const sorted = Array.from(newBallot.entries()).sort((a, b) => a[0] - b[0]);
+          sorted.forEach(([, mid], i) => {
+            compacted.set(i + 1, mid);
+          });
+          return compacted;
+        }
+
+        // Not selected — add at first empty slot if not full
+        if (newBallot.size >= maxRankN) return prev; // ballot full, do nothing
+        const nextRank = newBallot.size + 1;
+        newBallot.set(nextRank, movieId);
+        return newBallot;
+      });
+    },
+    [isLive, maxRankN]
+  );
+
+  // Move a selected movie up or down in rank order
+  const moveRank = useCallback(
+    (movieId: string, direction: 'up' | 'down') => {
+      setBallot((prev) => {
+        const items = Array.from(prev.entries())
+          .map(([rank, mid]) => ({ rank, movieId: mid }))
+          .sort((a, b) => a.rank - b.rank);
+
+        const idx = items.findIndex((item) => item.movieId === movieId);
+        if (idx === -1) return prev;
+
+        const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+        if (swapIdx < 0 || swapIdx >= items.length) return prev;
+
+        // Swap the two movies' ranks
+        const newBallot = new Map(prev);
+        newBallot.set(items[idx].rank, items[swapIdx].movieId);
+        newBallot.set(items[swapIdx].rank, movieId);
+        return newBallot;
+      });
+    },
+    []
+  );
+
   // Reorder ballot by moving the active movie to the position of the over movie
   const reorderBallot = useCallback(
     (activeMovieId: string, overMovieId: string) => {
@@ -176,5 +238,7 @@ export function useBallot({ maxRankN, initialRanks, isLive }: UseBallotOptions) 
     firstEmptySlot,
     isBallotComplete,
     reorderBallot,
+    toggleMovie,
+    moveRank,
   };
 }

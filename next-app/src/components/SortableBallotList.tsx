@@ -95,7 +95,7 @@ export default function SortableBallotList({
   // If not live, render plain (non-draggable) slots
   if (!isLive) {
     return (
-      <div className="space-y-1.5">
+      <div className="space-y-1.5 overflow-hidden">
         {Array.from({ length: maxRankN }, (_, i) => {
           const rank = i + 1;
           const item = filledRankItems.find((f) => f.rank === rank);
@@ -147,7 +147,7 @@ export default function SortableBallotList({
   const activeMovie = activeItem ? getMovieById(activeItem.movieId) : undefined;
 
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-1.5 overflow-hidden">
       <DndContext
         id={dndId}
         sensors={sensors}

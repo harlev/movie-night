@@ -4,31 +4,9 @@ import { getSurveyById, getSurveyEntries } from '@/lib/queries/surveys';
 import { getBallot, getAllBallots } from '@/lib/queries/ballots';
 import { getUserById } from '@/lib/queries/profiles';
 import { calculateStandings, getPointsBreakdown } from '@/lib/services/scoring';
-import type { Metadata } from 'next';
 import SurveyVotingClient from './SurveyVotingClient';
 
-interface PageProps {
-  params: Promise<{ id: string }>;
-}
-
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { id } = await params;
-  const survey = await getSurveyById(id);
-  if (!survey) {
-    return { title: 'Survey Not Found' };
-  }
-  return {
-    title: `${survey.title} - Movie Night`,
-    description: survey.description || 'Vote on movies for movie night!',
-    openGraph: {
-      title: survey.title,
-      description: survey.description || 'Vote on movies for movie night!',
-      type: 'website',
-    },
-  };
-}
-
-export default async function SurveyPage({ params }: PageProps) {
+export default async function SurveyPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await createClient();
   const {

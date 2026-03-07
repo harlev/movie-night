@@ -49,6 +49,12 @@ export async function updateSession(request: NextRequest) {
     return supabaseResponse;
   }
 
+  // Allow social media crawlers through so they can read OG meta tags
+  const socialCrawlers = /WhatsApp|facebookexternalhit|Facebot|Twitterbot|LinkedInBot|Slackbot|TelegramBot|Discordbot/i;
+  if (socialCrawlers.test(request.headers.get('user-agent') || '')) {
+    return supabaseResponse;
+  }
+
   // App routes: redirect to login if not logged in
   const appRoutes = ['/dashboard', '/movies', '/survey', '/history', '/settings'];
   if (!user && appRoutes.some((r) => pathname.startsWith(r))) {

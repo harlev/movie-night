@@ -14,8 +14,17 @@ interface PageProps {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { id } = await params;
   const survey = await getSurveyById(id);
+  if (!survey) {
+    return { title: 'Survey Not Found' };
+  }
   return {
-    title: survey ? `${survey.title} - Movie Night` : 'Survey Not Found',
+    title: `${survey.title} - Movie Night`,
+    description: survey.description || 'Vote on movies for movie night!',
+    openGraph: {
+      title: survey.title,
+      description: survey.description || 'Vote on movies for movie night!',
+      type: 'website',
+    },
   };
 }
 

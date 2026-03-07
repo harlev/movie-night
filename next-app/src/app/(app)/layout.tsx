@@ -1,7 +1,10 @@
 import { redirect } from 'next/navigation';
+import { headers } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
 import { getUserById } from '@/lib/queries/profiles';
 import AppNav from '@/components/AppNav';
+
+const socialCrawlers = /WhatsApp|facebookexternalhit|Facebot|Twitterbot|LinkedInBot|Slackbot|TelegramBot|Discordbot/i;
 
 export default async function AppLayout({
   children,
@@ -14,6 +17,12 @@ export default async function AppLayout({
   } = await supabase.auth.getUser();
 
   if (!user) {
+    // Let social media crawlers through so they can read OG meta tags
+    const headersList = await headers();
+    const ua = headersList.get('user-agent') || '';
+    if (socialCrawlers.test(ua)) {
+      return <>{children}</>;
+    }
     redirect('/login');
   }
 

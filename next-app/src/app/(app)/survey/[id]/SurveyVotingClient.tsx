@@ -185,8 +185,8 @@ export default function SurveyVotingClient({
 
       <div className="grid lg:grid-cols-2 gap-6">
         {/* Ballot Section */}
-        <div className="space-y-4">
-          <div className="bg-[var(--color-surface)] rounded-xl p-6 border border-[var(--color-border)]/50 shadow-lg shadow-black/20">
+        <div className="space-y-4 min-w-0">
+          <div className="bg-[var(--color-surface)] rounded-xl p-6 border border-[var(--color-border)]/50 shadow-lg shadow-black/20 overflow-hidden">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-display font-semibold text-[var(--color-text)]">Your Ballot</h2>
               {canVote && ballot.size > 0 && (
@@ -449,7 +449,7 @@ export default function SurveyVotingClient({
         </div>
 
         {/* Standings & Ballots Section */}
-        <div className="space-y-4">
+        <div className="space-y-4 min-w-0">
           {/* Current Standings */}
           <div className="bg-[var(--color-surface)] rounded-xl p-6 border border-[var(--color-border)]/50 shadow-lg shadow-black/20">
             <h2 className="text-lg font-display font-semibold text-[var(--color-text)] mb-4">

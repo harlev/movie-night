@@ -72,7 +72,7 @@ export default function SortableBallotSlot({
     );
   }
 
-  const baseClasses = `flex items-center ${compact ? 'gap-2 p-2 rounded-lg' : 'gap-3 p-3 rounded-xl'} border-2 transition-all duration-200`;
+  const baseClasses = `flex items-center overflow-hidden ${compact ? 'gap-2 p-2 rounded-lg' : 'gap-3 p-3 rounded-xl'} border-2 transition-all duration-200`;
   const filledClasses = 'border-[var(--color-primary)]/40 bg-gradient-to-r from-[var(--color-primary)]/10 to-transparent';
   const overlayClasses = isOverlay
     ? 'ring-2 ring-[var(--color-primary)]/40 shadow-[0_8px_32px_rgba(212,160,83,0.2)] scale-[1.04] bg-[var(--color-surface)]'

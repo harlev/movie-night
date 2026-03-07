@@ -17,11 +17,12 @@ export interface MovieDetailsMetadata {
 interface MovieDetailsCardProps {
   title: string;
   metadata: MovieDetailsMetadata | null | undefined;
+  statusBadge?: ReactNode;
   primaryAction?: ReactNode;
   footer?: ReactNode;
 }
 
-export default function MovieDetailsCard({ title, metadata, primaryAction, footer }: MovieDetailsCardProps) {
+export default function MovieDetailsCard({ title, metadata, statusBadge, primaryAction, footer }: MovieDetailsCardProps) {
   return (
     <div className="bg-[var(--color-surface)] rounded-xl overflow-hidden border border-[var(--color-border)]/50 shadow-lg shadow-black/20">
       <div className="md:flex">
@@ -43,7 +44,10 @@ export default function MovieDetailsCard({ title, metadata, primaryAction, foote
           )}
         </div>
         <div className="p-6 md:flex-1">
-          <h1 className="text-2xl font-display font-bold text-[var(--color-text)]">{title}</h1>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-2xl font-display font-bold text-[var(--color-text)]">{title}</h1>
+            {statusBadge}
+          </div>
 
           <div className="flex flex-wrap items-center gap-3 mt-2 text-sm">
             {metadata?.releaseDate && (

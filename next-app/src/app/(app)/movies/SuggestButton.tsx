@@ -6,9 +6,10 @@ import { toggleSuggestionAction } from '@/lib/actions/suggestions';
 interface SuggestButtonProps {
   movieId: string;
   nominated: boolean;
+  onWarning?: (message: string) => void;
 }
 
-export default function SuggestButton({ movieId, nominated }: SuggestButtonProps) {
+export default function SuggestButton({ movieId, nominated, onWarning }: SuggestButtonProps) {
   const [pending, startTransition] = useTransition();
 
   function handleClick(e: React.MouseEvent) {
@@ -20,7 +21,12 @@ export default function SuggestButton({ movieId, nominated }: SuggestButtonProps
     formData.set('action', nominated ? 'remove' : 'add');
 
     startTransition(() => {
-      toggleSuggestionAction(null, formData);
+      void (async () => {
+        const result = await toggleSuggestionAction(null, formData);
+        if (result?.warning) {
+          onWarning?.(result.warning);
+        }
+      })();
     });
   }
 

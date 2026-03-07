@@ -1,14 +1,17 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import Link from 'next/link';
 import type { Movie } from '@/lib/types';
 import type { SuggestionData } from '@/lib/queries/suggestions';
 import EmptyState from '@/components/ui/EmptyState';
+import Toast from '@/components/ui/Toast';
+import { filterMoviesByWatched } from '@/lib/utils/watchedMovies';
 import SuggestedSection from './SuggestedSection';
 import SuggestButton from './SuggestButton';
 
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w200';
+const SHOW_WATCHED_STORAGE_KEY = 'movies-show-watched';
 
 type SortOption = 'newest' | 'title' | 'rating';
 
@@ -23,6 +26,10 @@ export default function MoviesGrid({ movies, userRole, suggestions, currentUserI
   const isViewer = userRole === 'viewer';
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<SortOption>('newest');
+  const [includeWatched, setIncludeWatched] = useState(false);
+  const [nominationWarning, setNominationWarning] = useState<string | null>(null);
+  const watchedCount = movies.filter((movie) => movie.watched).length;
+  const visibleMovieCount = includeWatched ? movies.length : movies.length - watchedCount;
 
   // Build suggestion lookup map
   const suggestionMap = useMemo(() => {
@@ -33,8 +40,23 @@ export default function MoviesGrid({ movies, userRole, suggestions, currentUserI
     return map;
   }, [suggestions]);
 
+  const movieById = useMemo(
+    () => new Map(movies.map((movie) => [movie.id, movie])),
+    [movies]
+  );
+
+  const visibleSuggestions = useMemo(
+    () =>
+      suggestions.filter((suggestion) => {
+        const movie = movieById.get(suggestion.movie_id);
+        if (!movie) return false;
+        return includeWatched || !movie.watched;
+      }),
+    [suggestions, includeWatched, movieById]
+  );
+
   const filteredMovies = useMemo(() => {
-    let result = [...movies];
+    let result = [...filterMoviesByWatched(movies, includeWatched)];
 
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
@@ -58,15 +80,41 @@ export default function MoviesGrid({ movies, userRole, suggestions, currentUserI
     }
 
     return result;
-  }, [movies, searchQuery, sortBy]);
+  }, [movies, includeWatched, searchQuery, sortBy]);
+
+  const handleNominationWarning = useCallback((message: string) => {
+    setNominationWarning(message);
+  }, []);
+
+  const clearNominationWarning = useCallback(() => {
+    setNominationWarning(null);
+  }, []);
+
+  useEffect(() => {
+    const stored = localStorage.getItem(SHOW_WATCHED_STORAGE_KEY);
+    if (stored === 'true') setIncludeWatched(true);
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem(SHOW_WATCHED_STORAGE_KEY, includeWatched ? 'true' : 'false');
+  }, [includeWatched]);
 
   return (
     <div className="space-y-6">
+      <Toast
+        message={nominationWarning}
+        onClose={clearNominationWarning}
+        variant="warning"
+      />
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-display font-bold text-[var(--color-text)]">Movies</h1>
-          <p className="text-[var(--color-text-muted)] mt-1">{movies.length} movies suggested</p>
+          <p className="text-[var(--color-text-muted)] mt-1">
+            {visibleMovieCount} movies in gallery
+            {!includeWatched && watchedCount > 0 ? ` (${watchedCount} watched hidden)` : ''}
+          </p>
         </div>
         {isViewer ? (
           <span
@@ -86,9 +134,9 @@ export default function MoviesGrid({ movies, userRole, suggestions, currentUserI
       </div>
 
       {/* Nominated for Next Week */}
-      {suggestions.length > 0 && (
+      {visibleSuggestions.length > 0 && (
         <SuggestedSection
-          suggestions={suggestions}
+          suggestions={visibleSuggestions}
           movies={movies}
           isAdmin={userRole === 'admin'}
           currentUserId={currentUserId}
@@ -106,15 +154,31 @@ export default function MoviesGrid({ movies, userRole, suggestions, currentUserI
             className="w-full px-4 py-2.5 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl text-[var(--color-text)] placeholder:text-[var(--color-text-muted)]/60 focus:outline-none focus:border-[var(--color-primary)] focus:ring-1 focus:ring-[var(--color-primary)] transition-all"
           />
         </div>
-        <select
-          value={sortBy}
-          onChange={(e) => setSortBy(e.target.value as SortOption)}
-          className="px-4 py-2.5 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)] focus:ring-1 focus:ring-[var(--color-primary)] transition-all"
-        >
-          <option value="newest">Newest First</option>
-          <option value="title">Alphabetical</option>
-          <option value="rating">Highest Rated</option>
-        </select>
+        <div className="flex items-center gap-3">
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as SortOption)}
+            className="px-4 py-2.5 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)] focus:ring-1 focus:ring-[var(--color-primary)] transition-all"
+          >
+            <option value="newest">Newest First</option>
+            <option value="title">Alphabetical</option>
+            <option value="rating">Highest Rated</option>
+          </select>
+
+          <label className="inline-flex items-center gap-2 px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl text-sm text-[var(--color-text)] cursor-pointer select-none">
+            <span>Show watched</span>
+            <span className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors ${includeWatched ? 'bg-[var(--color-warning)]' : 'bg-[var(--color-border)]'}`}>
+              <input
+                type="checkbox"
+                checked={includeWatched}
+                onChange={(e) => setIncludeWatched(e.target.checked)}
+                className="sr-only"
+                aria-label="Show watched movies"
+              />
+              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${includeWatched ? 'translate-x-5' : 'translate-x-1'}`} />
+            </span>
+          </label>
+        </div>
       </div>
 
       {/* Movie Grid */}
@@ -122,18 +186,23 @@ export default function MoviesGrid({ movies, userRole, suggestions, currentUserI
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
           {filteredMovies.map((movie) => {
             const suggestion = suggestionMap.get(movie.id);
+            const isWatched = movie.watched;
             return (
               <Link
                 key={movie.id}
                 href={`/movies/${movie.id}`}
-                className="group bg-[var(--color-surface)] rounded-xl overflow-hidden border border-[var(--color-border)]/50 shadow-lg shadow-black/20 hover:-translate-y-1.5 hover:shadow-xl hover:shadow-black/30 transition-all duration-300"
+                className={`group bg-[var(--color-surface)] rounded-xl overflow-hidden border shadow-lg shadow-black/20 hover:-translate-y-1.5 hover:shadow-xl hover:shadow-black/30 transition-all duration-300 ${
+                  isWatched
+                    ? 'border-[var(--color-warning)]/60 shadow-[var(--color-warning)]/10'
+                    : 'border-[var(--color-border)]/50'
+                }`}
               >
                 <div className="relative overflow-hidden">
                   {movie.metadata_snapshot?.posterPath ? (
                     <img
                       src={`${TMDB_IMAGE_BASE}${movie.metadata_snapshot.posterPath}`}
                       alt={movie.title}
-                      className="w-full aspect-[2/3] object-cover group-hover:scale-105 transition-transform duration-500"
+                      className={`w-full aspect-[2/3] object-cover group-hover:scale-105 transition-transform duration-500 ${isWatched ? 'grayscale opacity-65' : ''}`}
                       loading="lazy"
                     />
                   ) : (
@@ -143,6 +212,14 @@ export default function MoviesGrid({ movies, userRole, suggestions, currentUserI
                         <path d="M2 8h20M2 16h20" />
                         <path d="M6 4v4M6 16v4M18 4v4M18 16v4" />
                       </svg>
+                    </div>
+                  )}
+                  {isWatched && (
+                    <div className="absolute top-2 left-2 bg-black/75 backdrop-blur-sm rounded-lg px-1.5 py-0.5 flex items-center gap-1">
+                      <svg className="w-3 h-3 text-[var(--color-warning)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span className="text-[10px] font-bold text-[var(--color-warning)] tracking-wide">WATCHED</span>
                     </div>
                   )}
                   {/* Gradient overlay on hover */}
@@ -164,12 +241,13 @@ export default function MoviesGrid({ movies, userRole, suggestions, currentUserI
                       <SuggestButton
                         movieId={movie.id}
                         nominated={suggestion?.current_user_suggested ?? false}
+                        onWarning={handleNominationWarning}
                       />
                     </div>
                   )}
                 </div>
-                <div className="p-3">
-                  <p className="font-medium text-[var(--color-text)] truncate group-hover:text-[var(--color-primary)] transition-colors">
+                <div className={`p-3 ${isWatched ? 'bg-[var(--color-warning)]/10' : ''}`}>
+                  <p className={`font-medium truncate transition-colors ${isWatched ? 'text-[var(--color-warning)] group-hover:text-[var(--color-warning)]' : 'text-[var(--color-text)] group-hover:text-[var(--color-primary)]'}`}>
                     {movie.title}
                   </p>
                   <div className="flex items-center justify-between mt-1">
@@ -189,6 +267,13 @@ export default function MoviesGrid({ movies, userRole, suggestions, currentUserI
                       </div>
                     )}
                   </div>
+                  {isWatched && (
+                    <p className="text-[10px] text-[var(--color-warning)]/90 mt-1 truncate">
+                      {movie.watched_at
+                        ? `Watched ${new Date(movie.watched_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+                        : 'Watched'}
+                    </p>
+                  )}
                   <p className="text-xs text-[var(--color-text-muted)] mt-1 truncate">
                     by {movie.suggestedByName}
                   </p>
@@ -209,10 +294,16 @@ export default function MoviesGrid({ movies, userRole, suggestions, currentUserI
         <div className="bg-[var(--color-surface)] rounded-xl border border-[var(--color-border)]/50 shadow-lg shadow-black/20">
           <EmptyState
             icon="movies"
-            title="No movies yet"
-            description={isViewer ? 'No movies have been suggested yet.' : 'Be the first to suggest a movie for the group!'}
-            actionLabel={isViewer ? undefined : 'Suggest a Movie'}
-            actionHref={isViewer ? undefined : '/movies/suggest'}
+            title={movies.length > 0 && !includeWatched ? 'No unwatched movies' : 'No movies yet'}
+            description={
+              movies.length > 0 && !includeWatched
+                ? 'All movies are currently marked watched. Turn on "Show watched" to view them.'
+                : isViewer
+                  ? 'No movies have been suggested yet.'
+                  : 'Be the first to suggest a movie for the group!'
+            }
+            actionLabel={movies.length > 0 && !includeWatched ? undefined : (isViewer ? undefined : 'Suggest a Movie')}
+            actionHref={movies.length > 0 && !includeWatched ? undefined : (isViewer ? undefined : '/movies/suggest')}
           />
         </div>
       )}

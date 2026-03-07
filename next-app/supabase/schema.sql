@@ -37,6 +37,8 @@ create table public.movies (
   metadata_snapshot jsonb,
   suggested_by uuid not null references public.profiles(id),
   hidden boolean not null default false,
+  watched boolean not null default false,
+  watched_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -60,6 +62,7 @@ create table public.movie_suggestions (
   unique(movie_id, user_id)
 );
 create index movie_suggestions_movie_id_idx on public.movie_suggestions(movie_id);
+create index movies_watched_idx on public.movies(watched);
 
 -- Surveys table
 create table public.surveys (

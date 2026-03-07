@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useState } from 'react';
+import { useActionState, useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
   updateSurveyAction,
@@ -36,6 +36,8 @@ interface SurveyEntry {
     title: string;
     tmdb_id: number;
     metadata_snapshot: Movie['metadata_snapshot'];
+    watched: boolean;
+    watched_at: string | null;
   };
 }
 
@@ -50,6 +52,8 @@ interface AvailableMovie {
   posterPath: string | null;
   releaseDate: string | null;
   voteAverage: number | null;
+  watched: boolean;
+  watchedAt: string | null;
 }
 
 interface SurveyDetailClientProps {
@@ -340,6 +344,14 @@ function MoviePicker({ surveyId, availableMovies, suggestionCounts }: { surveyId
   const [state, formAction, pending] = useActionState(addMovieToSurveyAction, null);
   const [search, setSearch] = useState('');
   const [addingId, setAddingId] = useState<string | null>(null);
+  const [warningToast, setWarningToast] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!state?.warning) return;
+    setWarningToast(state.warning);
+    const timer = setTimeout(() => setWarningToast(null), 5000);
+    return () => clearTimeout(timer);
+  }, [state?.warning]);
 
   const filtered = (search.trim()
     ? availableMovies.filter((m) =>
@@ -350,6 +362,16 @@ function MoviePicker({ surveyId, availableMovies, suggestionCounts }: { surveyId
 
   return (
     <div className="mb-6">
+      {warningToast && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed bottom-6 right-6 z-50 max-w-sm rounded-xl border border-[var(--color-warning)]/40 bg-[var(--color-surface)] px-4 py-3 text-sm text-[var(--color-text)] shadow-xl shadow-black/30"
+        >
+          {warningToast}
+        </div>
+      )}
+
       {/* Search */}
       <div className="relative mb-4">
         <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -386,6 +408,8 @@ function MoviePicker({ surveyId, availableMovies, suggestionCounts }: { surveyId
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
           {filtered.map((movie) => {
             const isAdding = pending && addingId === movie.id;
+            const isSuggested = !!suggestionCounts[movie.id];
+            const isWatched = movie.watched;
             return (
               <form key={movie.id} action={(formData) => { setAddingId(movie.id); formAction(formData); }}>
                 <input type="hidden" name="surveyId" value={surveyId} />
@@ -394,7 +418,9 @@ function MoviePicker({ surveyId, availableMovies, suggestionCounts }: { surveyId
                   type="submit"
                   disabled={pending}
                   className={`group w-full text-left relative rounded-lg overflow-hidden border transition-all duration-200 disabled:opacity-40 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] ${
-                    suggestionCounts[movie.id]
+                    isWatched
+                      ? 'border-[var(--color-warning)]/70 shadow-md shadow-[var(--color-warning)]/10'
+                      : isSuggested
                       ? 'border-[var(--color-primary)]/60'
                       : 'border-transparent hover:border-[var(--color-primary)]/60'
                   }`}
@@ -405,7 +431,7 @@ function MoviePicker({ surveyId, availableMovies, suggestionCounts }: { surveyId
                       <img
                         src={`https://image.tmdb.org/t/p/w185${movie.posterPath}`}
                         alt={movie.title}
-                        className="w-full h-full object-cover"
+                        className={`w-full h-full object-cover ${isWatched ? 'grayscale opacity-60' : ''}`}
                         loading="lazy"
                       />
                     ) : (
@@ -416,9 +442,18 @@ function MoviePicker({ surveyId, availableMovies, suggestionCounts }: { surveyId
                       </div>
                     )}
 
+                    {isWatched && (
+                      <div className="absolute top-1.5 left-1.5 bg-black/80 backdrop-blur-sm text-[var(--color-warning)] text-[10px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1">
+                        <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                        WATCHED
+                      </div>
+                    )}
+
                     {/* Hover overlay */}
                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-all duration-200 flex items-center justify-center">
-                      <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-[var(--color-primary)] rounded-full p-2">
+                      <div className={`opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-full p-2 ${isWatched ? 'bg-[var(--color-warning)]' : 'bg-[var(--color-primary)]'}`}>
                         <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
                         </svg>
@@ -443,7 +478,7 @@ function MoviePicker({ surveyId, availableMovies, suggestionCounts }: { surveyId
                     )}
 
                     {/* Suggestion count badge */}
-                    {suggestionCounts[movie.id] && (
+                    {isSuggested && (
                       <div className="absolute bottom-1.5 right-1.5 bg-[var(--color-primary)] text-white text-[10px] font-bold px-1.5 py-0.5 rounded flex items-center gap-0.5">
                         <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24">
                           <path d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
@@ -454,10 +489,17 @@ function MoviePicker({ surveyId, availableMovies, suggestionCounts }: { surveyId
                   </div>
 
                   {/* Title */}
-                  <div className="p-2 bg-[var(--color-surface-elevated)]">
-                    <p className="text-xs font-medium text-[var(--color-text)] truncate leading-tight">{movie.title}</p>
+                  <div className={`p-2 ${isWatched ? 'bg-[var(--color-warning)]/10' : 'bg-[var(--color-surface-elevated)]'}`}>
+                    <p className={`text-xs font-medium truncate leading-tight ${isWatched ? 'text-[var(--color-warning)]' : 'text-[var(--color-text)]'}`}>
+                      {movie.title}
+                    </p>
                     {movie.releaseDate && (
                       <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5">{movie.releaseDate.slice(0, 4)}</p>
+                    )}
+                    {isWatched && (
+                      <p className="text-[10px] text-[var(--color-warning)]/90 mt-0.5">
+                        Watched{movie.watchedAt ? ` ${new Date(movie.watchedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''}
+                      </p>
                     )}
                   </div>
                 </button>
@@ -534,6 +576,9 @@ function BulkAddSuggestedBanner({ surveyId, suggestedAvailableIds }: { surveyId:
       {state?.error && (
         <span className="text-xs text-[var(--color-error)] ml-2">{state.error}</span>
       )}
+      {state?.warning && (
+        <span className="text-xs text-[var(--color-warning)] ml-2">{state.warning}</span>
+      )}
     </div>
   );
 }
@@ -550,6 +595,7 @@ export default function SurveyDetailClient({
   const suggestedAvailableIds = availableMovies
     .filter((m) => suggestionCounts[m.id])
     .map((m) => m.id);
+  const watchedNomineeCount = entries.filter((entry) => entry.movie.watched).length;
 
   return (
     <div className="space-y-6">
@@ -625,47 +671,75 @@ export default function SurveyDetailClient({
           <span className="ml-2 text-sm font-normal text-[var(--color-text-muted)]">({entries.length})</span>
         </h2>
 
+        {watchedNomineeCount > 0 && (
+          <div className="mb-4 rounded-lg border border-[var(--color-warning)]/30 bg-[var(--color-warning)]/10 px-3 py-2 text-sm text-[var(--color-warning)]">
+            {watchedNomineeCount} watched movie{watchedNomineeCount !== 1 ? 's' : ''} in nominees.
+          </div>
+        )}
+
         {entries.length > 0 ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-            {entries.map((entry) => (
-              <div
-                key={entry.id}
-                className="group relative rounded-lg overflow-hidden border border-[var(--color-border)]/30 bg-[var(--color-surface-elevated)]"
-              >
-                <div className="aspect-[2/3] relative">
-                  {entry.movie.metadata_snapshot?.posterPath ? (
-                    <img
-                      src={`https://image.tmdb.org/t/p/w185${entry.movie.metadata_snapshot.posterPath}`}
-                      alt={entry.movie.title}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-[var(--color-surface-elevated)] flex items-center justify-center">
-                      <svg className="w-8 h-8 text-[var(--color-border)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
-                      </svg>
-                    </div>
-                  )}
-                  {survey.state !== 'frozen' && (
-                    <div className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <RemoveMovieButton
-                        surveyId={survey.id}
-                        entryId={entry.id}
-                        movieId={entry.movie_id}
+            {entries.map((entry) => {
+              const isWatched = entry.movie.watched;
+              return (
+                <div
+                  key={entry.id}
+                  className={`group relative rounded-lg overflow-hidden border bg-[var(--color-surface-elevated)] ${
+                    isWatched ? 'border-[var(--color-warning)]/60 shadow-md shadow-[var(--color-warning)]/10' : 'border-[var(--color-border)]/30'
+                  }`}
+                >
+                  <div className="aspect-[2/3] relative">
+                    {entry.movie.metadata_snapshot?.posterPath ? (
+                      <img
+                        src={`https://image.tmdb.org/t/p/w185${entry.movie.metadata_snapshot.posterPath}`}
+                        alt={entry.movie.title}
+                        className={`w-full h-full object-cover ${isWatched ? 'grayscale opacity-65' : ''}`}
                       />
-                    </div>
-                  )}
-                </div>
-                <div className="p-2">
-                  <p className="text-xs font-medium text-[var(--color-text)] truncate leading-tight">{entry.movie.title}</p>
-                  {entry.movie.metadata_snapshot?.releaseDate && (
-                    <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5">
-                      {entry.movie.metadata_snapshot.releaseDate.slice(0, 4)}
+                    ) : (
+                      <div className="w-full h-full bg-[var(--color-surface-elevated)] flex items-center justify-center">
+                        <svg className="w-8 h-8 text-[var(--color-border)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
+                        </svg>
+                      </div>
+                    )}
+                    {isWatched && (
+                      <div className="absolute top-1.5 left-1.5 bg-black/80 backdrop-blur-sm text-[var(--color-warning)] text-[10px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1">
+                        <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                        WATCHED
+                      </div>
+                    )}
+                    {survey.state !== 'frozen' && (
+                      <div className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <RemoveMovieButton
+                          surveyId={survey.id}
+                          entryId={entry.id}
+                          movieId={entry.movie_id}
+                        />
+                      </div>
+                    )}
+                  </div>
+                  <div className={`p-2 ${isWatched ? 'bg-[var(--color-warning)]/10' : ''}`}>
+                    <p className={`text-xs font-medium truncate leading-tight ${isWatched ? 'text-[var(--color-warning)]' : 'text-[var(--color-text)]'}`}>
+                      {entry.movie.title}
                     </p>
-                  )}
+                    {entry.movie.metadata_snapshot?.releaseDate && (
+                      <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5">
+                        {entry.movie.metadata_snapshot.releaseDate.slice(0, 4)}
+                      </p>
+                    )}
+                    {isWatched && (
+                      <p className="text-[10px] text-[var(--color-warning)]/90 mt-0.5">
+                        {entry.movie.watched_at
+                          ? `Watched ${new Date(entry.movie.watched_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+                          : 'Watched'}
+                      </p>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <p className="text-[var(--color-text-muted)] text-center py-8">No movies in this survey yet.</p>

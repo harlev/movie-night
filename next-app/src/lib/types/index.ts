@@ -24,6 +24,8 @@ export interface Movie {
   } | null;
   suggested_by: string;
   hidden: boolean;
+  watched: boolean;
+  watched_at: string | null;
   created_at: string;
   updated_at: string;
 }

@@ -10,6 +10,21 @@ import { getUserById } from '@/lib/queries/profiles';
 import { createAdminLog } from '@/lib/queries/admin';
 import { buildSuggestedMovieHref } from '@/lib/utils/suggestMovieFlow';
 
+function getWatchedColumnErrorMessage(error: unknown): string | null {
+  const message = typeof error === 'object' && error !== null && 'message' in error
+    ? String((error as { message?: string }).message || '')
+    : '';
+
+  if (
+    message.includes('column movies.watched does not exist') ||
+    message.includes('column movies.watched_at does not exist')
+  ) {
+    return 'Database is missing watched columns. Apply the latest Supabase migration and retry.';
+  }
+
+  return null;
+}
+
 export async function suggestMovieAction(prevState: any, formData: FormData) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -98,6 +113,63 @@ export async function toggleMovieArchiveAction(prevState: any, formData: FormDat
     redirect('/movies');
   }
   return { success: true, archived: false };
+}
+
+export async function toggleMovieWatchedAction(prevState: any, formData: FormData) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: 'Not authenticated' };
+
+  const profile = await getUserById(user.id);
+  if (!profile || profile.role !== 'admin') return { error: 'Admin access required' };
+
+  const movieId = formData.get('movieId') as string;
+  if (!movieId) return { error: 'Invalid request' };
+
+  const admin = createAdminClient();
+  const { data: movie, error } = await admin
+    .from('movies')
+    .select('id, title, watched')
+    .eq('id', movieId)
+    .single();
+
+  if (error || !movie) {
+    return {
+      error: getWatchedColumnErrorMessage(error) || 'Movie not found',
+    };
+  }
+
+  const nowIso = new Date().toISOString();
+  const newWatched = !movie.watched;
+
+  const { error: updateError } = await admin
+    .from('movies')
+    .update({
+      watched: newWatched,
+      watched_at: newWatched ? nowIso : null,
+      updated_at: nowIso,
+    })
+    .eq('id', movieId);
+
+  if (updateError) {
+    return {
+      error: getWatchedColumnErrorMessage(updateError) || 'Failed to update watched status',
+    };
+  }
+
+  await createAdminLog({
+    actorId: user.id,
+    action: newWatched ? 'movie_marked_watched' : 'movie_marked_unwatched',
+    targetType: 'movie',
+    targetId: movieId,
+    details: { title: movie.title },
+  });
+
+  revalidatePath('/movies');
+  revalidatePath(`/movies/${movieId}`);
+  revalidatePath('/admin/surveys');
+
+  return { success: true, watched: newWatched };
 }
 
 export async function backfillMovieMetadataAction(prevState: any) {

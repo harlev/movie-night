@@ -7,9 +7,10 @@ interface NominateMovieButtonProps {
   movieId: string;
   nominated: boolean;
   nominationCount: number;
+  onWarning?: (message: string) => void;
 }
 
-export default function NominateMovieButton({ movieId, nominated, nominationCount }: NominateMovieButtonProps) {
+export default function NominateMovieButton({ movieId, nominated, nominationCount, onWarning }: NominateMovieButtonProps) {
   const [pending, startTransition] = useTransition();
 
   function handleClick() {
@@ -18,7 +19,12 @@ export default function NominateMovieButton({ movieId, nominated, nominationCoun
     formData.set('action', nominated ? 'remove' : 'add');
 
     startTransition(() => {
-      toggleSuggestionAction(null, formData);
+      void (async () => {
+        const result = await toggleSuggestionAction(null, formData);
+        if (result?.warning) {
+          onWarning?.(result.warning);
+        }
+      })();
     });
   }
 

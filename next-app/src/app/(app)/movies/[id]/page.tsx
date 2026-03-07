@@ -8,8 +8,9 @@ import type { Metadata } from 'next';
 import MovieCommentSection from './MovieCommentSection';
 import ArchiveMovieButton from './ArchiveMovieButton';
 import MovieDetailsCard from '@/components/movies/MovieDetailsCard';
-import NominateMovieButton from '@/components/movies/NominateMovieButton';
 import SuggestionAcceptedToast from './SuggestionAcceptedToast';
+import NominateMovieAction from './NominateMovieAction';
+import WatchedMovieButton from './WatchedMovieButton';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -76,9 +77,19 @@ export default async function MovieDetailPage({ params, searchParams }: PageProp
       <MovieDetailsCard
         title={movie.title}
         metadata={meta}
+        statusBadge={
+          movie.watched ? (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold tracking-wide bg-[var(--color-warning)]/15 text-[var(--color-warning)] border border-[var(--color-warning)]/35">
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+              WATCHED
+            </span>
+          ) : null
+        }
         primaryAction={
           currentProfile && currentProfile.role !== 'viewer' ? (
-            <NominateMovieButton
+            <NominateMovieAction
               movieId={movie.id}
               nominated={isNominated}
               nominationCount={nominationCount}
@@ -91,9 +102,18 @@ export default async function MovieDetailPage({ params, searchParams }: PageProp
               Suggested by{' '}
               <span className="text-[var(--color-text)]">{suggestedByName}</span> on{' '}
               {formatDate(movie.created_at)}
+              {movie.watched && (
+                <>
+                  {' '}• Watched
+                  {movie.watched_at ? ` on ${formatDate(movie.watched_at)}` : ''}
+                </>
+              )}
             </p>
             {currentProfile?.role === 'admin' && (
-              <ArchiveMovieButton movieId={movie.id} />
+              <div className="flex items-center gap-2">
+                <WatchedMovieButton movieId={movie.id} watched={movie.watched} />
+                <ArchiveMovieButton movieId={movie.id} />
+              </div>
             )}
           </>
         }

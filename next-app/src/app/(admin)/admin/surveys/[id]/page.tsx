@@ -1,7 +1,7 @@
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getSurveyById, getSurveyEntries } from '@/lib/queries/surveys';
-import { getAllMovies } from '@/lib/queries/movies';
+import { getAllMovies, autoMarkPastDueSurveyWinnersAsWatched } from '@/lib/queries/movies';
 import { getAllBallots } from '@/lib/queries/ballots';
 import { getSuggestionCounts } from '@/lib/queries/suggestions';
 import SurveyDetailClient from './SurveyDetailClient';
@@ -22,6 +22,8 @@ export default async function SurveyDetailPage({ params }: { params: Promise<{ i
     notFound();
   }
 
+  await autoMarkPastDueSurveyWinnersAsWatched();
+
   const [entries, allMovies, ballots, suggestionCounts] = await Promise.all([
     getSurveyEntries(survey.id),
     getAllMovies(),
@@ -39,6 +41,8 @@ export default async function SurveyDetailPage({ params }: { params: Promise<{ i
       posterPath: m.metadata_snapshot?.posterPath || null,
       releaseDate: m.metadata_snapshot?.releaseDate || null,
       voteAverage: m.metadata_snapshot?.voteAverage || null,
+      watched: m.watched,
+      watchedAt: m.watched_at,
     }));
 
   return (

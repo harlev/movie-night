@@ -162,6 +162,7 @@ export default function SuggestedSection({ suggestions, movies, isAdmin, current
           if (!movie) return null;
 
           const currentUserNominated = suggestion.current_user_suggested;
+          const isWatched = movie.watched;
 
           return (
             <Link
@@ -175,12 +176,12 @@ export default function SuggestedSection({ suggestions, movies, isAdmin, current
               {!isAdmin && currentUserNominated && (
                 <UnnominateButton movieId={movie.id} />
               )}
-              <div className="relative rounded-lg overflow-hidden border border-[var(--color-border)]/30 bg-[var(--color-surface-elevated)]">
+              <div className={`relative rounded-lg overflow-hidden border bg-[var(--color-surface-elevated)] ${isWatched ? 'border-[var(--color-warning)]/60' : 'border-[var(--color-border)]/30'}`}>
                 {movie.metadata_snapshot?.posterPath ? (
                   <img
                     src={`${TMDB_IMAGE_BASE}${movie.metadata_snapshot.posterPath}`}
                     alt={movie.title}
-                    className="w-full aspect-[2/3] object-cover"
+                    className={`w-full aspect-[2/3] object-cover ${isWatched ? 'grayscale opacity-65' : ''}`}
                     loading="lazy"
                   />
                 ) : (
@@ -189,6 +190,14 @@ export default function SuggestedSection({ suggestions, movies, isAdmin, current
                       <rect x="2" y="4" width="20" height="16" rx="2" />
                       <path d="M2 8h20M2 16h20" />
                     </svg>
+                  </div>
+                )}
+                {isWatched && (
+                  <div className="absolute top-1.5 left-1.5 bg-black/75 backdrop-blur-sm rounded px-1 py-0.5 flex items-center gap-0.5">
+                    <svg className="w-2.5 h-2.5 text-[var(--color-warning)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span className="text-[9px] font-bold text-[var(--color-warning)]">WATCHED</span>
                   </div>
                 )}
                 {/* Nomination count badge */}
@@ -202,7 +211,7 @@ export default function SuggestedSection({ suggestions, movies, isAdmin, current
                   <span className="text-[10px] font-bold">{suggestion.suggestion_count}</span>
                 </div>
               </div>
-              <p className="text-xs font-medium text-[var(--color-text)] truncate mt-1.5 group-hover/card:text-[var(--color-primary)] transition-colors">
+              <p className={`text-xs font-medium truncate mt-1.5 transition-colors ${isWatched ? 'text-[var(--color-warning)] group-hover/card:text-[var(--color-warning)]' : 'text-[var(--color-text)] group-hover/card:text-[var(--color-primary)]'}`}>
                 {movie.title}
               </p>
               <p className="text-[10px] text-[var(--color-text-muted)] truncate">

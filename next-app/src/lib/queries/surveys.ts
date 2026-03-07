@@ -116,11 +116,11 @@ export async function removeSurveyEntry(entryId: string): Promise<void> {
   await supabase.from('survey_entries').update({ removed_at: new Date().toISOString() }).eq('id', entryId);
 }
 
-export async function getSurveyEntries(surveyId: string): Promise<(SurveyEntry & { movie: Pick<Movie, 'id' | 'title' | 'tmdb_id' | 'metadata_snapshot'> })[]> {
+export async function getSurveyEntries(surveyId: string): Promise<(SurveyEntry & { movie: Pick<Movie, 'id' | 'title' | 'tmdb_id' | 'metadata_snapshot' | 'watched' | 'watched_at'> })[]> {
   const supabase = await createClient();
   const { data } = await supabase
     .from('survey_entries')
-    .select('*, movies!movie_id(id, title, tmdb_id, metadata_snapshot)')
+    .select('*, movies!movie_id(id, title, tmdb_id, metadata_snapshot, watched, watched_at)')
     .eq('survey_id', surveyId)
     .is('removed_at', null)
     .order('created_at');

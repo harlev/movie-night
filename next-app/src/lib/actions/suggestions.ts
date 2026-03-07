@@ -6,6 +6,7 @@ import { getUserById } from '@/lib/queries/profiles';
 import { createAdminLog } from '@/lib/queries/admin';
 import { addSuggestion, removeSuggestion, removeMovieSuggestions, clearAllSuggestions } from '@/lib/queries/suggestions';
 import { addSurveyEntry } from '@/lib/queries/surveys';
+import { getWatchedNomineeWarningToast } from '@/lib/utils/watchedMovies';
 
 export async function toggleSuggestionAction(prevState: any, formData: FormData) {
   const supabase = await createClient();
@@ -20,13 +21,27 @@ export async function toggleSuggestionAction(prevState: any, formData: FormData)
   if (!movieId || !['add', 'remove'].includes(action)) return { error: 'Invalid request' };
 
   try {
+    let warning: string | null = null;
+
     if (action === 'add') {
+      const { data: movie, error: movieError } = await supabase
+        .from('movies')
+        .select('title, watched')
+        .eq('id', movieId)
+        .single();
+      if (movieError || !movie) return { error: 'Movie not found' };
+
       await addSuggestion({ movieId, userId: user.id });
+      if (movie.watched) {
+        warning = getWatchedNomineeWarningToast(movie.title);
+      }
     } else {
       await removeSuggestion({ movieId, userId: user.id });
     }
+
     revalidatePath('/movies');
-    return { success: true };
+    revalidatePath(`/movies/${movieId}`);
+    return { success: true, warning };
   } catch (error: any) {
     return { error: 'Failed to update suggestion' };
   }
@@ -106,16 +121,44 @@ export async function bulkAddSuggestedToSurveyAction(prevState: any, formData: F
 
   let added = 0;
   let skipped = 0;
+  let watchedAdded = 0;
+  let firstWatchedAddedTitle: string | null = null;
+
+  const { data: movieRows } = await supabase
+    .from('movies')
+    .select('id, title, watched')
+    .in('id', movieIds);
+
+  const movieById = new Map(
+    (movieRows || []).map((movie: any) => [movie.id, { title: movie.title as string, watched: !!movie.watched }])
+  );
 
   for (const movieId of movieIds) {
     try {
       await addSurveyEntry({ surveyId, movieId, addedBy: user.id });
       added++;
+      if (movieById.get(movieId)?.watched) {
+        watchedAdded++;
+        if (!firstWatchedAddedTitle) {
+          firstWatchedAddedTitle = movieById.get(movieId)?.title || null;
+        }
+      }
     } catch {
       skipped++;
     }
   }
 
   revalidatePath(`/admin/surveys/${surveyId}`);
+  if (watchedAdded > 0) {
+    return {
+      success: true,
+      added,
+      skipped,
+      warning: watchedAdded === 1
+        ? getWatchedNomineeWarningToast(firstWatchedAddedTitle || 'Movie')
+        : `${watchedAdded} watched movies were added to nominees.`,
+    };
+  }
+
   return { success: true, added, skipped };
 }

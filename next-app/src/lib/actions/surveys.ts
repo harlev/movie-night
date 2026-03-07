@@ -4,8 +4,10 @@ import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { createSurvey, updateSurvey, updateSurveyState, updateSurveyArchived, deleteSurvey, addSurveyEntry, removeSurveyEntry, getSurveyById, getSurveyEntries } from '@/lib/queries/surveys';
+import { getMovieById } from '@/lib/queries/movies';
 import { removeBallotMovie } from '@/lib/queries/ballots';
 import { pacificToUTC } from '@/lib/utils/closesAt';
+import { getWatchedNomineeWarningToast } from '@/lib/utils/watchedMovies';
 
 export async function createSurveyAction(prevState: any, formData: FormData) {
   const title = (formData.get('title') as string)?.trim();
@@ -90,10 +92,17 @@ export async function addMovieToSurveyAction(prevState: any, formData: FormData)
   const movieId = formData.get('movieId') as string;
   if (!movieId) return { error: 'Movie ID required' };
 
+  const movie = await getMovieById(movieId);
+  if (!movie) return { error: 'Movie not found' };
+
   try {
     await addSurveyEntry({ surveyId, movieId, addedBy: user.id });
     revalidatePath(`/admin/surveys/${surveyId}`);
-    return { success: true, message: 'Movie added' };
+    return {
+      success: true,
+      message: 'Movie added',
+      warning: movie.watched ? getWatchedNomineeWarningToast(movie.title) : null,
+    };
   } catch {
     return { error: 'Movie already in survey' };
   }

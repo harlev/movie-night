@@ -1,4 +1,4 @@
-import { getAllMovies } from '@/lib/queries/movies';
+import { getAllMovies, autoMarkPastDueSurveyWinnersAsWatched } from '@/lib/queries/movies';
 import { getSuggestedMovies } from '@/lib/queries/suggestions';
 import { getUserById } from '@/lib/queries/profiles';
 import { createClient } from '@/lib/supabase/server';
@@ -14,6 +14,9 @@ export const metadata: Metadata = {
 export default async function MoviesPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
+
+  await autoMarkPastDueSurveyWinnersAsWatched();
+
   const [movies, profile, suggestions, siteBanner] = await Promise.all([
     getAllMovies(),
     user ? getUserById(user.id) : null,

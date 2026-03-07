@@ -1,5 +1,9 @@
 import type { Metadata } from 'next';
+import { headers } from 'next/headers';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { createClient } from '@/lib/supabase/server';
+
+const socialCrawlers = /WhatsApp|facebookexternalhit|Facebot|Twitterbot|LinkedInBot|Slackbot|TelegramBot|Discordbot/i;
 
 interface LayoutProps {
   params: Promise<{ id: string }>;
@@ -30,6 +34,19 @@ export async function generateMetadata({ params }: LayoutProps): Promise<Metadat
   };
 }
 
-export default function SurveyLayout({ children }: LayoutProps) {
+export default async function SurveyLayout({ children }: LayoutProps) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  // For social crawlers without auth, render empty body so metadata is served
+  // without triggering the page's notFound() (which would cause a 404 + noindex)
+  if (!user) {
+    const headersList = await headers();
+    const ua = headersList.get('user-agent') || '';
+    if (socialCrawlers.test(ua)) {
+      return <></>;
+    }
+  }
+
   return children;
 }

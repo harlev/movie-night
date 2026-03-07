@@ -47,18 +47,19 @@ export default async function OGImage({ params }: { params: Promise<{ id: string
           justifyContent: 'center',
           backgroundColor: '#0d0d0f',
           color: '#ffffff',
+          padding: '40px',
           position: 'relative',
           overflow: 'hidden',
         }}
       >
-        {/* Decorative film strip elements */}
+        {/* Decorative accent lines */}
         <div
           style={{
             position: 'absolute',
             top: 0,
             left: 0,
             right: 0,
-            height: '6px',
+            height: '4px',
             background: 'linear-gradient(90deg, #d4a053 0%, #b8862d 50%, #d4a053 100%)',
             display: 'flex',
           }}
@@ -69,7 +70,7 @@ export default async function OGImage({ params }: { params: Promise<{ id: string
             bottom: 0,
             left: 0,
             right: 0,
-            height: '6px',
+            height: '4px',
             background: 'linear-gradient(90deg, #d4a053 0%, #b8862d 50%, #d4a053 100%)',
             display: 'flex',
           }}
@@ -80,16 +81,15 @@ export default async function OGImage({ params }: { params: Promise<{ id: string
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '12px',
-            marginBottom: '16px',
+            marginBottom: '24px',
           }}
         >
           <div
             style={{
-              fontSize: '28px',
+              fontSize: '40px',
               fontWeight: 700,
               color: '#d4a053',
-              letterSpacing: '6px',
+              letterSpacing: '8px',
               textTransform: 'uppercase',
             }}
           >
@@ -100,12 +100,12 @@ export default async function OGImage({ params }: { params: Promise<{ id: string
         {/* Survey title */}
         <div
           style={{
-            fontSize: title.length > 30 ? '48px' : '64px',
+            fontSize: title.length > 30 ? '64px' : '80px',
             fontWeight: 700,
             textAlign: 'center',
-            maxWidth: '900px',
-            lineHeight: 1.2,
-            marginBottom: '32px',
+            maxWidth: '1080px',
+            lineHeight: 1.15,
+            marginBottom: '40px',
             display: 'flex',
           }}
         >
@@ -117,16 +117,15 @@ export default async function OGImage({ params }: { params: Promise<{ id: string
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '12px',
-            padding: '14px 40px',
-            borderRadius: '12px',
+            padding: '18px 52px',
+            borderRadius: '14px',
             backgroundColor: 'rgba(212, 160, 83, 0.15)',
             border: '2px solid #d4a053',
           }}
         >
           <div
             style={{
-              fontSize: '28px',
+              fontSize: '38px',
               fontWeight: 600,
               color: '#d4a053',
               display: 'flex',

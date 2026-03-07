@@ -15,6 +15,7 @@ import { bulkAddSuggestedToSurveyAction } from '@/lib/actions/suggestions';
 import type { Survey, Movie } from '@/lib/types';
 import { utcToPacificLocal } from '@/lib/utils/closesAt';
 import CountdownTimer from '@/components/CountdownTimer';
+import Toast from '@/components/ui/Toast';
 
 function getStateColor(state: string): string {
   switch (state) {
@@ -349,8 +350,6 @@ function MoviePicker({ surveyId, availableMovies, suggestionCounts }: { surveyId
   useEffect(() => {
     if (!state?.warning) return;
     setWarningToast(state.warning);
-    const timer = setTimeout(() => setWarningToast(null), 5000);
-    return () => clearTimeout(timer);
   }, [state?.warning]);
 
   const filtered = (search.trim()
@@ -362,15 +361,7 @@ function MoviePicker({ surveyId, availableMovies, suggestionCounts }: { surveyId
 
   return (
     <div className="mb-6">
-      {warningToast && (
-        <div
-          role="status"
-          aria-live="polite"
-          className="fixed bottom-6 right-6 z-50 max-w-sm rounded-xl border border-[var(--color-warning)]/40 bg-[var(--color-surface)] px-4 py-3 text-sm text-[var(--color-text)] shadow-xl shadow-black/30"
-        >
-          {warningToast}
-        </div>
-      )}
+      <Toast message={warningToast} onClose={() => setWarningToast(null)} variant="warning" />
 
       {/* Search */}
       <div className="relative mb-4">

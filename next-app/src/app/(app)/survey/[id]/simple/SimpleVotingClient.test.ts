@@ -28,14 +28,15 @@ test('SimpleVotingClient keeps a simple movie list while restoring the desktop /
   assert.equal(source.includes('text-lg leading-tight'), true);
   assert.equal(source.includes("cursor-pointer active:scale-[0.98]'"), true);
   assert.equal(source.includes('aria-label={`Toggle rank for ${entry.movie.title}`}'), true);
-  assert.equal(source.includes('sticky bottom-4 z-10 mt-5'), true);
-  assert.equal(
-    source.includes(`desktop
-                entries={shuffledEntries}
-                handleMovieClick={handleMovieClick}
-                isMovieSelected={isMovieSelected}
-                moveRank={moveRank}
-                showMoveControls`),
-    true
-  );
+  assert.equal(source.includes('sticky bottom-4 z-10 mt-5'), false);
+  assert.equal(source.includes('lg:sticky lg:top-6 lg:self-start'), true);
+  assert.equal(source.includes('lg:flex lg:max-h-[calc(100vh-8rem)] lg:flex-col'), true);
+  assert.equal(source.includes('lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:pr-1'), true);
+  assert.equal(source.includes('lg:border-t lg:border-[var(--color-border)]/50 lg:pt-4'), true);
+  assert.equal(source.includes('desktop'), true);
+  assert.equal(source.includes('entries={shuffledEntries}'), true);
+  assert.equal(source.includes('handleMovieClick={handleMovieClick}'), true);
+  assert.equal(source.includes('isMovieSelected={isMovieSelected}'), true);
+  assert.equal(source.includes('moveRank={moveRank}'), true);
+  assert.equal(source.includes('showMoveControls'), true);
 });

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useActionState, useCallback } from 'react';
+import { useState, useEffect, useRef, useActionState, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { submitBallotAction } from '@/lib/actions/ballots';
 import type { Standing } from '@/lib/services/scoring';
@@ -8,7 +8,6 @@ import { useBallot } from '@/hooks/useBallot';
 import { getRankBadgeClasses, getRankOverlayClasses, getRankRingClasses, getStandingBorderColor, shuffle } from '@/lib/utils/rankStyles';
 import SortableBallotList from '@/components/SortableBallotList';
 import CountdownTimer from '@/components/CountdownTimer';
-import SimpleVotingClient from './simple/SimpleVotingClient';
 
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w92';
 const TMDB_IMAGE_BASE_GRID = 'https://image.tmdb.org/t/p/w185';
@@ -62,57 +61,6 @@ export default function SurveyVotingClient({
   hasExistingBallot,
   userRole,
 }: SurveyVotingClientProps) {
-  const [isMobileViewport, setIsMobileViewport] = useState(false);
-
-  useEffect(() => {
-    const mediaQuery = window.matchMedia('(max-width: 767px)');
-    const syncViewport = (event?: MediaQueryList | MediaQueryListEvent) => {
-      setIsMobileViewport(event ? event.matches : mediaQuery.matches);
-    };
-
-    syncViewport();
-    mediaQuery.addEventListener('change', syncViewport);
-    return () => mediaQuery.removeEventListener('change', syncViewport);
-  }, []);
-
-  if (isMobileViewport) {
-    return (
-      <SimpleVotingClient
-        survey={survey}
-        entries={entries}
-        userBallotRanks={userBallotRanks}
-        allBallots={allBallots}
-        standings={standings}
-        hasExistingBallot={hasExistingBallot}
-        userRole={userRole}
-      />
-    );
-  }
-
-  return (
-    <DesktopSurveyVotingClient
-      survey={survey}
-      entries={entries}
-      userBallotRanks={userBallotRanks}
-      allBallots={allBallots}
-      standings={standings}
-      pointsBreakdown={pointsBreakdown}
-      hasExistingBallot={hasExistingBallot}
-      userRole={userRole}
-    />
-  );
-}
-
-function DesktopSurveyVotingClient({
-  survey,
-  entries,
-  userBallotRanks,
-  allBallots,
-  standings,
-  pointsBreakdown,
-  hasExistingBallot,
-  userRole,
-}: SurveyVotingClientProps) {
   const isLive = survey.state === 'live';
   const canVote = isLive && userRole !== 'viewer';
 
@@ -150,6 +98,7 @@ function DesktopSurveyVotingClient({
   );
 
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
+  const [filterQuery, setFilterQuery] = useState('');
 
   // Initialize viewMode from localStorage on mount
   useEffect(() => {
@@ -163,6 +112,14 @@ function DesktopSurveyVotingClient({
   useEffect(() => {
     localStorage.setItem('survey-view-mode', viewMode);
   }, [viewMode]);
+
+  const filteredEntries = useMemo(() => {
+    if (!filterQuery.trim()) return shuffledEntries;
+    const query = filterQuery.toLowerCase().trim();
+    return shuffledEntries.filter((entry) =>
+      entry.movie.title.toLowerCase().includes(query)
+    );
+  }, [shuffledEntries, filterQuery]);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -311,7 +268,12 @@ function DesktopSurveyVotingClient({
             {/* Header row with title + view toggle */}
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-display font-semibold text-[var(--color-text)]">
-                Movies <span className="text-sm font-normal text-[var(--color-text-muted)]">({shuffledEntries.length})</span>
+                Movies{' '}
+                <span className="text-sm font-normal text-[var(--color-text-muted)]">
+                  {filterQuery.trim()
+                    ? `${filteredEntries.length} of ${shuffledEntries.length}`
+                    : `(${shuffledEntries.length})`}
+                </span>
               </h2>
               <div className="flex items-center gap-1 bg-[var(--color-surface-elevated)] rounded-lg p-1">
                 <button
@@ -345,10 +307,35 @@ function DesktopSurveyVotingClient({
               </div>
             </div>
 
-            {viewMode === 'list' ? (
+            <div className="relative mb-4">
+              <input
+                type="text"
+                value={filterQuery}
+                onChange={(e) => setFilterQuery(e.target.value)}
+                placeholder="Filter movies..."
+                className="w-full px-4 py-2 bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-xl text-[var(--color-text)] placeholder:text-[var(--color-text-muted)]/60 focus:outline-none focus:border-[var(--color-primary)] focus:ring-1 focus:ring-[var(--color-primary)] transition-all text-sm"
+              />
+              {filterQuery && (
+                <button
+                  type="button"
+                  onClick={() => setFilterQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
+            </div>
+
+            {filteredEntries.length === 0 && filterQuery.trim() ? (
+              <p className="text-[var(--color-text-muted)] text-center py-6 text-sm">
+                No movies match &ldquo;{filterQuery.trim()}&rdquo;
+              </p>
+            ) : viewMode === 'list' ? (
               /* List view */
               <div className="space-y-2 max-h-96 overflow-y-auto">
-                {shuffledEntries.map((entry) => {
+                {filteredEntries.map((entry) => {
                   const selectedRank = isMovieSelected(entry.movie.id);
 
                   return (
@@ -399,7 +386,7 @@ function DesktopSurveyVotingClient({
             ) : (
               /* Grid view */
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-96 overflow-y-auto">
-                {shuffledEntries.map((entry) => {
+                {filteredEntries.map((entry) => {
                   const selectedRank = isMovieSelected(entry.movie.id);
 
                   return (

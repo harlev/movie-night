@@ -348,28 +348,30 @@ export default function SimpleVotingClient({
         )}
 
         <div className="grid gap-6 lg:grid-cols-2">
-          <div className="space-y-4 min-w-0">
-            <div className="bg-[var(--color-surface)] rounded-xl p-6 border border-[var(--color-border)]/50 shadow-lg shadow-black/20 overflow-hidden">
+          <div className="space-y-4 min-w-0 lg:sticky lg:top-6 lg:self-start">
+            <div className="bg-[var(--color-surface)] rounded-xl p-6 border border-[var(--color-border)]/50 shadow-lg shadow-black/20 overflow-hidden lg:flex lg:max-h-[calc(100vh-8rem)] lg:flex-col">
               <h2 className="text-lg font-display font-semibold text-[var(--color-text)] mb-4">
                 Movies{' '}
                 <span className="text-sm font-normal text-[var(--color-text-muted)]">
                   ({shuffledEntries.length})
                 </span>
               </h2>
-              <SimpleMovieList
-                ballotSize={ballot.size}
-                canVote={canVote}
-                desktop
-                entries={shuffledEntries}
-                handleMovieClick={handleMovieClick}
-                isMovieSelected={isMovieSelected}
-                moveRank={moveRank}
-                showMoveControls
-              />
+              <div className="lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:pr-1">
+                <SimpleMovieList
+                  ballotSize={ballot.size}
+                  canVote={canVote}
+                  desktop
+                  entries={shuffledEntries}
+                  handleMovieClick={handleMovieClick}
+                  isMovieSelected={isMovieSelected}
+                  moveRank={moveRank}
+                  showMoveControls
+                />
+              </div>
 
               {canVote ? (
-                <div className="sticky bottom-4 z-10 mt-5">
-                  <div className="rounded-2xl bg-gradient-to-t from-[var(--color-surface)] via-[var(--color-surface)]/95 to-transparent pt-4 backdrop-blur-sm">
+                <div className="mt-5 lg:mt-4 lg:border-t lg:border-[var(--color-border)]/50 lg:pt-4">
+                  <div className="rounded-2xl bg-gradient-to-t from-[var(--color-surface)] via-[var(--color-surface)]/95 to-transparent backdrop-blur-sm">
                     <form action={formAction}>
                       <input type="hidden" name="surveyId" value={survey.id} />
                       <input type="hidden" name="ranks" value={JSON.stringify(getBallotAsArray())} />

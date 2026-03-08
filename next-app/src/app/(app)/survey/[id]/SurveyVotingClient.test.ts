@@ -3,12 +3,14 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
-test('SurveyVotingClient delegates mobile viewports to the compact survey client', () => {
+test('SurveyVotingClient keeps the regular survey experience on the non-/simple route', () => {
   const filePath = path.join(process.cwd(), 'src/app/(app)/survey/[id]/SurveyVotingClient.tsx');
   const source = readFileSync(filePath, 'utf8');
 
-  assert.equal(source.includes("import SimpleVotingClient from './simple/SimpleVotingClient';"), true);
-  assert.equal(source.includes("window.matchMedia('(max-width: 767px)')"), true);
-  assert.equal(source.includes('<SimpleVotingClient'), true);
-  assert.equal(source.includes('Filter movies...'), false);
+  assert.equal(source.includes("import SimpleVotingClient from './simple/SimpleVotingClient';"), false);
+  assert.equal(source.includes("window.matchMedia('(max-width: 767px)')"), false);
+  assert.equal(source.includes('<SimpleVotingClient'), false);
+  assert.equal(source.includes('Filter movies...'), true);
+  assert.equal(source.includes('SortableBallotList'), true);
+  assert.equal(source.includes('Your Ballot'), true);
 });

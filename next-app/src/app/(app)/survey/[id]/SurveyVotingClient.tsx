@@ -83,6 +83,7 @@ export default function SurveyVotingClient({
         userBallotRanks={userBallotRanks}
         allBallots={allBallots}
         standings={standings}
+        pointsBreakdown={pointsBreakdown}
         hasExistingBallot={hasExistingBallot}
         userRole={userRole}
       />

@@ -3,32 +3,24 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
-test('SimpleVotingClient keeps the mobile survey screen compressed and uses always-vote row taps', () => {
+test('SimpleVotingClient keeps a simple movie list while restoring the desktop /simple shell', () => {
   const filePath = path.join(
     process.cwd(),
     'src/app/(app)/survey/[id]/simple/SimpleVotingClient.tsx'
   );
   const source = readFileSync(filePath, 'utf8');
 
-  assert.equal(source.includes('href="/dashboard"'), false);
-  assert.equal(source.includes('Points per position'), false);
-  assert.equal(source.includes('toggleMovie('), false);
+  assert.equal(source.includes('Back to Dashboard'), true);
+  assert.equal(source.includes('Your Ballot'), true);
+  assert.equal(source.includes('Current Standings'), true);
+  assert.equal(source.includes('All Ballots'), true);
+  assert.equal(source.includes('SortableBallotList'), true);
+  assert.equal(source.includes('variant="full"'), true);
+  assert.equal(source.includes('variant="compact"'), true);
   assert.equal(source.includes('onClick={() => handleMovieClick(entry.movie.id)}'), true);
-  assert.equal(source.includes('survey.description && ('), true);
-  assert.equal(source.includes('Filter movies...'), false);
-  assert.equal(
-    source.includes(
-      'inline-flex min-h-9 items-center gap-2 rounded-full border border-[var(--color-border)]/50 bg-[var(--color-surface)] px-3'
-    ),
-    true
-  );
-  assert.equal(
-    source.includes(
-      'ml-auto inline-flex min-h-9 items-center justify-center rounded-full'
-    ),
-    true
-  );
-  assert.equal(source.includes('aria-label={`Rank ${i + 1}`}'), true);
-  assert.equal(source.includes('onClick={clearBallot}'), true);
-  assert.equal(source.includes('Clear all'), false);
+  assert.equal(source.includes('hidden md:block'), true);
+  assert.equal(source.includes('md:hidden'), true);
+  assert.equal(source.includes('Grid view'), false);
+  assert.equal(source.includes('List view'), false);
+  assert.equal(source.includes('setViewMode('), false);
 });

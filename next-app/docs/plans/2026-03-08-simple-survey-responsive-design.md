@@ -22,6 +22,7 @@ Make `/survey/[id]/simple` the candidate future default survey flow by keeping t
   - selected rows expose the same up/down reorder arrows used on mobile
   - denser height and tighter spacing than the current desktop rows
 - The desktop submit button sits directly under the movie list instead of under a separate ballot card.
+- The desktop submit button stays sticky within the left voting column so it remains visible while browsing the movie list.
 - On mobile `<md`, keep the compact simple layout already used by the responsive survey flow.
 
 ## Architecture
@@ -38,5 +39,6 @@ Make `/survey/[id]/simple` the candidate future default survey flow by keeping t
   - the circle button delegates to the same click handler
   - desktop selected rows enable the reusable move-control affordance
   - desktop row sizing is denser than the previous shell version
+  - the desktop submit CTA uses a sticky container in the left voting column
   - mobile-only compact affordances remain in the component
 - Re-run the ballot hook and survey client tests to make sure the simple list behavior still matches the compact voting flow.

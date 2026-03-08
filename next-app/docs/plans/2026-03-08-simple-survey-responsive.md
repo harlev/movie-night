@@ -58,6 +58,7 @@ Expected: PASS.
 - Tighten row padding, poster size, text size, and rank badge size on desktop.
 - Reuse the existing mobile up/down arrow affordance for selected desktop rows.
 - Make both the row and the rank circle clickable when voting is enabled.
+- Keep the desktop submit CTA sticky inside the left voting column instead of leaving it inline at the bottom of the card.
 
 **Step 4: Preserve the compact mobile path**
 - Keep the current compact header/footer behavior for `<md`.

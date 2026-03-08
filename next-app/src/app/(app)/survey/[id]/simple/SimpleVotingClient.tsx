@@ -132,7 +132,7 @@ function SimpleMovieList({
               onClick={() => handleMovieClick(entry.movie.id)}
               className={`flex flex-1 min-w-0 items-center ${
                 desktop ? 'gap-5 text-base' : 'gap-3 text-left'
-              } text-left ${!canVote ? 'cursor-default' : 'active:scale-[0.98]'}`}
+              } text-left ${!canVote ? 'cursor-default' : 'cursor-pointer active:scale-[0.98]'}`}
             >
               {entry.movie.metadata_snapshot?.posterPath ? (
                 <img
@@ -211,25 +211,44 @@ function SimpleMovieList({
               </div>
             )}
 
-            <div className={desktop ? 'w-12 shrink-0 flex justify-center' : 'w-8 shrink-0 flex justify-center'}>
-              {isSelected ? (
-                <span
-                  className={`flex items-center justify-center rounded-full font-bold animate-rank-in ${getRankBadgeClasses(
-                    selectedRank!
-                  )} ${desktop ? 'h-10 w-10 text-base' : 'w-7 h-7 text-sm'}`}
-                >
-                  {selectedRank}
-                </span>
-              ) : canVote ? (
-                <span
-                  className={
-                    desktop
-                      ? 'h-10 w-10 rounded-full border-[3px] border-dashed border-[var(--color-border)]'
-                      : 'w-7 h-7 rounded-full border-2 border-[var(--color-border)] border-dashed'
-                  }
-                />
-              ) : null}
-            </div>
+            {canVote ? (
+              <button
+                type="button"
+                onClick={() => handleMovieClick(entry.movie.id)}
+                aria-label={`Toggle rank for ${entry.movie.title}`}
+                className={`${desktop ? 'w-12 shrink-0 flex justify-center' : 'w-8 shrink-0 flex justify-center'} cursor-pointer`}
+              >
+                {isSelected ? (
+                  <span
+                    className={`flex items-center justify-center rounded-full font-bold animate-rank-in ${getRankBadgeClasses(
+                      selectedRank!
+                    )} ${desktop ? 'h-10 w-10 text-base' : 'w-7 h-7 text-sm'}`}
+                  >
+                    {selectedRank}
+                  </span>
+                ) : (
+                  <span
+                    className={
+                      desktop
+                        ? 'h-10 w-10 rounded-full border-[3px] border-dashed border-[var(--color-border)]'
+                        : 'w-7 h-7 rounded-full border-2 border-[var(--color-border)] border-dashed'
+                    }
+                  />
+                )}
+              </button>
+            ) : (
+              <div className={desktop ? 'w-12 shrink-0 flex justify-center' : 'w-8 shrink-0 flex justify-center'}>
+                {isSelected ? (
+                  <span
+                    className={`flex items-center justify-center rounded-full font-bold animate-rank-in ${getRankBadgeClasses(
+                      selectedRank!
+                    )} ${desktop ? 'h-10 w-10 text-base' : 'w-7 h-7 text-sm'}`}
+                  >
+                    {selectedRank}
+                  </span>
+                ) : null}
+              </div>
+            )}
           </div>
         );
       })}

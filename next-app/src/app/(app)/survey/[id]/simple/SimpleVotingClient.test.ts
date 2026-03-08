@@ -28,6 +28,7 @@ test('SimpleVotingClient keeps a simple movie list while restoring the desktop /
   assert.equal(source.includes('text-lg leading-tight'), true);
   assert.equal(source.includes("cursor-pointer active:scale-[0.98]'"), true);
   assert.equal(source.includes('aria-label={`Toggle rank for ${entry.movie.title}`}'), true);
+  assert.equal(source.includes('sticky bottom-4 z-10 mt-5'), true);
   assert.equal(
     source.includes(`desktop
                 entries={shuffledEntries}

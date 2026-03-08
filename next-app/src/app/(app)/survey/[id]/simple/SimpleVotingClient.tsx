@@ -368,25 +368,29 @@ export default function SimpleVotingClient({
               />
 
               {canVote ? (
-                <form action={formAction} className="mt-5">
-                  <input type="hidden" name="surveyId" value={survey.id} />
-                  <input type="hidden" name="ranks" value={JSON.stringify(getBallotAsArray())} />
-                  <button
-                    type="submit"
-                    disabled={isSubmitting || ballot.size === 0}
-                    className={`w-full py-2.5 px-4 bg-[var(--color-primary)] hover:bg-[var(--color-primary-dark)] text-white font-medium rounded-xl transition-all duration-150 active:scale-[0.97] disabled:opacity-50 disabled:active:scale-100 ${
-                      isBallotComplete
-                        ? 'shadow-lg shadow-[var(--color-primary)]/30'
-                        : 'shadow-md shadow-[var(--color-primary)]/20'
-                    }`}
-                  >
-                    {isSubmitting
-                      ? 'Submitting...'
-                      : hasExistingBallot
-                        ? 'Update Ballot'
-                        : 'Submit Ballot'}
-                  </button>
-                </form>
+                <div className="sticky bottom-4 z-10 mt-5">
+                  <div className="rounded-2xl bg-gradient-to-t from-[var(--color-surface)] via-[var(--color-surface)]/95 to-transparent pt-4 backdrop-blur-sm">
+                    <form action={formAction}>
+                      <input type="hidden" name="surveyId" value={survey.id} />
+                      <input type="hidden" name="ranks" value={JSON.stringify(getBallotAsArray())} />
+                      <button
+                        type="submit"
+                        disabled={isSubmitting || ballot.size === 0}
+                        className={`w-full py-2.5 px-4 bg-[var(--color-primary)] hover:bg-[var(--color-primary-dark)] text-white font-medium rounded-xl transition-all duration-150 active:scale-[0.97] disabled:opacity-50 disabled:active:scale-100 ${
+                          isBallotComplete
+                            ? 'shadow-lg shadow-[var(--color-primary)]/30'
+                            : 'shadow-md shadow-[var(--color-primary)]/20'
+                        }`}
+                      >
+                        {isSubmitting
+                          ? 'Submitting...'
+                          : hasExistingBallot
+                            ? 'Update Ballot'
+                            : 'Submit Ballot'}
+                      </button>
+                    </form>
+                  </div>
+                </div>
               ) : userRole === 'viewer' ? (
                 <p className="mt-4 text-center text-sm text-[var(--color-text-muted)]">
                   Viewers cannot vote on surveys.

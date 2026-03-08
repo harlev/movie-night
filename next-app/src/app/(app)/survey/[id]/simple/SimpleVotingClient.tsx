@@ -497,6 +497,7 @@ export default function SimpleVotingClient({
       </div>
 
       <div className="md:hidden pb-24 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]">
+        <h1 className="sr-only">{survey.title}</h1>
         <div className="mb-3 space-y-2">
           {survey.description && (
             <p className="text-sm leading-relaxed text-[var(--color-text-muted)]">
@@ -636,11 +637,13 @@ export default function SimpleVotingClient({
         {canVote && (
           <div className="fixed bottom-0 left-0 right-0 z-20 bg-[var(--color-surface)]/95 backdrop-blur border-t border-[var(--color-border)]/50 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]">
             <div className="max-w-2xl mx-auto flex items-center gap-2">
-              <div className="flex items-center gap-1.5">
+              <p className="sr-only" aria-live="polite">
+                {ballot.size} of {survey.maxRankN} ranks selected.
+              </p>
+              <div className="flex items-center gap-1.5" aria-hidden="true">
                 {Array.from({ length: survey.maxRankN }, (_, i) => (
                   <div
                     key={i}
-                    aria-label={`Rank ${i + 1}`}
                     className={`w-6 h-6 rounded-full border text-[11px] font-semibold flex items-center justify-center transition-all duration-200 ${
                       i < ballot.size
                         ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/15 text-[var(--color-primary-light)]'

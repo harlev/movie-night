@@ -40,3 +40,17 @@ test('SimpleVotingClient keeps a simple movie list while restoring the desktop /
   assert.equal(source.includes('moveRank={moveRank}'), true);
   assert.equal(source.includes('showMoveControls'), true);
 });
+
+test('SimpleVotingClient keeps mobile-only accessibility affordances for the hidden heading and footer progress', () => {
+  const filePath = path.join(
+    process.cwd(),
+    'src/app/(app)/survey/[id]/simple/SimpleVotingClient.tsx'
+  );
+  const source = readFileSync(filePath, 'utf8');
+
+  assert.equal(source.includes('<h1 className="sr-only">{survey.title}</h1>'), true);
+  assert.equal(source.includes('aria-live="polite"'), true);
+  assert.equal(source.includes('{ballot.size} of {survey.maxRankN} ranks selected.'), true);
+  assert.equal(source.includes('aria-hidden="true"'), true);
+  assert.equal(source.includes('aria-label={`Rank ${i + 1}`}'), false);
+});

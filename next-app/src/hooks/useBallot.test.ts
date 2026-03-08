@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import test from 'node:test';
 import { applyMovieClick } from './useBallot';
 
@@ -37,4 +39,13 @@ test('applyMovieClick replaces the last rank when adding a new movie to a full b
     [3, 'movie-4'],
   ]);
   assert.equal(assignedRank, 3);
+});
+
+test('useBallot does not keep the legacy click updater side effect or unused toggle helpers', () => {
+  const filePath = path.join(process.cwd(), 'src/hooks/useBallot.ts');
+  const source = readFileSync(filePath, 'utf8');
+
+  assert.equal(source.includes('let assignedRank: number | null = null;'), false);
+  assert.equal(source.includes('const toggleMovie = useCallback('), false);
+  assert.equal(source.includes('const getMovieForRank = useCallback('), false);
 });

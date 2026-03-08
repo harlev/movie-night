@@ -1,6 +1,6 @@
 # Simple Survey Responsive Implementation Plan
 
-> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
+> **Note:** Implement this plan task-by-task, using the tests and steps below to guide each change.
 
 **Goal:** Restore the desktop shell for `/survey/[id]/simple` while making the simple WhatsApp-style movie list the only ranking surface on desktop.
 

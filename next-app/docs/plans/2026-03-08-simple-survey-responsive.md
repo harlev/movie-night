@@ -21,6 +21,8 @@
   - does not include `Your Ballot` or `SortableBallotList`
   - uses `variant="full"` for the desktop countdown path
   - keeps `onClick={() => handleMovieClick(entry.movie.id)}` for the movie rows
+  - adds pointer cursor affordances for voteable rows
+  - makes the rank circle a button with the same click behavior
   - enables `showMoveControls` in the desktop movie list invocation
   - does not contain `Grid view`, `List view`, or `setViewMode(`
   - uses denser desktop row classes
@@ -55,6 +57,7 @@ Expected: PASS.
 - Render only the simple list rows in the movies section.
 - Tighten row padding, poster size, text size, and rank badge size on desktop.
 - Reuse the existing mobile up/down arrow affordance for selected desktop rows.
+- Make both the row and the rank circle clickable when voting is enabled.
 
 **Step 4: Preserve the compact mobile path**
 - Keep the current compact header/footer behavior for `<md`.

@@ -1,7 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useActionState, useCallback, useMemo } from 'react';
-import Link from 'next/link';
+import { useState, useEffect, useRef, useActionState } from 'react';
 import { submitBallotAction } from '@/lib/actions/ballots';
 import type { Standing } from '@/lib/services/scoring';
 import { useBallot } from '@/hooks/useBallot';
@@ -44,7 +43,6 @@ interface SimpleVotingClientProps {
   userBallotRanks: Array<{ rank: number; movieId: string }> | null;
   allBallots: ClientBallot[];
   standings: Standing[];
-  pointsBreakdown: Array<{ rank: number; points: number; label: string }>;
   hasExistingBallot: boolean;
   userRole?: 'admin' | 'member' | 'viewer';
 }
@@ -55,7 +53,6 @@ export default function SimpleVotingClient({
   userBallotRanks,
   allBallots,
   standings,
-  pointsBreakdown,
   hasExistingBallot,
   userRole,
 }: SimpleVotingClientProps) {
@@ -76,10 +73,10 @@ export default function SimpleVotingClient({
   const {
     ballot,
     clearBallot,
+    handleMovieClick,
     getBallotAsArray,
     isMovieSelected,
     isBallotComplete,
-    toggleMovie,
     moveRank,
   } = useBallot({
     maxRankN: survey.maxRankN,
@@ -87,33 +84,30 @@ export default function SimpleVotingClient({
     isLive,
   });
 
-  const [filterQuery, setFilterQuery] = useState('');
-
-  const filteredEntries = useMemo(() => {
-    if (!filterQuery.trim()) return shuffledEntries;
-    const query = filterQuery.toLowerCase().trim();
-    return shuffledEntries.filter((entry) =>
-      entry.movie.title.toLowerCase().includes(query)
-    );
-  }, [shuffledEntries, filterQuery]);
-
   return (
     <div className="animate-fade-in pb-24 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]">
       {/* Header */}
-      <div className="mb-4">
-        <Link
-          href="/dashboard"
-          className="text-[var(--color-primary)] hover:text-[var(--color-primary-light)] text-sm inline-flex items-center gap-1 transition-colors"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-          Back
-        </Link>
-        <div className="flex items-center gap-3 mt-2">
-          <h1 className="text-xl font-display font-bold text-[var(--color-text)]">{survey.title}</h1>
+      <div className="mb-3 space-y-2">
+        {survey.description && (
+          <p className="text-sm leading-relaxed text-[var(--color-text-muted)]">
+            {survey.description}
+          </p>
+        )}
+        <div className="flex items-stretch gap-2">
+          {isLive && survey.closesAt && (
+            <div className="inline-flex min-h-9 items-center gap-2 rounded-full border border-[var(--color-border)]/50 bg-[var(--color-surface)] px-3">
+              <span className="text-[10px] uppercase tracking-[0.14em] text-[var(--color-text-muted)]">
+                Closes
+              </span>
+              <CountdownTimer
+                closesAt={survey.closesAt}
+                variant="compact"
+                onExpired={() => window.location.reload()}
+              />
+            </div>
+          )}
           <span
-            className={`px-2 py-0.5 text-xs font-medium rounded-full ${
+            className={`ml-auto inline-flex min-h-9 items-center justify-center rounded-full px-3 text-xs font-medium ${
               isLive
                 ? 'bg-[var(--color-success)]/10 text-[var(--color-success)] border border-[var(--color-success)]/20'
                 : 'bg-[var(--color-secondary)]/10 text-[var(--color-secondary)] border border-[var(--color-secondary)]/20'
@@ -137,167 +131,97 @@ export default function SimpleVotingClient({
         </div>
       )}
 
-      {/* Countdown — compact, sticky */}
-      {isLive && survey.closesAt && (
-        <div className="sticky top-0 z-10 py-2 px-3 mb-4 rounded-xl bg-[var(--color-surface)]/95 backdrop-blur border border-[var(--color-border)]/50 flex items-center justify-center gap-2">
-          <span className="text-[10px] uppercase tracking-widest text-[var(--color-text-muted)]">Closes in</span>
-          <CountdownTimer
-            closesAt={survey.closesAt}
-            variant="compact"
-            onExpired={() => window.location.reload()}
-          />
-        </div>
-      )}
-
-      {/* Points breakdown — collapsible */}
-      <details className="mb-4 bg-[var(--color-surface)] rounded-xl border border-[var(--color-border)]/50">
-        <summary className="px-4 py-3 text-sm font-medium text-[var(--color-text-muted)] cursor-pointer select-none">
-          Points per position
-        </summary>
-        <div className="px-4 pb-3 flex flex-wrap gap-2">
-          {pointsBreakdown.map(({ rank, points }) => (
-            <span key={rank} className="text-xs px-2 py-1 bg-[var(--color-surface-elevated)] rounded-lg">
-              #{rank} = {points}pts
-            </span>
-          ))}
-        </div>
-      </details>
-
-      {/* Filter bar */}
-      <div className="relative mb-3">
-        <input
-          type="text"
-          value={filterQuery}
-          onChange={(e) => setFilterQuery(e.target.value)}
-          placeholder="Filter movies..."
-          className="w-full px-4 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl text-[var(--color-text)] placeholder:text-[var(--color-text-muted)]/60 focus:outline-none focus:border-[var(--color-primary)] focus:ring-1 focus:ring-[var(--color-primary)] transition-all text-sm"
-        />
-        {filterQuery && (
-          <button
-            type="button"
-            onClick={() => setFilterQuery('')}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        )}
-      </div>
-
-      {/* Ballot summary */}
-      <div className="flex items-center justify-between mb-3 px-1">
-        <span className="text-sm text-[var(--color-text-muted)]">
-          <span className="font-medium text-[var(--color-text)]">{ballot.size}</span> of {survey.maxRankN} ranked
-        </span>
-        {canVote && ballot.size > 0 && (
-          <button
-            type="button"
-            onClick={clearBallot}
-            className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
-          >
-            Clear all
-          </button>
-        )}
-      </div>
-
       {/* Movie list */}
       <div className="space-y-2 mb-6">
-        {filteredEntries.length === 0 && filterQuery.trim() ? (
-          <p className="text-[var(--color-text-muted)] text-center py-6 text-sm">
-            No movies match &ldquo;{filterQuery.trim()}&rdquo;
-          </p>
-        ) : (
-          filteredEntries.map((entry) => {
-            const selectedRank = isMovieSelected(entry.movie.id);
-            const isSelected = selectedRank !== null;
+        {shuffledEntries.map((entry) => {
+          const selectedRank = isMovieSelected(entry.movie.id);
+          const isSelected = selectedRank !== null;
 
-            return (
-              <div
-                key={entry.movie.id}
-                className={`flex items-center gap-3 p-3 rounded-xl transition-all duration-150 ${
-                  isSelected
-                    ? 'bg-[var(--color-primary)]/10 border border-[var(--color-primary)]/30'
-                    : 'bg-[var(--color-surface)] border border-[var(--color-border)]/50'
-                }`}
+          return (
+            <div
+              key={entry.movie.id}
+              className={`flex items-center gap-3 p-3 rounded-xl transition-all duration-150 ${
+                isSelected
+                  ? 'bg-[var(--color-primary)]/10 border border-[var(--color-primary)]/30'
+                  : 'bg-[var(--color-surface)] border border-[var(--color-border)]/50'
+              }`}
+            >
+              {/* Tappable area: poster + title */}
+              <button
+                type="button"
+                disabled={!canVote}
+                onClick={() => handleMovieClick(entry.movie.id)}
+                className={`flex items-center gap-3 flex-1 min-w-0 text-left ${!canVote ? 'cursor-default' : 'active:scale-[0.98]'}`}
               >
-                {/* Tappable area: poster + title */}
-                <button
-                  type="button"
-                  disabled={!canVote}
-                  onClick={() => toggleMovie(entry.movie.id)}
-                  className={`flex items-center gap-3 flex-1 min-w-0 text-left ${!canVote ? 'cursor-default' : 'active:scale-[0.98]'}`}
-                >
-                  {entry.movie.metadata_snapshot?.posterPath ? (
-                    <img
-                      src={`${TMDB_IMAGE_BASE}${entry.movie.metadata_snapshot.posterPath}`}
-                      alt={entry.movie.title}
-                      className="w-10 h-15 object-cover rounded-lg shrink-0"
-                    />
-                  ) : (
-                    <div className="w-10 h-15 bg-[var(--color-border)] rounded-lg flex items-center justify-center shrink-0">
-                      <svg className="w-4 h-4 text-[var(--color-text-muted)]/30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
-                        <rect x="2" y="4" width="20" height="16" rx="2" />
-                        <path d="M2 8h20M2 16h20" />
-                      </svg>
-                    </div>
-                  )}
-                  <div className="min-w-0">
-                    <p className="font-medium text-[var(--color-text)] truncate text-sm">
-                      {entry.movie.title}
-                    </p>
-                    {entry.movie.metadata_snapshot?.releaseDate && (
-                      <p className="text-xs text-[var(--color-text-muted)]">
-                        {entry.movie.metadata_snapshot.releaseDate.slice(0, 4)}
-                      </p>
-                    )}
-                  </div>
-                </button>
-
-                {/* Up/down arrows for selected movies */}
-                {isSelected && canVote && (
-                  <div className="flex flex-col gap-0.5 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => moveRank(entry.movie.id, 'up')}
-                      disabled={selectedRank === 1}
-                      className="p-1 rounded text-[var(--color-text-muted)] hover:text-[var(--color-text)] disabled:opacity-30 transition-colors"
-                      aria-label="Move up"
-                    >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
-                      </svg>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => moveRank(entry.movie.id, 'down')}
-                      disabled={selectedRank === ballot.size}
-                      className="p-1 rounded text-[var(--color-text-muted)] hover:text-[var(--color-text)] disabled:opacity-30 transition-colors"
-                      aria-label="Move down"
-                    >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </button>
+                {entry.movie.metadata_snapshot?.posterPath ? (
+                  <img
+                    src={`${TMDB_IMAGE_BASE}${entry.movie.metadata_snapshot.posterPath}`}
+                    alt={entry.movie.title}
+                    className="w-10 h-15 object-cover rounded-lg shrink-0"
+                  />
+                ) : (
+                  <div className="w-10 h-15 bg-[var(--color-border)] rounded-lg flex items-center justify-center shrink-0">
+                    <svg className="w-4 h-4 text-[var(--color-text-muted)]/30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+                      <rect x="2" y="4" width="20" height="16" rx="2" />
+                      <path d="M2 8h20M2 16h20" />
+                    </svg>
                   </div>
                 )}
-
-                {/* Rank badge or empty circle */}
-                <div className="shrink-0 w-8 flex justify-center">
-                  {isSelected ? (
-                    <span
-                      className={`w-7 h-7 flex items-center justify-center rounded-full text-sm font-bold animate-rank-in ${getRankBadgeClasses(selectedRank!)}`}
-                    >
-                      {selectedRank}
-                    </span>
-                  ) : canVote ? (
-                    <span className="w-7 h-7 rounded-full border-2 border-[var(--color-border)] border-dashed" />
-                  ) : null}
+                <div className="min-w-0">
+                  <p className="font-medium text-[var(--color-text)] truncate text-sm">
+                    {entry.movie.title}
+                  </p>
+                  {entry.movie.metadata_snapshot?.releaseDate && (
+                    <p className="text-xs text-[var(--color-text-muted)]">
+                      {entry.movie.metadata_snapshot.releaseDate.slice(0, 4)}
+                    </p>
+                  )}
                 </div>
+              </button>
+
+              {/* Up/down arrows for selected movies */}
+              {isSelected && canVote && (
+                <div className="flex flex-col gap-0.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => moveRank(entry.movie.id, 'up')}
+                    disabled={selectedRank === 1}
+                    className="p-1 rounded text-[var(--color-text-muted)] hover:text-[var(--color-text)] disabled:opacity-30 transition-colors"
+                    aria-label="Move up"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => moveRank(entry.movie.id, 'down')}
+                    disabled={selectedRank === ballot.size}
+                    className="p-1 rounded text-[var(--color-text-muted)] hover:text-[var(--color-text)] disabled:opacity-30 transition-colors"
+                    aria-label="Move down"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                </div>
+              )}
+
+              {/* Rank badge or empty circle */}
+              <div className="shrink-0 w-8 flex justify-center">
+                {isSelected ? (
+                  <span
+                    className={`w-7 h-7 flex items-center justify-center rounded-full text-sm font-bold animate-rank-in ${getRankBadgeClasses(selectedRank!)}`}
+                  >
+                    {selectedRank}
+                  </span>
+                ) : canVote ? (
+                  <span className="w-7 h-7 rounded-full border-2 border-[var(--color-border)] border-dashed" />
+                ) : null}
               </div>
-            );
-          })
-        )}
+            </div>
+          );
+        })}
       </div>
 
       {/* Standings — collapsible, default open */}
@@ -381,22 +305,32 @@ export default function SimpleVotingClient({
       {/* Sticky submit bar */}
       {canVote && (
         <div className="fixed bottom-0 left-0 right-0 z-20 bg-[var(--color-surface)]/95 backdrop-blur border-t border-[var(--color-border)]/50 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]">
-          <div className="max-w-2xl mx-auto flex items-center gap-4">
-            {/* Progress dots */}
+          <div className="max-w-2xl mx-auto flex items-center gap-2">
             <div className="flex items-center gap-1.5">
               {Array.from({ length: survey.maxRankN }, (_, i) => (
                 <div
                   key={i}
-                  className={`w-2.5 h-2.5 rounded-full transition-all duration-200 ${
+                  aria-label={`Rank ${i + 1}`}
+                  className={`w-6 h-6 rounded-full border text-[11px] font-semibold flex items-center justify-center transition-all duration-200 ${
                     i < ballot.size
-                      ? 'bg-[var(--color-primary)] scale-100'
-                      : 'bg-[var(--color-border)] scale-90'
+                      ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/15 text-[var(--color-primary-light)]'
+                      : 'border-[var(--color-border)]/70 text-[var(--color-text-muted)]'
                   }`}
-                />
+                >
+                  {i + 1}
+                </div>
               ))}
             </div>
 
-            {/* Submit button */}
+            <button
+              type="button"
+              onClick={clearBallot}
+              disabled={ballot.size === 0}
+              className="shrink-0 rounded-lg border border-[var(--color-border)]/70 px-3 py-2 text-sm text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text)] disabled:opacity-40"
+            >
+              Clear
+            </button>
+
             <form action={formAction} className="flex-1">
               <input type="hidden" name="surveyId" value={survey.id} />
               <input type="hidden" name="ranks" value={JSON.stringify(getBallotAsArray())} />

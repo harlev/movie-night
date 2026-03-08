@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getSurveyById, getSurveyEntries } from '@/lib/queries/surveys';
 import { getBallot, getAllBallots } from '@/lib/queries/ballots';
 import { getUserById } from '@/lib/queries/profiles';
-import { calculateStandings, getPointsBreakdown } from '@/lib/services/scoring';
+import { calculateStandings } from '@/lib/services/scoring';
 import SimpleVotingClient from './SimpleVotingClient';
 
 export default async function SimpleSurveyPage({ params }: { params: Promise<{ id: string }> }) {
@@ -41,9 +41,6 @@ export default async function SimpleSurveyPage({ params }: { params: Promise<{ i
     })),
     survey.max_rank_n
   );
-
-  const pointsBreakdown = getPointsBreakdown(survey.max_rank_n);
-
   const clientEntries = entries.map((e) => ({
     movieId: e.movie_id,
     movie: {
@@ -81,7 +78,6 @@ export default async function SimpleSurveyPage({ params }: { params: Promise<{ i
       userBallotRanks={clientBallotRanks}
       allBallots={clientAllBallots}
       standings={standings}
-      pointsBreakdown={pointsBreakdown}
       hasExistingBallot={!!userBallot}
       userRole={profile?.role}
     />

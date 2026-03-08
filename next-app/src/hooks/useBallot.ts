@@ -16,6 +16,39 @@ export interface FilledRankItem {
   movieId: string;
 }
 
+export function applyMovieClick(
+  prev: Map<number, string>,
+  movieId: string,
+  maxRankN: number
+): { ballot: Map<number, string>; assignedRank: number | null } {
+  const entries = Array.from(prev.entries()).sort((a, b) => a[0] - b[0]);
+  const existingRank = entries.find(([, selectedMovieId]) => selectedMovieId === movieId)?.[0] ?? null;
+
+  if (existingRank !== null) {
+    const compacted = new Map<number, string>();
+    entries
+      .filter(([, selectedMovieId]) => selectedMovieId !== movieId)
+      .forEach(([, selectedMovieId], index) => {
+        compacted.set(index + 1, selectedMovieId);
+      });
+
+    return { ballot: compacted, assignedRank: null };
+  }
+
+  const nextBallot = new Map(prev);
+  let targetRank: number | null = null;
+  for (let rank = 1; rank <= maxRankN; rank++) {
+    if (!nextBallot.has(rank)) {
+      targetRank = rank;
+      break;
+    }
+  }
+
+  const assignedRank = targetRank ?? maxRankN;
+  nextBallot.set(assignedRank, movieId);
+  return { ballot: nextBallot, assignedRank };
+}
+
 export function useBallot({ maxRankN, initialRanks, isLive }: UseBallotOptions) {
   const initialBallot = useMemo(() => {
     const map = new Map<number, string>();
@@ -62,30 +95,18 @@ export function useBallot({ maxRankN, initialRanks, isLive }: UseBallotOptions) 
     (movieId: string) => {
       if (!isLive) return;
 
-      // Use a single setState to atomically find slot and update
-      let assignedRank = maxRankN;
+      let assignedRank: number | null = null;
       setBallot((prev) => {
-        const newBallot = new Map(prev);
-
-        // Remove movie from any existing rank
-        for (const [r, m] of newBallot) {
-          if (m === movieId) newBallot.delete(r);
-        }
-
-        // Find first empty slot
-        let targetRank: number | null = null;
-        for (let r = 1; r <= maxRankN; r++) {
-          if (!newBallot.has(r)) {
-            targetRank = r;
-            break;
-          }
-        }
-
-        // Use first empty slot or replace last
-        assignedRank = targetRank ?? maxRankN;
-        newBallot.set(assignedRank, movieId);
-        return newBallot;
+        const result = applyMovieClick(prev, movieId, maxRankN);
+        assignedRank = result.assignedRank;
+        return result.ballot;
       });
+
+      if (assignedRank === null) {
+        setLastChangedRank(null);
+        return;
+      }
+
       setLastChangedRank(assignedRank);
       setTimeout(() => setLastChangedRank(null), 200);
     },

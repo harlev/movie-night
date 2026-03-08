@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useActionState, useCallback } from 'react';
+import { useState, useEffect, useRef, useActionState } from 'react';
 import Link from 'next/link';
 import { submitBallotAction } from '@/lib/actions/ballots';
 import type { Standing } from '@/lib/services/scoring';
@@ -10,7 +10,6 @@ import {
   getStandingBorderColor,
   shuffle,
 } from '@/lib/utils/rankStyles';
-import SortableBallotList from '@/components/SortableBallotList';
 import CountdownTimer from '@/components/CountdownTimer';
 
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w92';
@@ -49,7 +48,6 @@ interface SimpleVotingClientProps {
   userBallotRanks: Array<{ rank: number; movieId: string }> | null;
   allBallots: ClientBallot[];
   standings: Standing[];
-  pointsBreakdown: Array<{ rank: number; points: number; label: string }>;
   hasExistingBallot: boolean;
   userRole?: 'admin' | 'member' | 'viewer';
 }
@@ -121,7 +119,7 @@ function SimpleMovieList({
           <div
             key={entry.movie.id}
             className={`flex items-center ${
-              desktop ? 'gap-5 rounded-[1.75rem] px-5 py-4' : 'gap-3 rounded-xl p-3'
+              desktop ? 'gap-4 rounded-[1.5rem] px-4 py-3' : 'gap-3 rounded-xl p-3'
             } border transition-all duration-150 ${
               isSelected
                 ? 'border-[var(--color-primary)]/35 bg-[var(--color-primary)]/10'
@@ -142,7 +140,7 @@ function SimpleMovieList({
                   alt={entry.movie.title}
                   className={
                     desktop
-                      ? 'h-20 w-14 rounded-2xl object-cover shrink-0'
+                      ? 'h-16 w-12 rounded-xl object-cover shrink-0'
                       : 'w-10 h-15 rounded-lg object-cover shrink-0'
                   }
                 />
@@ -150,7 +148,7 @@ function SimpleMovieList({
                 <div
                   className={
                     desktop
-                      ? 'h-20 w-14 rounded-2xl bg-[var(--color-border)] flex items-center justify-center shrink-0'
+                      ? 'h-16 w-12 rounded-xl bg-[var(--color-border)] flex items-center justify-center shrink-0'
                       : 'w-10 h-15 rounded-lg bg-[var(--color-border)] flex items-center justify-center shrink-0'
                   }
                 >
@@ -169,7 +167,7 @@ function SimpleMovieList({
               <div className="min-w-0">
                 <p
                   className={`font-medium text-[var(--color-text)] truncate ${
-                    desktop ? 'text-xl leading-tight' : 'text-sm'
+                    desktop ? 'text-lg leading-tight' : 'text-sm'
                   }`}
                 >
                   {entry.movie.title}
@@ -177,7 +175,7 @@ function SimpleMovieList({
                 {entry.movie.metadata_snapshot?.releaseDate && (
                   <p
                     className={`text-[var(--color-text-muted)] ${
-                      desktop ? 'mt-1 text-lg' : 'text-xs'
+                      desktop ? 'mt-0.5 text-sm' : 'text-xs'
                     }`}
                   >
                     {entry.movie.metadata_snapshot.releaseDate.slice(0, 4)}
@@ -245,7 +243,6 @@ export default function SimpleVotingClient({
   userBallotRanks,
   allBallots,
   standings,
-  pointsBreakdown,
   hasExistingBallot,
   userRole,
 }: SimpleVotingClientProps) {
@@ -266,26 +263,16 @@ export default function SimpleVotingClient({
   const {
     ballot,
     clearBallot,
-    filledRankItems,
-    firstEmptySlot,
     getBallotAsArray,
     isBallotComplete,
     isMovieSelected,
-    lastChangedRank,
     moveRank,
-    reorderBallot,
-    setRank,
     handleMovieClick,
   } = useBallot({
     maxRankN: survey.maxRankN,
     initialRanks: userBallotRanks,
     isLive,
   });
-
-  const getMovieById = useCallback(
-    (id: string): EntryMovie | undefined => entries.find((entry) => entry.movie.id === id)?.movie,
-    [entries]
-  );
 
   return (
     <div className="animate-fade-in">
@@ -344,48 +331,24 @@ export default function SimpleVotingClient({
         <div className="grid gap-6 lg:grid-cols-2">
           <div className="space-y-4 min-w-0">
             <div className="bg-[var(--color-surface)] rounded-xl p-6 border border-[var(--color-border)]/50 shadow-lg shadow-black/20 overflow-hidden">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-display font-semibold text-[var(--color-text)]">
-                  Your Ballot
-                </h2>
-                {canVote && ballot.size > 0 && (
-                  <button
-                    type="button"
-                    onClick={clearBallot}
-                    className="text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
-                  >
-                    Clear
-                  </button>
-                )}
-              </div>
-
-              <div className="mb-4 p-3 bg-[var(--color-surface-elevated)] rounded-xl">
-                <p className="text-xs text-[var(--color-text-muted)] mb-2">Points per position:</p>
-                <div className="flex flex-wrap gap-2">
-                  {pointsBreakdown.map(({ rank, points }) => (
-                    <span key={rank} className="text-xs px-2 py-1 bg-[var(--color-surface)] rounded-lg">
-                      #{rank} = {points}pts
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <SortableBallotList
-                  filledRankItems={filledRankItems}
-                  maxRankN={survey.maxRankN}
-                  isLive={isLive}
-                  firstEmptySlot={firstEmptySlot}
-                  lastChangedRank={lastChangedRank}
-                  getMovieById={getMovieById}
-                  onRemove={setRank}
-                  onReorder={reorderBallot}
-                  dndId="simple-survey-ballot"
-                />
-              </div>
+              <h2 className="text-lg font-display font-semibold text-[var(--color-text)] mb-4">
+                Movies{' '}
+                <span className="text-sm font-normal text-[var(--color-text-muted)]">
+                  ({shuffledEntries.length})
+                </span>
+              </h2>
+              <SimpleMovieList
+                ballotSize={ballot.size}
+                canVote={canVote}
+                desktop
+                entries={shuffledEntries}
+                handleMovieClick={handleMovieClick}
+                isMovieSelected={isMovieSelected}
+                moveRank={moveRank}
+              />
 
               {canVote ? (
-                <form action={formAction} className="mt-4">
+                <form action={formAction} className="mt-5">
                   <input type="hidden" name="surveyId" value={survey.id} />
                   <input type="hidden" name="ranks" value={JSON.stringify(getBallotAsArray())} />
                   <button
@@ -413,24 +376,6 @@ export default function SimpleVotingClient({
                   This survey is closed for voting.
                 </p>
               )}
-            </div>
-
-            <div className="bg-[var(--color-surface)] rounded-xl p-6 border border-[var(--color-border)]/50 shadow-lg shadow-black/20">
-              <h2 className="text-lg font-display font-semibold text-[var(--color-text)] mb-4">
-                Movies{' '}
-                <span className="text-sm font-normal text-[var(--color-text-muted)]">
-                  ({shuffledEntries.length})
-                </span>
-              </h2>
-              <SimpleMovieList
-                ballotSize={ballot.size}
-                canVote={canVote}
-                desktop
-                entries={shuffledEntries}
-                handleMovieClick={handleMovieClick}
-                isMovieSelected={isMovieSelected}
-                moveRank={moveRank}
-              />
             </div>
           </div>
 

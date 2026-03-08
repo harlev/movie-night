@@ -2,9 +2,9 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Restore the desktop shell for `/survey/[id]/simple` while keeping the movies section permanently in the simple WhatsApp-style list layout.
+**Goal:** Restore the desktop shell for `/survey/[id]/simple` while making the simple WhatsApp-style movie list the only ranking surface on desktop.
 
-**Architecture:** Keep the simple route centered on `SimpleVotingClient`, render separate desktop and mobile sections with Tailwind breakpoints, and reuse the existing ballot, standings, and countdown patterns already proven in `SurveyVotingClient`.
+**Architecture:** Keep the simple route centered on `SimpleVotingClient`, render separate desktop and mobile sections with Tailwind breakpoints, remove the desktop ballot card entirely, and let the movie rows carry the visible rank state while reusing the countdown, standings, and all-ballots patterns.
 
 **Tech Stack:** Next.js App Router, React 19, TypeScript, Tailwind CSS, Node `node:test` source-based checks.
 
@@ -17,10 +17,12 @@
 
 **Step 1: Write the failing test**
 - Assert the source:
-  - includes desktop shell copy such as `Back to Dashboard`, `Your Ballot`, `Current Standings`, and `All Ballots`
+  - includes desktop shell copy such as `Back to Dashboard`, `Current Standings`, and `All Ballots`
+  - does not include `Your Ballot` or `SortableBallotList`
   - uses `variant="full"` for the desktop countdown path
   - keeps `onClick={() => handleMovieClick(entry.movie.id)}` for the movie rows
   - does not contain `Grid view`, `List view`, or `setViewMode(`
+  - uses denser desktop row classes
 
 **Step 2: Run test to verify it fails**
 Run: `npx tsx "src/app/(app)/survey/[id]/simple/SimpleVotingClient.test.ts"`
@@ -33,24 +35,24 @@ Expected: FAIL because the current component only renders the compact layout.
 Run the same command.
 Expected: PASS.
 
-### Task 2: Restore the desktop simple shell
+### Task 2: Restore the desktop simple shell without a separate ballot card
 
 **Files:**
 - Modify: `src/app/(app)/survey/[id]/simple/SimpleVotingClient.tsx`
 - Modify: `src/app/(app)/survey/[id]/simple/page.tsx`
 - Modify: `src/app/(app)/survey/[id]/SurveyVotingClient.tsx`
 
-**Step 1: Reintroduce desktop-only ballot data**
-- Pass `pointsBreakdown` into `SimpleVotingClient`.
-- Pull the ballot DnD state from `useBallot` inside the simple client.
+**Step 1: Remove desktop ballot chrome**
+- Drop the desktop ballot card and points breakdown from the simple route.
+- Place the submit action directly under the movies list.
 
-**Step 2: Add the desktop shell**
-- Render desktop-only header, countdown banner, ballot card, standings card, and all ballots card.
-- Reuse `SortableBallotList` for the desktop ballot.
+**Step 2: Keep the desktop shell**
+- Render desktop-only header, countdown banner, standings card, and all ballots card.
 
-**Step 3: Keep the movies area permanently simple**
+**Step 3: Keep the movies area permanently simple and denser**
 - Remove the list/grid toggle from the simple route.
 - Render only the simple list rows in the movies section.
+- Tighten row padding, poster size, text size, and rank badge size on desktop.
 
 **Step 4: Preserve the compact mobile path**
 - Keep the current compact header/footer behavior for `<md`.

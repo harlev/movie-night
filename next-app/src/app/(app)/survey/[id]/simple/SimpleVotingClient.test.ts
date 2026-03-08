@@ -26,4 +26,13 @@ test('SimpleVotingClient keeps a simple movie list while restoring the desktop /
   assert.equal(source.includes('rounded-[1.5rem] px-4 py-3'), true);
   assert.equal(source.includes('h-16 w-12 rounded-xl'), true);
   assert.equal(source.includes('text-lg leading-tight'), true);
+  assert.equal(
+    source.includes(`desktop
+                entries={shuffledEntries}
+                handleMovieClick={handleMovieClick}
+                isMovieSelected={isMovieSelected}
+                moveRank={moveRank}
+                showMoveControls`),
+    true
+  );
 });

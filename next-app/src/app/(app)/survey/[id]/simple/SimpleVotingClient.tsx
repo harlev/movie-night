@@ -345,6 +345,7 @@ export default function SimpleVotingClient({
                 handleMovieClick={handleMovieClick}
                 isMovieSelected={isMovieSelected}
                 moveRank={moveRank}
+                showMoveControls
               />
 
               {canVote ? (

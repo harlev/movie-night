@@ -21,6 +21,7 @@
   - does not include `Your Ballot` or `SortableBallotList`
   - uses `variant="full"` for the desktop countdown path
   - keeps `onClick={() => handleMovieClick(entry.movie.id)}` for the movie rows
+  - enables `showMoveControls` in the desktop movie list invocation
   - does not contain `Grid view`, `List view`, or `setViewMode(`
   - uses denser desktop row classes
 
@@ -53,6 +54,7 @@ Expected: PASS.
 - Remove the list/grid toggle from the simple route.
 - Render only the simple list rows in the movies section.
 - Tighten row padding, poster size, text size, and rank badge size on desktop.
+- Reuse the existing mobile up/down arrow affordance for selected desktop rows.
 
 **Step 4: Preserve the compact mobile path**
 - Keep the current compact header/footer behavior for `<md`.

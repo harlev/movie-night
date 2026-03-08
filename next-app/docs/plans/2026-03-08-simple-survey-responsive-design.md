@@ -17,6 +17,7 @@ Make `/survey/[id]/simple` the candidate future default survey flow by keeping t
   - rank badge when selected
   - hollow selection circle when unselected
   - row tap uses the simple ballot behavior
+  - selected rows expose the same up/down reorder arrows used on mobile
   - denser height and tighter spacing than the current desktop rows
 - The desktop submit button sits directly under the movie list instead of under a separate ballot card.
 - On mobile `<md`, keep the compact simple layout already used by the responsive survey flow.
@@ -31,6 +32,7 @@ Make `/survey/[id]/simple` the candidate future default survey flow by keeping t
   - desktop shell copy and structure are present without `Your Ballot`
   - the simple route no longer exposes grid/list toggle state
   - movie rows still use `handleMovieClick`
+  - desktop selected rows enable the reusable move-control affordance
   - desktop row sizing is denser than the previous shell version
   - mobile-only compact affordances remain in the component
 - Re-run the ballot hook and survey client tests to make sure the simple list behavior still matches the compact voting flow.

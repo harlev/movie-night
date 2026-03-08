@@ -52,8 +52,9 @@ export default function AppNav({ user }: AppNavProps) {
         <div className="flex justify-between h-16">
           <div className="flex">
             <div className="flex-shrink-0 flex items-center">
-              <Link href="/dashboard">
-                <img src="/logo.png" alt="Movie Night" className="h-14" />
+              <Link href="/dashboard" aria-label="Movie Night home" className="block">
+                <img src="/logo-mobile.png" alt="Movie Night" className="h-16 w-auto block sm:hidden" />
+                <img src="/logo.png" alt="Movie Night" className="hidden h-14 w-auto sm:block" />
               </Link>
             </div>
             <div className="hidden sm:ml-8 sm:flex sm:space-x-1">

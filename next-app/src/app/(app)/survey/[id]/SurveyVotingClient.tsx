@@ -307,7 +307,6 @@ export default function SurveyVotingClient({
               </div>
             </div>
 
-            {/* Filter bar */}
             <div className="relative mb-4">
               <input
                 type="text"
@@ -329,7 +328,6 @@ export default function SurveyVotingClient({
               )}
             </div>
 
-            {/* Empty filter state */}
             {filteredEntries.length === 0 && filterQuery.trim() ? (
               <p className="text-[var(--color-text-muted)] text-center py-6 text-sm">
                 No movies match &ldquo;{filterQuery.trim()}&rdquo;

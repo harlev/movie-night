@@ -73,7 +73,8 @@ create table if not exists public.surveys (
   max_rank_n integer not null default 3,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  frozen_at timestamptz
+  frozen_at timestamptz,
+  closes_at timestamptz
 );
 create index if not exists surveys_state_idx on public.surveys(state);
 
@@ -331,7 +332,8 @@ create table if not exists public.quick_polls (
   created_by uuid not null references public.profiles(id),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  closed_at timestamptz
+  closed_at timestamptz,
+  closes_at timestamptz
 );
 create index if not exists quick_polls_state_idx on public.quick_polls(state);
 

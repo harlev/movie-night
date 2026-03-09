@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 
 interface RankEntry {
   rank: number;
@@ -16,6 +16,39 @@ export interface FilledRankItem {
   movieId: string;
 }
 
+export function applyMovieClick(
+  prev: Map<number, string>,
+  movieId: string,
+  maxRankN: number
+): { ballot: Map<number, string>; assignedRank: number | null } {
+  const entries = Array.from(prev.entries()).sort((a, b) => a[0] - b[0]);
+  const existingRank = entries.find(([, selectedMovieId]) => selectedMovieId === movieId)?.[0] ?? null;
+
+  if (existingRank !== null) {
+    const compacted = new Map<number, string>();
+    entries
+      .filter(([, selectedMovieId]) => selectedMovieId !== movieId)
+      .forEach(([, selectedMovieId], index) => {
+        compacted.set(index + 1, selectedMovieId);
+      });
+
+    return { ballot: compacted, assignedRank: null };
+  }
+
+  const nextBallot = new Map(prev);
+  let targetRank: number | null = null;
+  for (let rank = 1; rank <= maxRankN; rank++) {
+    if (!nextBallot.has(rank)) {
+      targetRank = rank;
+      break;
+    }
+  }
+
+  const assignedRank = targetRank ?? maxRankN;
+  nextBallot.set(assignedRank, movieId);
+  return { ballot: nextBallot, assignedRank };
+}
+
 export function useBallot({ maxRankN, initialRanks, isLive }: UseBallotOptions) {
   const initialBallot = useMemo(() => {
     const map = new Map<number, string>();
@@ -29,6 +62,33 @@ export function useBallot({ maxRankN, initialRanks, isLive }: UseBallotOptions) 
 
   const [ballot, setBallot] = useState<Map<number, string>>(initialBallot);
   const [lastChangedRank, setLastChangedRank] = useState<number | null>(null);
+  const lastChangedRankTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (lastChangedRankTimeoutRef.current) {
+        clearTimeout(lastChangedRankTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const pulseRank = useCallback((rank: number | null) => {
+    if (lastChangedRankTimeoutRef.current) {
+      clearTimeout(lastChangedRankTimeoutRef.current);
+      lastChangedRankTimeoutRef.current = null;
+    }
+
+    setLastChangedRank(rank);
+
+    if (rank === null) {
+      return;
+    }
+
+    lastChangedRankTimeoutRef.current = setTimeout(() => {
+      setLastChangedRank(null);
+      lastChangedRankTimeoutRef.current = null;
+    }, 200);
+  }, []);
 
   const setRank = useCallback((rank: number, movieId: string) => {
     setBallot((prev) => {
@@ -50,46 +110,23 @@ export function useBallot({ maxRankN, initialRanks, isLive }: UseBallotOptions) 
       newBallot.set(rank, movieId);
       return newBallot;
     });
-    setLastChangedRank(rank);
-    setTimeout(() => setLastChangedRank(null), 200);
-  }, []);
+    pulseRank(rank);
+  }, [pulseRank]);
 
   const clearBallot = useCallback(() => {
     setBallot(new Map());
-  }, []);
+    pulseRank(null);
+  }, [pulseRank]);
 
   const handleMovieClick = useCallback(
     (movieId: string) => {
       if (!isLive) return;
 
-      // Use a single setState to atomically find slot and update
-      let assignedRank = maxRankN;
-      setBallot((prev) => {
-        const newBallot = new Map(prev);
-
-        // Remove movie from any existing rank
-        for (const [r, m] of newBallot) {
-          if (m === movieId) newBallot.delete(r);
-        }
-
-        // Find first empty slot
-        let targetRank: number | null = null;
-        for (let r = 1; r <= maxRankN; r++) {
-          if (!newBallot.has(r)) {
-            targetRank = r;
-            break;
-          }
-        }
-
-        // Use first empty slot or replace last
-        assignedRank = targetRank ?? maxRankN;
-        newBallot.set(assignedRank, movieId);
-        return newBallot;
-      });
-      setLastChangedRank(assignedRank);
-      setTimeout(() => setLastChangedRank(null), 200);
+      const result = applyMovieClick(ballot, movieId, maxRankN);
+      setBallot(result.ballot);
+      pulseRank(result.assignedRank);
     },
-    [isLive, maxRankN]
+    [ballot, isLive, maxRankN, pulseRank]
   );
 
   const getBallotAsArray = useCallback((): RankEntry[] => {
@@ -103,11 +140,6 @@ export function useBallot({ maxRankN, initialRanks, isLive }: UseBallotOptions) 
       }
       return null;
     },
-    [ballot]
-  );
-
-  const getMovieForRank = useCallback(
-    (rank: number): string | undefined => ballot.get(rank),
     [ballot]
   );
 
@@ -128,44 +160,6 @@ export function useBallot({ maxRankN, initialRanks, isLive }: UseBallotOptions) 
   }, [isLive, maxRankN, ballot]);
 
   const isBallotComplete = ballot.size === maxRankN;
-
-  // Toggle a movie: if selected, remove and compact ranks; if not, add at first empty slot
-  const toggleMovie = useCallback(
-    (movieId: string) => {
-      if (!isLive) return;
-
-      setBallot((prev) => {
-        const newBallot = new Map(prev);
-
-        // Check if movie is already selected
-        let existingRank: number | null = null;
-        for (const [r, m] of newBallot) {
-          if (m === movieId) {
-            existingRank = r;
-            break;
-          }
-        }
-
-        if (existingRank !== null) {
-          // Remove and compact: shift higher ranks down
-          newBallot.delete(existingRank);
-          const compacted = new Map<number, string>();
-          const sorted = Array.from(newBallot.entries()).sort((a, b) => a[0] - b[0]);
-          sorted.forEach(([, mid], i) => {
-            compacted.set(i + 1, mid);
-          });
-          return compacted;
-        }
-
-        // Not selected — add at first empty slot if not full
-        if (newBallot.size >= maxRankN) return prev; // ballot full, do nothing
-        const nextRank = newBallot.size + 1;
-        newBallot.set(nextRank, movieId);
-        return newBallot;
-      });
-    },
-    [isLive, maxRankN]
-  );
 
   // Move a selected movie up or down in rank order
   const moveRank = useCallback(
@@ -233,12 +227,10 @@ export function useBallot({ maxRankN, initialRanks, isLive }: UseBallotOptions) 
     handleMovieClick,
     getBallotAsArray,
     isMovieSelected,
-    getMovieForRank,
     filledRankItems,
     firstEmptySlot,
     isBallotComplete,
     reorderBallot,
-    toggleMovie,
     moveRank,
   };
 }

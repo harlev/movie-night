@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { logout } from '@/lib/actions/auth';
 
 interface AppNavProps {
@@ -45,11 +45,23 @@ function UserAvatar({ name, avatarUrl }: { name: string; avatarUrl?: string }) {
 export default function AppNav({ user }: AppNavProps) {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mobileSurveyTitle, setMobileSurveyTitle] = useState('');
+
+  useEffect(() => {
+    if (!pathname.startsWith('/survey/')) {
+      setMobileSurveyTitle('');
+      return;
+    }
+
+    setMobileSurveyTitle(document.title.replace(/\s*-\s*Movie Night$/, ''));
+  }, [pathname]);
+
+  const showMobileSurveyTitle = pathname.startsWith('/survey/') && mobileSurveyTitle && !mobileMenuOpen;
 
   return (
     <nav className="bg-[var(--color-surface)]/80 backdrop-blur-xl border-b border-[var(--color-border)]/50 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
+        <div className="relative flex justify-between h-16">
           <div className="flex">
             <div className="flex-shrink-0 flex items-center">
               <Link href="/dashboard" aria-label="Movie Night home" className="block">
@@ -118,6 +130,17 @@ export default function AppNav({ user }: AppNavProps) {
                 Logout
               </button>
             </form>
+          </div>
+
+          <div className="absolute inset-x-0 top-1/2 flex -translate-y-1/2 justify-center pointer-events-none sm:hidden">
+            {showMobileSurveyTitle && (
+              <span
+                aria-label="Current survey"
+                className="max-w-[calc(100%-9.5rem)] truncate px-3 text-center text-[2rem] font-display font-bold leading-none text-[var(--color-text)]"
+              >
+                {mobileSurveyTitle}
+              </span>
+            )}
           </div>
 
           {/* Mobile menu button */}

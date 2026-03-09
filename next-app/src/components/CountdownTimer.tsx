@@ -36,17 +36,8 @@ const ClockIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
-function FullVariant({ closesAt }: { closesAt: string }) {
-  const [time, setTime] = useState(() => getTimeRemaining(closesAt));
-
-  useEffect(() => {
-    const interval = setInterval(() => setTime(getTimeRemaining(closesAt)), 1000);
-    return () => clearInterval(interval);
-  }, [closesAt]);
-
+function FullVariant({ time }: { time: ReturnType<typeof getTimeRemaining> }) {
   const urgency = getUrgencyClasses(time.total);
-
-  if (time.total <= 0) return null;
 
   const segments = [
     { value: time.days, label: 'days' },
@@ -77,17 +68,8 @@ function FullVariant({ closesAt }: { closesAt: string }) {
   );
 }
 
-function CompactVariant({ closesAt }: { closesAt: string }) {
-  const [time, setTime] = useState(() => getTimeRemaining(closesAt));
-
-  useEffect(() => {
-    const interval = setInterval(() => setTime(getTimeRemaining(closesAt)), 1000);
-    return () => clearInterval(interval);
-  }, [closesAt]);
-
+function CompactVariant({ time }: { time: ReturnType<typeof getTimeRemaining> }) {
   const urgency = getUrgencyClasses(time.total);
-
-  if (time.total <= 0) return null;
 
   return (
     <span className="inline-flex items-center gap-1.5">
@@ -102,6 +84,40 @@ function CompactVariant({ closesAt }: { closesAt: string }) {
   );
 }
 
+function FullFallback() {
+  return (
+    <div className="inline-flex max-w-full flex-wrap items-center justify-center gap-1.5">
+      <ClockIcon className="w-4 h-4 text-[var(--color-primary)]/60 shrink-0" />
+      {['days', 'hrs', 'min', 'sec'].map((label, i) => (
+        <div key={label} className="flex items-center gap-1.5 min-w-0">
+          {i > 0 && (
+            <span className="text-[var(--color-primary)]/40 font-bold">:</span>
+          )}
+          <div className="bg-[var(--color-surface-elevated)] rounded-lg px-2 sm:px-3 py-1.5 border border-[var(--color-border)]/30 text-center">
+            <div className="font-mono text-base sm:text-lg font-bold tabular-nums leading-tight text-[var(--color-text-muted)]">
+              --
+            </div>
+            <div className="text-[8px] sm:text-[9px] uppercase tracking-[0.14em] sm:tracking-widest text-[var(--color-text-muted)] leading-tight">
+              {label}
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function CompactFallback() {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <ClockIcon className="w-3.5 h-3.5 text-[var(--color-primary)]/60 shrink-0" />
+      <span className="font-mono text-sm tabular-nums text-[var(--color-text-muted)]">
+        --h --m --s
+      </span>
+    </span>
+  );
+}
+
 export default function CountdownTimer({
   closesAt,
   variant = 'full',
@@ -110,33 +126,52 @@ export default function CountdownTimer({
   className,
 }: CountdownTimerProps) {
   const expiredHandled = useRef(false);
+  const [isHydrated, setIsHydrated] = useState(false);
+  const [time, setTime] = useState<ReturnType<typeof getTimeRemaining> | null>(null);
 
   useEffect(() => {
-    if (!closesAt) return;
+    setIsHydrated(true);
+  }, []);
 
-    const check = () => {
-      const diff = new Date(closesAt).getTime() - Date.now();
-      if (diff <= 0 && !expiredHandled.current) {
-        expiredHandled.current = true;
-        setTimeout(() => {
-          if (refreshOnExpired) {
-            window.location.reload();
-          } else {
-            onExpired?.();
-          }
-        }, 1000);
-      }
+  useEffect(() => {
+    if (!closesAt || !isHydrated) return;
+
+    const syncTime = () => {
+      setTime(getTimeRemaining(closesAt));
     };
 
-    check();
-    const interval = setInterval(check, 1000);
+    syncTime();
+    const interval = setInterval(syncTime, 1000);
     return () => clearInterval(interval);
-  }, [closesAt, refreshOnExpired, onExpired]);
+  }, [closesAt, isHydrated]);
+
+  useEffect(() => {
+    if (!closesAt || !isHydrated || !time) return;
+    if (time.total > 0 || expiredHandled.current) return;
+
+    expiredHandled.current = true;
+    const timeout = setTimeout(() => {
+      if (refreshOnExpired) {
+        window.location.reload();
+      } else {
+        onExpired?.();
+      }
+    }, 1000);
+
+    return () => clearTimeout(timeout);
+  }, [closesAt, isHydrated, onExpired, refreshOnExpired, time]);
 
   if (!closesAt) return null;
 
-  const remaining = getTimeRemaining(closesAt);
-  if (remaining.total <= 0) {
+  if (!isHydrated || !time) {
+    return (
+      <div className={className}>
+        {variant === 'full' ? <FullFallback /> : <CompactFallback />}
+      </div>
+    );
+  }
+
+  if (time.total <= 0) {
     return (
       <span className={`inline-flex items-center gap-1.5 text-[var(--color-text-muted)] ${className || ''}`}>
         <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
@@ -148,9 +183,9 @@ export default function CountdownTimer({
   return (
     <div className={className}>
       {variant === 'full' ? (
-        <FullVariant closesAt={closesAt} />
+        <FullVariant time={time} />
       ) : (
-        <CompactVariant closesAt={closesAt} />
+        <CompactVariant time={time} />
       )}
     </div>
   );

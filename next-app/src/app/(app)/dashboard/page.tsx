@@ -7,18 +7,40 @@ import { getBallot, getAllBallots } from '@/lib/queries/ballots';
 import { calculateStandings, type Standing } from '@/lib/services/scoring';
 import { getSiteBanner } from '@/lib/queries/siteBanner';
 import { getSiteSettings } from '@/lib/queries/siteSettings';
+import { getOpenBudget } from '@/lib/queries/budgets';
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import EmptyState from '@/components/ui/EmptyState';
 import CountdownTimer from '@/components/CountdownTimer';
 import SiteBanner from '@/components/SiteBanner';
+import BudgetConsumptionBar from './BudgetConsumptionBar';
 import { getNextMovieNightLabel } from '@/lib/utils/nextMovieNight';
+import {
+  getBudgetProgress,
+} from '@/lib/utils/budgets';
 
 export const metadata: Metadata = {
   title: 'Dashboard - Movie Night',
 };
 
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w200';
+
+function formatBudgetCurrencyWholeDollars(amountCents: number): string {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amountCents / 100);
+}
+
+function formatBudgetOpenSinceDate(value: string): string {
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'UTC',
+  }).format(new Date(value));
+}
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -27,22 +49,14 @@ export default async function DashboardPage() {
   } = await supabase.auth.getUser();
 
   // Fetch data in parallel
-  const [liveSurvey, livePolls, allMovies, allUsers, frozenSurveysRes, siteBanner, siteSettings] = await Promise.all([
+  const [liveSurvey, livePolls, allMovies, allUsers, siteBanner, siteSettings, openBudget] = await Promise.all([
     getLiveSurvey().catch(() => null),
     getLivePolls().catch(() => []),
     getAllMovies(),
     getAllUsers(),
-    (async () => {
-      const s = await createClient();
-      const { count } = await s
-        .from('surveys')
-        .select('*', { count: 'exact', head: true })
-        .eq('state', 'frozen')
-        .eq('archived', false);
-      return count || 0;
-    })(),
     getSiteBanner(),
     getSiteSettings(),
+    getOpenBudget(),
   ]);
 
   const currentUser = user ? allUsers.find((u) => u.id === user.id) : null;
@@ -97,15 +111,45 @@ export default async function DashboardPage() {
   }
 
   const recentMovies = allMovies.slice(0, 5);
-  const stats = {
-    totalMovies: allMovies.length,
-    totalUsers: allUsers.filter((u) => u.status === 'active').length,
-    surveysCompleted: frozenSurveysRes,
-  };
   const nextMovieNightDateLabel = getNextMovieNightLabel({
     overrideDate: siteSettings?.next_movie_night_override_date ?? null,
   });
   const nextMovie = siteSettings?.next_movie ?? null;
+  const budgetProgress = openBudget
+    ? getBudgetProgress({
+        totalAmountCents: openBudget.total_amount_cents,
+        currentAmountCents: openBudget.current_amount_cents,
+        initialTotalAmountCents: openBudget.initial_total_amount_cents,
+        initialCurrentAmountCents: openBudget.initial_current_amount_cents,
+      })
+    : null;
+  const budgetSegments =
+    openBudget && budgetProgress
+      ? (() => {
+          const totalAmountCents = Math.max(0, openBudget.total_amount_cents);
+          if (totalAmountCents === 0) {
+            return { spentWidthPercent: 0, remainingWidthPercent: 100 };
+          }
+
+          const spentWidthPercent = Math.min(
+            100,
+            Math.max(0, (budgetProgress.spentAmountCents / totalAmountCents) * 100)
+          );
+
+          return {
+            spentWidthPercent,
+            remainingWidthPercent: Math.max(0, 100 - spentWidthPercent),
+          };
+        })()
+      : null;
+  const budgetRemainingLabel =
+    openBudget ? `${formatBudgetCurrencyWholeDollars(openBudget.current_amount_cents)} left` : '';
+  const budgetRemainingAmountLabel =
+    openBudget ? formatBudgetCurrencyWholeDollars(openBudget.current_amount_cents) : '';
+  const budgetOpenSinceLabel =
+    openBudget ? formatBudgetOpenSinceDate(openBudget.last_opened_at) : '';
+  const budgetRaisedLabel =
+    openBudget ? `Raised ${formatBudgetCurrencyWholeDollars(openBudget.total_amount_cents)} total • Open since ${budgetOpenSinceLabel}` : '';
 
   return (
     <div className="space-y-8 stagger-children">
@@ -169,50 +213,6 @@ export default async function DashboardPage() {
           </p>
         </div>
       )}
-
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-[var(--color-surface)] rounded-xl p-6 border border-[var(--color-border)]/50 shadow-lg shadow-black/20">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-full bg-[var(--color-primary)]/10 flex items-center justify-center">
-              <svg className="w-5 h-5 text-[var(--color-primary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <rect x="2" y="4" width="20" height="16" rx="2" />
-                <path d="M2 8h20M2 16h20" />
-                <path d="M6 4v4M6 16v4M18 4v4M18 16v4" />
-              </svg>
-            </div>
-            <p className="text-[var(--color-text-muted)] text-sm">Total Movies</p>
-          </div>
-          <p className="text-3xl font-display font-bold text-[var(--color-text)]">{stats.totalMovies}</p>
-        </div>
-        <div className="bg-[var(--color-surface)] rounded-xl p-6 border border-[var(--color-border)]/50 shadow-lg shadow-black/20">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-full bg-[var(--color-accent)]/10 flex items-center justify-center">
-              <svg className="w-5 h-5 text-[var(--color-accent)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4-4v2" strokeLinecap="round" strokeLinejoin="round" />
-                <circle cx="9" cy="7" r="4" />
-                <path d="M22 21v-2a4 4 0 00-3-3.87" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M16 3.13a4 4 0 010 7.75" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </div>
-            <p className="text-[var(--color-text-muted)] text-sm">Community Members</p>
-          </div>
-          <p className="text-3xl font-display font-bold text-[var(--color-text)]">{stats.totalUsers}</p>
-        </div>
-        <div className="bg-[var(--color-surface)] rounded-xl p-6 border border-[var(--color-border)]/50 shadow-lg shadow-black/20">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-full bg-[var(--color-success)]/10 flex items-center justify-center">
-              <svg className="w-5 h-5 text-[var(--color-success)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <rect x="4" y="2" width="16" height="20" rx="2" />
-                <path d="M9 10l2 2 4-4" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M9 16h6" strokeLinecap="round" />
-              </svg>
-            </div>
-            <p className="text-[var(--color-text-muted)] text-sm">Surveys Completed</p>
-          </div>
-          <p className="text-3xl font-display font-bold text-[var(--color-text)]">{stats.surveysCompleted}</p>
-        </div>
-      </div>
 
       {/* Live Survey */}
       {surveyData ? (
@@ -324,6 +324,63 @@ export default async function DashboardPage() {
           />
         </div>
       )}
+
+      {/* Movie Night Fund */}
+      <section className="overflow-hidden rounded-2xl border border-[var(--color-border)]/60 bg-[var(--color-surface)]/95 p-4 shadow-lg shadow-black/20 sm:p-5">
+        <div className="flex flex-wrap items-start justify-between gap-2.5">
+          <div>
+            <p className="text-[10px] font-medium uppercase tracking-widest text-[var(--color-primary)]">
+              Movie Night Fund
+            </p>
+            {openBudget && budgetProgress ? (
+              <>
+                <p className="mt-1.5 text-4xl font-display font-semibold leading-none text-[var(--color-text)] sm:text-[2.5rem]">
+                  {budgetRemainingLabel}
+                </p>
+                <div className="mt-2.5 space-y-1">
+                  <p className="text-sm text-[var(--color-text)]/88">{budgetRaisedLabel}</p>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="mt-3 text-2xl font-display font-semibold text-[var(--color-text)]">
+                  We’re out of popcorn.
+                </p>
+                <p className="mt-2 text-sm text-[var(--color-text-muted)]">
+                  The movie night fund is at $0. A new fund will open soon.
+                </p>
+              </>
+            )}
+          </div>
+
+          {openBudget ? (
+            <a
+              href={openBudget.venmo_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 self-start rounded-xl border border-[var(--color-primary)]/30 bg-[var(--color-primary)]/10 px-4 py-2 text-sm font-medium text-[var(--color-primary-light)] transition-colors hover:border-[var(--color-primary)]/60 hover:bg-[var(--color-primary)]/15"
+            >
+              Contribute via Venmo
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h4m0 0v4m0-4l-8 8" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 11v8h8" />
+              </svg>
+            </a>
+          ) : null}
+        </div>
+
+        {openBudget && budgetProgress && budgetSegments ? (
+          <div className="mt-3.5">
+            <div className="h-[22px] overflow-hidden rounded-full border border-[var(--color-border)]/60 bg-[var(--color-background)]/80 sm:h-[25px]">
+              <BudgetConsumptionBar
+                budgetRemainingLabel={budgetRemainingAmountLabel}
+                remainingWidthPercent={budgetSegments.remainingWidthPercent}
+                spentWidthPercent={budgetSegments.spentWidthPercent}
+              />
+            </div>
+          </div>
+        ) : null}
+      </section>
 
       {/* Active Polls (hidden for viewers) */}
       {!isViewer && livePolls.length > 0 && (

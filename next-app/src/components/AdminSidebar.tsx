@@ -28,6 +28,17 @@ const adminNavItems = [
     ),
   },
   {
+    href: '/admin/budgets',
+    label: 'Budgets',
+    icon: (
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <path d="M4 7h14a2 2 0 012 2v8a2 2 0 01-2 2H6a2 2 0 01-2-2V7z" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M16 7V5a2 2 0 00-2-2H6a2 2 0 00-2 2v2" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M15 13h.01" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    ),
+  },
+  {
     href: '/admin/surveys',
     label: 'Surveys',
     icon: (

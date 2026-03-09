@@ -357,7 +357,7 @@ export default async function DashboardPage() {
             <a
               href={openBudget.venmo_url}
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer"
               className="inline-flex items-center gap-2 self-start rounded-xl border border-[var(--color-primary)]/30 bg-[var(--color-primary)]/10 px-4 py-2 text-sm font-medium text-[var(--color-primary-light)] transition-colors hover:border-[var(--color-primary)]/60 hover:bg-[var(--color-primary)]/15"
             >
               Contribute via Venmo

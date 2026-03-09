@@ -43,6 +43,23 @@ async function getOpenBudgetRecord(admin: ReturnType<typeof createAdminClient>) 
   return data;
 }
 
+async function getBudgetRecordById(
+  admin: ReturnType<typeof createAdminClient>,
+  budgetId: string
+) {
+  const { data, error } = await admin
+    .from('budgets')
+    .select('id, status')
+    .eq('id', budgetId)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+}
+
 async function insertLifecycleEvent(admin: ReturnType<typeof createAdminClient>, input: {
   budgetId: string;
   actorId: string;
@@ -182,7 +199,7 @@ export async function updateBudgetAction(prevState: any, formData: FormData) {
 
   const admin = createAdminClient();
   const now = new Date().toISOString();
-  const { error } = await admin
+  const { data: updatedBudget, error } = await admin
     .from('budgets')
     .update({
       total_amount_cents: parseBudgetCurrencyToCents(totalAmountInput),
@@ -191,12 +208,15 @@ export async function updateBudgetAction(prevState: any, formData: FormData) {
       updated_by: auth.user.id,
       updated_at: now,
     })
-    .eq('id', budgetId);
+    .eq('id', budgetId)
+    .select('id')
+    .maybeSingle();
 
   if (error) {
     console.error('Failed to update budget:', error);
     return { error: 'Failed to update budget' };
   }
+  if (!updatedBudget) return { error: 'Budget not found' };
 
   await createAdminLog({
     actorId: auth.user.id,
@@ -224,8 +244,20 @@ export async function closeBudgetAction(prevState: any, formData: FormData) {
   if (!budgetId) return { error: 'Budget not found' };
 
   const admin = createAdminClient();
+  let budgetRecord;
+
+  try {
+    budgetRecord = await getBudgetRecordById(admin, budgetId);
+  } catch (error) {
+    console.error('Failed to validate budget before closing:', error);
+    return { error: 'Failed to close budget' };
+  }
+
+  if (!budgetRecord) return { error: 'Budget not found' };
+  if (budgetRecord.status === 'closed') return { error: 'Budget already closed' };
+
   const now = new Date().toISOString();
-  const { error } = await admin
+  const { data: closedBudget, error } = await admin
     .from('budgets')
     .update({
       status: 'closed',
@@ -234,12 +266,15 @@ export async function closeBudgetAction(prevState: any, formData: FormData) {
       updated_at: now,
     })
     .eq('id', budgetId)
-    .eq('status', 'open');
+    .eq('status', 'open')
+    .select('id')
+    .maybeSingle();
 
   if (error) {
     console.error('Failed to close budget:', error);
     return { error: 'Failed to close budget' };
   }
+  if (!closedBudget) return { error: 'Budget already closed' };
 
   try {
     await insertLifecycleEvent(admin, {
@@ -274,6 +309,18 @@ export async function reopenBudgetAction(prevState: any, formData: FormData) {
   if (!budgetId) return { error: 'Budget not found' };
 
   const admin = createAdminClient();
+  let budgetRecord;
+
+  try {
+    budgetRecord = await getBudgetRecordById(admin, budgetId);
+  } catch (error) {
+    console.error('Failed to validate budget before reopening:', error);
+    return { error: 'Failed to reopen budget' };
+  }
+
+  if (!budgetRecord) return { error: 'Budget not found' };
+  if (budgetRecord.status === 'open') return { error: 'Budget already open' };
+
   const existingOpenBudget = await getOpenBudgetRecord(admin);
   if (existingOpenBudget && existingOpenBudget.id !== budgetId) {
     return { error: 'Only one budget can be open at a time' };
@@ -282,7 +329,7 @@ export async function reopenBudgetAction(prevState: any, formData: FormData) {
   const now = new Date().toISOString();
 
   try {
-    const { error } = await admin
+    const { data: reopenedBudget, error } = await admin
       .from('budgets')
       .update({
         status: 'open',
@@ -291,10 +338,16 @@ export async function reopenBudgetAction(prevState: any, formData: FormData) {
         updated_by: auth.user.id,
         updated_at: now,
       })
-      .eq('id', budgetId);
+      .eq('id', budgetId)
+      .eq('status', 'closed')
+      .select('id')
+      .maybeSingle();
 
     if (error) {
       throw error;
+    }
+    if (!reopenedBudget) {
+      return { error: 'Budget already open' };
     }
 
     await insertLifecycleEvent(admin, {

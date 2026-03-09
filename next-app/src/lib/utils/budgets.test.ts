@@ -2,10 +2,10 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 test('budget helpers format currency, validate URL, and compute progress metrics', async () => {
-  let budgetUtils: typeof import('./budgets.ts');
+  let budgetUtils: typeof import('./budgets');
 
   try {
-    budgetUtils = await import('./budgets.ts');
+    budgetUtils = await import(new URL('./budgets.ts', import.meta.url).href);
   } catch {
     assert.fail('Expected src/lib/utils/budgets.ts to exist');
   }

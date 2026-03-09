@@ -44,6 +44,7 @@ test('dashboard renders the movie night fund as remaining-balance UI', () => {
   assert.equal(source.includes('Movie Night Fund'), true);
   assert.equal(source.includes('Community Budget'), false);
   assert.equal(source.includes('Contribute via Venmo'), true);
+  assert.equal(source.includes('rel="noopener noreferrer"'), true);
   assert.equal(source.includes(')} left'), true);
   assert.equal(source.includes('Raised '), true);
   assert.equal(source.includes(' total'), true);

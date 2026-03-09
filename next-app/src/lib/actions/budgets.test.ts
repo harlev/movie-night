@@ -18,4 +18,9 @@ test('budget actions enforce admin-only single-open lifecycle management', () =>
   assert.equal(source.includes("revalidatePath('/admin/budgets');"), true);
   assert.equal(source.includes("revalidatePath('/dashboard');"), true);
   assert.equal(source.includes("targetType: 'budget'"), true);
+  assert.equal(source.includes(".select('id')"), true);
+  assert.equal(source.includes("return { error: 'Budget not found' };"), true);
+  assert.equal(source.includes("return { error: 'Budget already closed' };"), true);
+  assert.equal(source.includes("return { error: 'Budget already open' };"), true);
+  assert.equal(source.includes(".eq('status', 'closed')"), true);
 });

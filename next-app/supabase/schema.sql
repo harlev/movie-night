@@ -122,7 +122,7 @@ create table public.admin_logs (
   id text primary key,
   actor_id uuid not null references public.profiles(id),
   action text not null,
-  target_type text not null check (target_type in ('user', 'movie', 'survey', 'invite', 'poll', 'suggestion', 'banner', 'setting')),
+  target_type text not null check (target_type in ('user', 'movie', 'survey', 'invite', 'poll', 'suggestion', 'banner', 'setting', 'budget')),
   target_id text not null,
   details jsonb,
   created_at timestamptz not null default now()
@@ -155,6 +155,35 @@ create table public.site_settings (
 insert into public.site_settings (id)
 values ('main')
 on conflict (id) do nothing;
+
+create table public.budgets (
+  id text primary key,
+  initial_total_amount_cents integer not null check (initial_total_amount_cents >= 0),
+  initial_current_amount_cents integer not null check (initial_current_amount_cents >= 0),
+  total_amount_cents integer not null check (total_amount_cents >= 0),
+  current_amount_cents integer not null check (current_amount_cents >= 0),
+  venmo_url text not null,
+  status text not null check (status in ('open', 'closed')),
+  last_opened_at timestamptz not null default now(),
+  closed_at timestamptz,
+  created_by uuid not null references public.profiles(id),
+  updated_by uuid not null references public.profiles(id),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  check (initial_current_amount_cents <= initial_total_amount_cents),
+  check (current_amount_cents <= total_amount_cents)
+);
+create unique index budgets_single_open_idx on public.budgets(status) where status = 'open';
+
+create table public.budget_lifecycle_events (
+  id text primary key,
+  budget_id text not null references public.budgets(id) on delete cascade,
+  event_type text not null check (event_type in ('opened', 'closed', 'reopened')),
+  actor_id uuid not null references public.profiles(id),
+  created_at timestamptz not null default now()
+);
+create index budget_lifecycle_events_budget_id_idx
+  on public.budget_lifecycle_events (budget_id, created_at desc);
 
 -- Trigger: auto-create profile on signup
 create or replace function public.handle_new_user()
@@ -312,6 +341,8 @@ alter table public.movie_suggestions enable row level security;
 alter table public.admin_logs enable row level security;
 alter table public.site_banners enable row level security;
 alter table public.site_settings enable row level security;
+alter table public.budgets enable row level security;
+alter table public.budget_lifecycle_events enable row level security;
 
 -- RLS Policies
 
@@ -411,3 +442,18 @@ create policy "site_settings_admin_insert" on public.site_settings for insert to
   with check ((select role from public.profiles where id = auth.uid()) = 'admin');
 create policy "site_settings_admin_update" on public.site_settings for update to authenticated
   using ((select role from public.profiles where id = auth.uid()) = 'admin');
+
+create policy "budgets_select" on public.budgets for select to authenticated
+  using (
+    status = 'open'
+    or (select role from public.profiles where id = auth.uid()) = 'admin'
+  );
+create policy "budgets_admin_insert" on public.budgets for insert to authenticated
+  with check ((select role from public.profiles where id = auth.uid()) = 'admin');
+create policy "budgets_admin_update" on public.budgets for update to authenticated
+  using ((select role from public.profiles where id = auth.uid()) = 'admin');
+
+create policy "budget_lifecycle_events_select" on public.budget_lifecycle_events for select to authenticated
+  using ((select role from public.profiles where id = auth.uid()) = 'admin');
+create policy "budget_lifecycle_events_admin_insert" on public.budget_lifecycle_events for insert to authenticated
+  with check ((select role from public.profiles where id = auth.uid()) = 'admin');

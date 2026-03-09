@@ -93,6 +93,12 @@ export default async function AdminDashboardPage() {
         <h2 className="text-lg font-semibold text-[var(--color-text)] mb-4">Quick Actions</h2>
         <div className="flex flex-wrap gap-3">
           <Link
+            href="/admin/budgets"
+            className="px-4 py-2 bg-[var(--color-surface-elevated)] hover:bg-[var(--color-border)] text-[var(--color-text)] text-sm font-medium rounded-lg transition-colors"
+          >
+            Manage Budgets
+          </Link>
+          <Link
             href="/admin/surveys/new"
             className="px-4 py-2 bg-[var(--color-primary)] hover:bg-[var(--color-primary-dark)] text-white text-sm font-medium rounded-lg transition-colors"
           >

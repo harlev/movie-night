@@ -115,9 +115,42 @@ export interface AdminLog {
   id: string;
   actor_id: string;
   action: string;
-  target_type: 'user' | 'movie' | 'survey' | 'invite' | 'poll' | 'suggestion' | 'banner' | 'setting';
+  target_type:
+    | 'user'
+    | 'movie'
+    | 'survey'
+    | 'invite'
+    | 'poll'
+    | 'suggestion'
+    | 'banner'
+    | 'setting'
+    | 'budget';
   target_id: string;
   details: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export interface Budget {
+  id: string;
+  initial_total_amount_cents: number;
+  initial_current_amount_cents: number;
+  total_amount_cents: number;
+  current_amount_cents: number;
+  venmo_url: string;
+  status: 'open' | 'closed';
+  last_opened_at: string;
+  closed_at: string | null;
+  created_by: string;
+  updated_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BudgetLifecycleEvent {
+  id: string;
+  budget_id: string;
+  event_type: 'opened' | 'closed' | 'reopened';
+  actor_id: string;
   created_at: string;
 }
 

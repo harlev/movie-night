@@ -344,10 +344,10 @@ export default async function DashboardPage() {
             ) : (
               <>
                 <p className="mt-3 text-2xl font-display font-semibold text-[var(--color-text)]">
-                  No active budget yet.
+                  We’re out of popcorn.
                 </p>
                 <p className="mt-2 text-sm text-[var(--color-text-muted)]">
-                  The admin can open a budget from the budgets dashboard.
+                  The movie night fund is at $0. A new fund will open soon.
                 </p>
               </>
             )}

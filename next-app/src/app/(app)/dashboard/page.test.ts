@@ -103,7 +103,13 @@ test('dashboard renders the movie night fund as remaining-balance UI', () => {
   assert.equal(source.includes('style={{ width: `${budgetProgress.percentRemaining}%` }}'), false);
   assert.equal(source.includes('<span>{budgetProgress.percentRemaining}%</span>'), false);
   assert.equal(source.includes('total remaining'), false);
-  assert.equal(source.includes('No active budget yet.'), true);
+  assert.equal(source.includes('We’re out of popcorn.'), true);
+  assert.equal(
+    source.includes('The movie night fund is at $0. A new fund will open soon.'),
+    true
+  );
+  assert.equal(source.includes('No active budget yet.'), false);
+  assert.equal(source.includes('The admin can open a budget from the budgets dashboard.'), false);
 });
 
 test('dashboard renders voting panel before the movie night fund panel', () => {

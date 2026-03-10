@@ -38,6 +38,13 @@ test('dashboard header uses a unified next movie night card instead of separate 
   assert.equal(source.includes('{nextMovie && ('), false);
 });
 
+test('dashboard primary status area does not render a no-active-survey fallback card', () => {
+  const source = readFileSync(DASHBOARD_PAGE_PATH, 'utf8');
+
+  assert.equal(source.includes('title="No active survey"'), false);
+  assert.equal(source.includes('description="Check back later for the next voting round!"'), false);
+});
+
 test('dashboard renders the movie night fund as remaining-balance UI', () => {
   const source = readFileSync(DASHBOARD_PAGE_PATH, 'utf8');
 

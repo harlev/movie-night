@@ -14,6 +14,7 @@ import EmptyState from '@/components/ui/EmptyState';
 import CountdownTimer from '@/components/CountdownTimer';
 import SiteBanner from '@/components/SiteBanner';
 import BudgetConsumptionBar from './BudgetConsumptionBar';
+import { getPrimaryStatusSlot } from './primaryStatusSlot';
 import { getNextMovieNightLabel } from '@/lib/utils/nextMovieNight';
 import {
   getBudgetProgress,
@@ -115,6 +116,12 @@ export default async function DashboardPage() {
     overrideDate: siteSettings?.next_movie_night_override_date ?? null,
   });
   const nextMovie = siteSettings?.next_movie ?? null;
+  const primaryStatusSlot = getPrimaryStatusSlot({
+    hasActiveMovie: !!nextMovie,
+    hasActiveSurvey: !!surveyData,
+  });
+  const showMoviePanel = primaryStatusSlot === 'movie' && !!nextMovie;
+  const showSurveyPanel = primaryStatusSlot === 'survey' && !!surveyData;
   const budgetProgress = openBudget
     ? getBudgetProgress({
         totalAmountCents: openBudget.total_amount_cents,
@@ -157,7 +164,7 @@ export default async function DashboardPage() {
       <h1 className="sr-only">Dashboard</h1>
 
       {/* Header */}
-      {nextMovie ? (
+      {showMoviePanel && nextMovie ? (
         <div className="rounded-2xl border border-[var(--color-border)]/60 bg-[var(--color-surface)]/90 p-4 sm:p-5 shadow-md shadow-black/20">
           <div className="grid gap-4 sm:gap-5 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
             <div className="min-w-0 space-y-2.5 sm:space-y-3">
@@ -215,7 +222,7 @@ export default async function DashboardPage() {
       )}
 
       {/* Live Survey */}
-      {surveyData ? (
+      {showSurveyPanel && surveyData && (
         <div className="relative rounded-xl p-6 border border-[var(--color-primary)]/40 bg-gradient-to-br from-[var(--color-primary)]/5 to-transparent shadow-lg shadow-[var(--color-primary)]/5 animate-pulse-glow overflow-hidden">
           {/* Spotlight glow */}
           <div className="absolute -top-20 -right-20 w-40 h-40 bg-[var(--color-primary)]/10 rounded-full blur-3xl" />
@@ -314,14 +321,6 @@ export default async function DashboardPage() {
               {isViewer ? 'View Survey' : surveyData.hasVoted ? 'Update Vote' : 'Vote Now'}
             </Link>
           </div>
-        </div>
-      ) : (
-        <div className="bg-[var(--color-surface)] rounded-xl border border-[var(--color-border)]/50 shadow-lg shadow-black/20">
-          <EmptyState
-            icon="surveys"
-            title="No active survey"
-            description="Check back later for the next voting round!"
-          />
         </div>
       )}
 

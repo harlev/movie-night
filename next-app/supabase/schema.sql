@@ -146,15 +146,17 @@ insert into public.site_banners (id, enabled) values ('main', false);
 create table public.site_settings (
   id text primary key,
   next_movie_night_override_date date,
+  next_movie_night_number integer,
   next_movie_id text references public.movies(id),
   next_movie_source_survey_id text references public.surveys(id),
   updated_by uuid references public.profiles(id),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
+  constraint site_settings_next_movie_night_number_check check (next_movie_night_number is null or next_movie_night_number >= 1),
   constraint site_settings_singleton_id check (id = 'main')
 );
-insert into public.site_settings (id)
-values ('main')
+insert into public.site_settings (id, next_movie_night_number)
+values ('main', 64)
 on conflict (id) do nothing;
 
 create table public.budgets (

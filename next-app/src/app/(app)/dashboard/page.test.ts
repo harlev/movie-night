@@ -19,6 +19,12 @@ test('dashboard header renders computed next movie night date from site settings
 
   assert.equal(source.includes('const nextMovieNightDateLabel = getNextMovieNightLabel({'), true);
   assert.equal(source.includes('overrideDate: siteSettings?.next_movie_night_override_date ?? null'), true);
+  assert.equal(source.includes('const nextMovieNightNumber = siteSettings?.next_movie_night_number ?? null;'), true);
+  assert.equal(source.includes('const nextMovieNightEyebrowLabel ='), true);
+  assert.equal(source.includes("`Next Movie Night · #${nextMovieNightNumber}`"), true);
+  assert.equal(source.includes('{nextMovieNightEyebrowLabel}'), true);
+  assert.equal(source.includes('Movie Night #{nextMovieNightNumber}'), false);
+  assert.equal(source.includes('{nextMovieNightNumber !== null && ('), false);
   assert.equal(source.includes('{nextMovieNightDateLabel}'), true);
 });
 

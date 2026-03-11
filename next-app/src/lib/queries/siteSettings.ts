@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 export interface SiteSettings {
   id: 'main';
   next_movie_night_override_date: string | null;
+  next_movie_night_number: number | null;
   next_movie_id: string | null;
   next_movie_source_survey_id: string | null;
   updated_at: string;
@@ -20,7 +21,7 @@ export async function getSiteSettings(): Promise<SiteSettings | null> {
   const { data, error } = await supabase
     .from('site_settings')
     .select(
-      'id, next_movie_night_override_date, next_movie_id, next_movie_source_survey_id, updated_at, movies!next_movie_id(id, title, metadata_snapshot)'
+      'id, next_movie_night_override_date, next_movie_night_number, next_movie_id, next_movie_source_survey_id, updated_at, movies!next_movie_id(id, title, metadata_snapshot)'
     )
     .eq('id', 'main')
     .maybeSingle();

@@ -442,21 +442,25 @@ add column if not exists next_movie_night_override_date date;
 create table if not exists public.site_settings (
   id text primary key,
   next_movie_night_override_date date,
+  next_movie_night_number integer,
   next_movie_id text references public.movies(id),
   next_movie_source_survey_id text references public.surveys(id),
   updated_by uuid references public.profiles(id),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
+  constraint site_settings_next_movie_night_number_check check (next_movie_night_number is null or next_movie_night_number >= 1),
   constraint site_settings_singleton_id check (id = 'main')
 );
 
-insert into public.site_settings (id, next_movie_night_override_date)
+insert into public.site_settings (id, next_movie_night_override_date, next_movie_night_number)
 values (
   'main',
-  (select next_movie_night_override_date from public.site_banners where id = 'main')
+  (select next_movie_night_override_date from public.site_banners where id = 'main'),
+  64
 )
 on conflict (id) do update
-set next_movie_night_override_date = coalesce(excluded.next_movie_night_override_date, public.site_settings.next_movie_night_override_date);
+set next_movie_night_override_date = coalesce(excluded.next_movie_night_override_date, public.site_settings.next_movie_night_override_date),
+    next_movie_night_number = coalesce(public.site_settings.next_movie_night_number, excluded.next_movie_night_number);
 
 alter table public.site_settings enable row level security;
 
@@ -475,3 +479,22 @@ drop column if exists next_movie_night_override_date;
 alter table public.admin_logs drop constraint if exists admin_logs_target_type_check;
 alter table public.admin_logs add constraint admin_logs_target_type_check
   check (target_type in ('user', 'movie', 'survey', 'invite', 'poll', 'suggestion', 'banner', 'setting', 'budget'));
+
+-- ============================================================
+-- Migration: 20260310_add_next_movie_night_number.sql
+-- ============================================================
+
+alter table public.site_settings
+add column if not exists next_movie_night_number integer;
+
+alter table public.site_settings
+drop constraint if exists site_settings_next_movie_night_number_check;
+
+alter table public.site_settings
+add constraint site_settings_next_movie_night_number_check
+check (next_movie_night_number is null or next_movie_night_number >= 1);
+
+update public.site_settings
+set next_movie_night_number = 64
+where id = 'main'
+  and next_movie_night_number is null;

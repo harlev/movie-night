@@ -8,6 +8,7 @@ import {
 } from '@/lib/actions/siteBanner';
 import {
   updateNextMovieNightOverrideAction,
+  updateNextMovieNightNumberAction,
   updateNextMovieSelectionAction,
 } from '@/lib/actions/siteSettings';
 import type { SiteBannerSettings } from '@/lib/queries/siteBanner';
@@ -40,6 +41,10 @@ export default function SiteSettingsClient({
   );
   const [nextMovieState, nextMovieAction, nextMoviePending] = useActionState(
     updateNextMovieSelectionAction,
+    null
+  );
+  const [numberState, numberAction, numberPending] = useActionState(
+    updateNextMovieNightNumberAction,
     null
   );
   const [stagedDesktopBannerUrl, setStagedDesktopBannerUrl] = useState<string | null>(null);
@@ -193,6 +198,48 @@ export default function SiteSettingsClient({
             {overrideState.message}
           </div>
         )}
+
+        <div className="pt-2 border-t border-[var(--color-border)]/60 space-y-3">
+          <p className="text-sm font-medium text-[var(--color-text)]">Next Movie Night Number</p>
+          <p className="text-sm text-[var(--color-text-muted)]">
+            Set the number displayed in the dashboard, for example Movie Night #64.
+          </p>
+
+          <form action={numberAction} className="space-y-3">
+            <div>
+              <label htmlFor="nextMovieNightNumber" className="block text-sm font-medium text-[var(--color-text)] mb-2">
+                Number
+              </label>
+              <input
+                id="nextMovieNightNumber"
+                type="number"
+                min={1}
+                step={1}
+                name="nextMovieNightNumber"
+                defaultValue={siteSettings?.next_movie_night_number ?? ''}
+                className="w-full md:w-auto px-3 py-2 bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-lg text-[var(--color-text)]"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={numberPending}
+              className="px-4 py-2 bg-[var(--color-primary)] hover:bg-[var(--color-primary-dark)] text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+            >
+              {numberPending ? 'Saving...' : 'Save Number'}
+            </button>
+          </form>
+
+          {numberState?.error && (
+            <div className="bg-red-500/10 border border-red-500 text-red-400 rounded-lg p-3 text-sm">
+              {numberState.error}
+            </div>
+          )}
+          {numberState?.success && (
+            <div className="bg-[var(--color-success)]/10 border border-[var(--color-success)] text-[var(--color-success)] rounded-lg p-3 text-sm">
+              {numberState.message}
+            </div>
+          )}
+        </div>
 
         <div className="pt-2 border-t border-[var(--color-border)]/60 space-y-3">
           <p className="text-sm font-medium text-[var(--color-text)]">Next Movie Selection</p>

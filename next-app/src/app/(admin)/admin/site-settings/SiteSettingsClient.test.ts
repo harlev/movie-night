@@ -22,6 +22,10 @@ test('SiteSettingsClient includes scheduling controls for next movie night', () 
   assert.equal(source.includes('siteSettings?.next_movie_id'), true);
   assert.equal(source.includes('Save Next Movie'), true);
   assert.equal(source.includes('Clear Next Movie'), true);
+  assert.equal(source.includes('Next Movie Night Number'), true);
+  assert.equal(source.includes('name="nextMovieNightNumber"'), true);
+  assert.equal(source.includes('siteSettings?.next_movie_night_number'), true);
+  assert.equal(source.includes('Save Number'), true);
 });
 
 test('SiteSettingsClient keeps banner branding controls', () => {

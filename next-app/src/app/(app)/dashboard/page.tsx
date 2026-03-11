@@ -115,6 +115,11 @@ export default async function DashboardPage() {
   const nextMovieNightDateLabel = getNextMovieNightLabel({
     overrideDate: siteSettings?.next_movie_night_override_date ?? null,
   });
+  const nextMovieNightNumber = siteSettings?.next_movie_night_number ?? null;
+  const nextMovieNightEyebrowLabel =
+    nextMovieNightNumber !== null
+      ? `Next Movie Night · #${nextMovieNightNumber}`
+      : 'Next Movie Night';
   const nextMovie = siteSettings?.next_movie ?? null;
   const primaryStatusSlot = getPrimaryStatusSlot({
     hasActiveMovie: !!nextMovie,
@@ -169,7 +174,7 @@ export default async function DashboardPage() {
           <div className="grid gap-4 sm:gap-5 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
             <div className="min-w-0 space-y-2.5 sm:space-y-3">
               <p className="text-[10px] sm:text-xs uppercase tracking-widest text-[var(--color-primary)] font-medium">
-                Next Movie Night
+                {nextMovieNightEyebrowLabel}
               </p>
               <p className="text-xl sm:text-2xl font-display font-semibold text-[var(--color-text)]/90 leading-tight">
                 {nextMovieNightDateLabel}
@@ -213,7 +218,7 @@ export default async function DashboardPage() {
       ) : (
         <div className="space-y-1.5">
           <p className="text-[10px] sm:text-xs uppercase tracking-widest text-[var(--color-primary)] font-medium">
-            Next Movie Night
+            {nextMovieNightEyebrowLabel}
           </p>
           <p className="text-xl sm:text-2xl font-display font-semibold text-[var(--color-text)]/90 leading-tight">
             {nextMovieNightDateLabel}

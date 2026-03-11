@@ -15,3 +15,15 @@ test('site settings actions include next movie selection updates', () => {
   assert.equal(source.includes('next_movie_source_survey_id: null'), true);
   assert.equal(source.includes('Clear Next Movie'), false);
 });
+
+test('site settings actions include next movie night number updates', () => {
+  const source = readFileSync(SITE_SETTINGS_ACTION_PATH, 'utf8');
+
+  assert.equal(source.includes('export async function updateNextMovieNightNumberAction'), true);
+  assert.equal(
+    source.includes("const parsedNumber = parseNextMovieNightNumberInput(formData.get('nextMovieNightNumber'));"),
+    true
+  );
+  assert.equal(source.includes('Please enter a valid movie night number (1 or greater)'), true);
+  assert.equal(source.includes('next_movie_night_number: parsedNumber'), true);
+});

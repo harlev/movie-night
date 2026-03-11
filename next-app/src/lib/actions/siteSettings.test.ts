@@ -21,7 +21,7 @@ test('site settings actions include next movie night number updates', () => {
 
   assert.equal(source.includes('export async function updateNextMovieNightNumberAction'), true);
   assert.equal(
-    source.includes("const numberRaw = (formData.get('nextMovieNightNumber') as string | null)?.trim() ?? ''"),
+    source.includes("const parsedNumber = parseNextMovieNightNumberInput(formData.get('nextMovieNightNumber'));"),
     true
   );
   assert.equal(source.includes('Please enter a valid movie night number (1 or greater)'), true);

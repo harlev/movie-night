@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminLog } from '@/lib/queries/admin';
 import { getUserById } from '@/lib/queries/profiles';
+import { parseNextMovieNightNumberInput } from '@/lib/utils/nextMovieNightNumber';
 
 export async function updateNextMovieNightOverrideAction(prevState: any, formData: FormData) {
   const supabase = await createClient();
@@ -78,10 +79,9 @@ export async function updateNextMovieNightNumberAction(prevState: any, formData:
   const profile = await getUserById(user.id);
   if (!profile || profile.role !== 'admin') return { error: 'Admin access required' };
 
-  const numberRaw = (formData.get('nextMovieNightNumber') as string | null)?.trim() ?? '';
-  const parsedNumber = Number.parseInt(numberRaw, 10);
+  const parsedNumber = parseNextMovieNightNumberInput(formData.get('nextMovieNightNumber'));
 
-  if (!Number.isInteger(parsedNumber) || parsedNumber < 1) {
+  if (parsedNumber === null) {
     return { error: 'Please enter a valid movie night number (1 or greater)' };
   }
 

@@ -12,10 +12,10 @@ test('AppNav derives a mobile survey header title from the document title on sur
   assert.equal(source.includes('aria-label="Current survey"'), true);
   assert.equal(source.includes('relative flex justify-between h-16'), true);
   assert.equal(
-    source.includes('absolute inset-x-0 top-1/2 flex -translate-y-1/2 justify-center pointer-events-none sm:hidden'),
+    source.includes('absolute inset-x-0 inset-y-0 flex items-center justify-center pointer-events-none sm:hidden'),
     true
   );
-  assert.equal(source.includes('text-[2rem] font-display font-bold leading-none'), true);
+  assert.equal(source.includes('text-lg font-display font-bold leading-tight'), true);
 });
 
 test('AppNav uses a dedicated mobile logo while keeping the desktop logo unchanged', () => {

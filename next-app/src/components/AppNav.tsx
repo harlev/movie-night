@@ -132,11 +132,11 @@ export default function AppNav({ user }: AppNavProps) {
             </form>
           </div>
 
-          <div className="absolute inset-x-0 top-1/2 flex -translate-y-1/2 justify-center pointer-events-none sm:hidden">
+          <div className="absolute inset-x-0 inset-y-0 flex items-center justify-center pointer-events-none sm:hidden">
             {showMobileSurveyTitle && (
               <span
                 aria-label="Current survey"
-                className="max-w-[calc(100%-9.5rem)] truncate px-3 text-center text-[2rem] font-display font-bold leading-none text-[var(--color-text)]"
+                className="max-w-[calc(100%-9.5rem)] truncate px-3 text-center text-lg font-display font-bold leading-tight text-[var(--color-text)]"
               >
                 {mobileSurveyTitle}
               </span>

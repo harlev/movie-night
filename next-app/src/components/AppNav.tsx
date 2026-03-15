@@ -61,7 +61,7 @@ export default function AppNav({ user }: AppNavProps) {
   return (
     <nav className="bg-[var(--color-surface)]/80 backdrop-blur-xl border-b border-[var(--color-border)]/50 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="relative flex justify-between h-16">
+        <div className="relative flex h-16 items-center">
           <div className="flex">
             <div className="flex-shrink-0 flex items-center">
               <Link href="/dashboard" aria-label="Movie Night home" className="block">
@@ -132,19 +132,19 @@ export default function AppNav({ user }: AppNavProps) {
             </form>
           </div>
 
-          <div className="absolute inset-x-0 inset-y-0 flex items-center justify-center pointer-events-none sm:hidden">
-            {showMobileSurveyTitle && (
+          {showMobileSurveyTitle && (
+            <div className="sm:hidden flex-1 min-w-0 px-2 pointer-events-none">
               <span
                 aria-label="Current survey"
-                className="max-w-[calc(100%-9.5rem)] truncate px-3 text-center text-lg font-display font-bold leading-tight text-[var(--color-text)]"
+                className="block truncate text-center text-sm font-display font-bold leading-tight text-[var(--color-text)]"
               >
                 {mobileSurveyTitle}
               </span>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Mobile menu button */}
-          <div className="flex items-center sm:hidden">
+          <div className="ml-auto flex items-center sm:hidden">
             <button
               type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}

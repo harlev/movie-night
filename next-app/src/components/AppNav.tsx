@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { logout } from '@/lib/actions/auth';
 
@@ -44,19 +44,27 @@ function UserAvatar({ name, avatarUrl }: { name: string; avatarUrl?: string }) {
 
 export default function AppNav({ user }: AppNavProps) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileSurveyTitle, setMobileSurveyTitle] = useState('');
+  const view = searchParams.get('view');
+  const hideMobileSurveyTitle =
+    pathname.endsWith('/simple') && /^\/survey\/[^/]+\/simple$/.test(pathname) && view === 'results';
 
   useEffect(() => {
-    if (!pathname.startsWith('/survey/')) {
+    if (!pathname.startsWith('/survey/') || hideMobileSurveyTitle) {
       setMobileSurveyTitle('');
       return;
     }
 
     setMobileSurveyTitle(document.title.replace(/\s*-\s*Movie Night$/, ''));
-  }, [pathname]);
+  }, [hideMobileSurveyTitle, pathname]);
 
-  const showMobileSurveyTitle = pathname.startsWith('/survey/') && mobileSurveyTitle && !mobileMenuOpen;
+  const showMobileSurveyTitle =
+    pathname.startsWith('/survey/') &&
+    !hideMobileSurveyTitle &&
+    mobileSurveyTitle &&
+    !mobileMenuOpen;
 
   return (
     <nav className="bg-[var(--color-surface)]/80 backdrop-blur-xl border-b border-[var(--color-border)]/50 sticky top-0 z-50">

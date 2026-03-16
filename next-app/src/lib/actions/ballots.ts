@@ -2,9 +2,35 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
 import { getSurveyById, getSurveyEntries } from '@/lib/queries/surveys';
 import { submitBallot } from '@/lib/queries/ballots';
 import { getUserById } from '@/lib/queries/profiles';
+
+function getSimpleSurveySuccessRedirect(
+  surveyId: string,
+  successRedirect: string | null
+): string | null {
+  if (!successRedirect) {
+    return null;
+  }
+
+  const [pathname, search = ''] = successRedirect.split('?');
+  const expectedPathname = `/survey/${surveyId}/simple`;
+  if (pathname !== expectedPathname) {
+    return null;
+  }
+
+  const params = new URLSearchParams(search);
+  const view = params.get('view');
+  const page = params.get('page');
+  const submitted = params.get('submitted');
+  if (view !== 'results' || page || submitted !== '1') {
+    return null;
+  }
+
+  return `${expectedPathname}?view=results&submitted=1`;
+}
 
 export async function submitBallotAction(prevState: any, formData: FormData) {
   const supabase = await createClient();
@@ -16,10 +42,15 @@ export async function submitBallotAction(prevState: any, formData: FormData) {
 
   const surveyId = formData.get('surveyId') as string;
   const ranksJson = formData.get('ranks') as string;
+  const successRedirect = formData.get('successRedirect') as string | null;
 
   const survey = await getSurveyById(surveyId);
   if (!survey) return { error: 'Survey not found' };
   if (survey.state !== 'live') return { error: 'Survey is not accepting votes' };
+  const validatedSuccessRedirect = getSimpleSurveySuccessRedirect(
+    surveyId,
+    successRedirect
+  );
 
   if (!ranksJson) return { error: 'No ballot submitted' };
 
@@ -50,6 +81,12 @@ export async function submitBallotAction(prevState: any, formData: FormData) {
 
   await submitBallot({ surveyId: survey.id, userId: user.id, ranks: validRanks });
   revalidatePath(`/survey/${surveyId}`);
+  revalidatePath(`/survey/${surveyId}/simple`);
   revalidatePath('/dashboard');
+
+  if (validatedSuccessRedirect) {
+    redirect(validatedSuccessRedirect);
+  }
+
   return { success: true };
 }

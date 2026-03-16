@@ -14,7 +14,6 @@ import type { Standing } from '@/lib/services/scoring';
 import { useBallot } from '@/hooks/useBallot';
 import {
   getRankBadgeClasses,
-  getStandingBorderColor,
   shuffle,
 } from '@/lib/utils/rankStyles';
 import CountdownTimer from '@/components/CountdownTimer';
@@ -612,6 +611,54 @@ function ResultsPager({ resultsPage }: { resultsPage: 1 | 2 }) {
   );
 }
 
+function StandingsPoster({
+  posterPath,
+  title,
+}: {
+  posterPath: string | null;
+  title: string;
+}) {
+  const [hasImageError, setHasImageError] = useState(false);
+
+  useEffect(() => {
+    setHasImageError(false);
+  }, [posterPath]);
+
+  if (!posterPath || hasImageError) {
+    return (
+      <div
+        aria-hidden="true"
+        className="relative flex h-11 w-7 shrink-0 items-center justify-center overflow-hidden rounded-[6px] border border-[var(--color-border)]/35 bg-[linear-gradient(180deg,rgba(42,36,28,0.9),rgba(23,21,24,0.96))] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
+      >
+        <div className="absolute inset-[1px] rounded-[5px] border border-white/5" />
+        <div className="absolute inset-x-1 top-1.5 h-px bg-[var(--color-primary)]/12" />
+        <div className="absolute inset-x-1 bottom-1.5 h-px bg-black/20" />
+        <svg
+          className="h-4 w-4 text-[var(--color-primary)]/22"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={1.2}
+        >
+          <rect x="6" y="4.75" width="12" height="14.5" rx="1.5" />
+          <path strokeLinecap="round" d="M8 8.25h8M8 10.75h5.5" />
+          <rect x="8" y="12.75" width="8" height="3.75" rx="0.75" />
+          <path strokeLinecap="round" d="M10.75 12.75v3.75M13.25 12.75v3.75" />
+        </svg>
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={`${TMDB_IMAGE_BASE}${posterPath}`}
+      alt={title}
+      className="h-11 w-7 shrink-0 rounded-[6px] object-cover opacity-85"
+      onError={() => setHasImageError(true)}
+    />
+  );
+}
+
 function StandingsCard({
   standings,
   ballotCount,
@@ -620,58 +667,74 @@ function StandingsCard({
   ballotCount: number;
 }) {
   return (
-    <div className="bg-[var(--color-surface)] rounded-xl p-6 border border-[var(--color-border)]/50 shadow-lg shadow-black/20">
-      <h2 className="text-lg font-display font-semibold text-[var(--color-text)]">
-        Current Standings
-      </h2>
-      <p className="mt-2 mb-4 text-sm leading-relaxed text-[var(--color-text-muted)]">
-        Read-only standings. These rows are informational and do not change your ballot.
-      </p>
+    <div className="overflow-hidden rounded-xl border border-[var(--color-border)]/50 bg-[var(--color-surface)] shadow-lg shadow-black/20">
+      <div className="p-6">
+        <h2 className="text-lg font-display font-semibold text-[var(--color-text)]">
+          Current Standings
+        </h2>
+        <p className="mt-2 text-sm leading-relaxed text-[var(--color-text-muted)]">
+          Read-only standings. These rows are informational and do not change your ballot.
+        </p>
+      </div>
       {standings.length > 0 && ballotCount > 0 ? (
-        <div className="space-y-2">
-          {standings.map((standing) => (
-            <div
-              key={standing.movieId}
-              className={`cursor-default flex items-center gap-3 rounded-xl border-l-4 bg-[var(--color-surface-elevated)] p-3 ${getStandingBorderColor(
-                standing.position
-              )}`}
-            >
-              <span
-                className={`w-8 h-8 flex items-center justify-center rounded-full font-bold text-sm ${getRankBadgeClasses(
-                  standing.position
-                )}`}
-              >
-                {standing.position}
-              </span>
-              {standing.posterPath && (
-                <img
-                  src={`${TMDB_IMAGE_BASE}${standing.posterPath}`}
-                  alt={standing.title}
-                  className="w-10 h-15 object-cover rounded-lg"
-                />
-              )}
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-[var(--color-text)] truncate">
-                  {standing.title}
-                  {standing.tied && (
-                    <span className="text-xs text-[var(--color-text-muted)]"> (tied)</span>
-                  )}
-                </p>
-              </div>
-              <span
-                className={`text-lg font-display font-bold ${
-                  standing.position === 1
-                    ? 'text-yellow-500'
-                    : 'text-[var(--color-primary)]'
-                }`}
-              >
-                {standing.totalPoints}
-              </span>
-            </div>
-          ))}
+        <div className="border-t border-[var(--color-border)]/40 bg-[linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0))]">
+          <div className="divide-y divide-[var(--color-border)]/35">
+            {standings.map((standing) => {
+              const pointLabel = standing.totalPoints === 1 ? 'pt' : 'pts';
+
+              return (
+                <div
+                  key={standing.movieId}
+                  className="grid grid-cols-[auto_auto_1fr_auto] items-center gap-2.5 px-4 py-2.5 cursor-default"
+                >
+                  <span
+                    className={`flex items-center justify-center rounded-full font-semibold ${
+                      standing.position <= 3
+                        ? `h-8 w-8 text-sm ${getRankBadgeClasses(standing.position)}`
+                        : 'h-7 w-7 border border-[var(--color-border)]/30 bg-[var(--color-surface-elevated)]/30 text-[var(--color-text-muted)]/60 text-xs'
+                    }`}
+                  >
+                    {standing.position}
+                  </span>
+                  <StandingsPoster
+                    posterPath={standing.posterPath}
+                    title={standing.title}
+                  />
+                  <div className="min-w-0 pr-2">
+                    <p className="text-sm font-medium leading-tight text-[var(--color-text)] sm:text-base">
+                      {standing.title}
+                      {standing.tied && (
+                        <span className="ml-1 whitespace-nowrap align-middle text-[11px] text-[var(--color-text-muted)]/65">
+                          (tied)
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p
+                      className={`whitespace-nowrap text-sm font-display font-semibold ${
+                        standing.position === 1
+                          ? 'text-yellow-500'
+                          : standing.totalPoints > 0
+                            ? 'text-[var(--color-primary)]'
+                            : 'text-[var(--color-text-muted)]/75'
+                      }`}
+                    >
+                      {standing.totalPoints}
+                      <span className="ml-1 text-[11px] font-medium text-[var(--color-text-muted)]/70">
+                        {pointLabel}
+                      </span>
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       ) : (
-        <p className="text-[var(--color-text-muted)] text-center py-4">No votes yet.</p>
+        <p className="px-6 pb-6 text-center text-[var(--color-text-muted)]">
+          No votes yet.
+        </p>
       )}
     </div>
   );

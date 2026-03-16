@@ -82,3 +82,78 @@ test('SimpleVotingClient keeps mobile-only accessibility affordances for the hid
   assert.equal(source.includes('function CompactBallotActions({'), true);
   assert.equal(source.includes('<CompactBallotActions'), true);
 });
+
+test('SimpleVotingClient renders standings as a unified read-only ranking list instead of separate cards', () => {
+  const filePath = path.join(
+    process.cwd(),
+    'src/app/(app)/survey/[id]/simple/SimpleVotingClient.tsx'
+  );
+  const source = readFileSync(filePath, 'utf8');
+
+  assert.equal(source.includes('divide-y divide-[var(--color-border)]/35'), true);
+  assert.equal(source.includes('grid grid-cols-[auto_auto_1fr_auto] items-center gap-2.5 px-4 py-2.5'), true);
+  assert.equal(
+    source.includes(
+      'cursor-default flex items-center gap-3 rounded-xl border-l-4 bg-[var(--color-surface-elevated)] p-3'
+    ),
+    false
+  );
+  assert.equal(source.includes('w-10 h-15 object-cover rounded-lg'), false);
+  assert.equal(source.includes('text-[10px] uppercase tracking-[0.16em] text-[var(--color-text-muted)]'), false);
+  assert.equal(source.includes('whitespace-nowrap text-sm font-display font-semibold'), true);
+  assert.equal(source.includes('truncate text-sm font-medium'), false);
+  assert.equal(source.includes('text-sm font-medium leading-tight text-[var(--color-text)] sm:text-base'), true);
+});
+
+test('SimpleVotingClient keeps standings rows aligned when a movie has no poster', () => {
+  const filePath = path.join(
+    process.cwd(),
+    'src/app/(app)/survey/[id]/simple/SimpleVotingClient.tsx'
+  );
+  const source = readFileSync(filePath, 'utf8');
+
+  assert.equal(source.includes('function StandingsPoster({'), true);
+  assert.equal(source.includes('const [hasImageError, setHasImageError] = useState(false);'), true);
+  assert.equal(source.includes('onError={() => setHasImageError(true)}'), true);
+  assert.equal(
+    source.includes('shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]'),
+    true
+  );
+  assert.equal(
+    source.includes('absolute inset-[1px] rounded-[5px] border border-white/5'),
+    true
+  );
+  assert.equal(
+    source.includes('className="h-4 w-4 text-[var(--color-primary)]/22"'),
+    true
+  );
+  assert.equal(
+    source.includes('d="M8 8.25h8M8 10.75h5.5"'),
+    true
+  );
+  assert.equal(source.includes('<StandingsPoster'), true);
+  assert.equal(source.includes('posterPath={standing.posterPath}'), true);
+  assert.equal(source.includes('title={standing.title}'), true);
+});
+
+test('SimpleVotingClient makes lower ranks and tie labels quieter in the standings list', () => {
+  const filePath = path.join(
+    process.cwd(),
+    'src/app/(app)/survey/[id]/simple/SimpleVotingClient.tsx'
+  );
+  const source = readFileSync(filePath, 'utf8');
+
+  assert.equal(source.includes('standing.position <= 3'), true);
+  assert.equal(
+    source.includes(
+      "border border-[var(--color-border)]/30 bg-[var(--color-surface-elevated)]/30 text-[var(--color-text-muted)]/60"
+    ),
+    true
+  );
+  assert.equal(
+    source.includes('ml-1 whitespace-nowrap align-middle text-[11px] text-[var(--color-text-muted)]/65'),
+    true
+  );
+  assert.equal(source.includes('text-xs text-[var(--color-text-muted)]'), false);
+  assert.equal(source.includes("const pointLabel = standing.totalPoints === 1 ? 'pt' : 'pts';"), true);
+});

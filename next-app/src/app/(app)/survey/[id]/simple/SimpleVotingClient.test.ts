@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
-test('SimpleVotingClient keeps a simple movie list while restoring the desktop /simple shell', () => {
+test('SimpleVotingClient gates results behind explicit ballot and results screens', () => {
   const filePath = path.join(
     process.cwd(),
     'src/app/(app)/survey/[id]/simple/SimpleVotingClient.tsx'
@@ -11,8 +11,34 @@ test('SimpleVotingClient keeps a simple movie list while restoring the desktop /
   const source = readFileSync(filePath, 'utf8');
 
   assert.equal(source.includes('Back to Dashboard'), true);
+  assert.equal(source.includes('Edit My Ballot'), true);
+  assert.equal(source.includes('Back to Ballot'), false);
+  assert.equal(source.includes("import { useActionState, useEffect, useRef, useState } from 'react';"), false);
+  assert.equal(source.includes("import { useRouter } from 'next/navigation';"), true);
+  assert.equal(source.includes("view: 'ballot' | 'results';"), true);
+  assert.equal(source.includes('resultsPage: 1 | 2;'), true);
+  assert.equal(source.includes('showBackToBallot: boolean;'), true);
+  assert.equal(source.includes('showSubmittedFlash: boolean;'), true);
+  assert.equal(source.includes("viewLabelStyle?: 'pill' | 'eyebrow';"), true);
+  assert.equal(source.includes("viewLabelStyle === 'eyebrow'"), true);
+  assert.equal(source.includes("if (view === 'ballot')"), true);
+  assert.equal(source.includes("if (view === 'results')"), true);
+  assert.equal(source.includes('viewLabelStyle="pill"'), false);
+  assert.equal(source.includes('viewLabelStyle="eyebrow"'), true);
+  assert.equal(source.includes('name="successRedirect"'), true);
+  assert.equal(source.includes('value={`/survey/${survey.id}/simple?view=results&submitted=1`}'), true);
+  assert.equal(source.includes('?view=results&submitted=1'), true);
+  assert.equal(source.includes('router.replace('), true);
+  assert.equal(source.includes('?view=results&page=2'), true);
+  assert.equal(source.includes('?view=results'), true);
+  assert.equal(source.includes('block text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--color-text-muted)]'), true);
   assert.equal(source.includes('Current Standings'), true);
   assert.equal(source.includes('All Ballots'), true);
+  assert.equal(source.includes('Ballot submitted successfully. Current standings are now unlocked. You can still edit your ballot until voting closes.'), true);
+  assert.equal(source.includes('You already voted. Current standings are visible. You can still edit your ballot until voting closes.'), true);
+  assert.equal(source.includes('Submit your ballot to unlock current standings.'), false);
+  assert.equal(source.includes('Read-only standings. These rows are informational and do not change your ballot.'), true);
+  assert.equal(source.includes('badge: `Ballot`'), false);
   assert.equal(source.includes('variant="full"'), true);
   assert.equal(source.includes('variant="compact"'), true);
   assert.equal(source.includes('onClick={() => handleMovieClick(entry.movie.id)}'), true);
@@ -28,11 +54,6 @@ test('SimpleVotingClient keeps a simple movie list while restoring the desktop /
   assert.equal(source.includes('text-lg leading-tight'), true);
   assert.equal(source.includes("cursor-pointer active:scale-[0.98]'"), true);
   assert.equal(source.includes('aria-label={`Toggle rank for ${entry.movie.title}`}'), true);
-  assert.equal(source.includes('sticky bottom-4 z-10 mt-5'), false);
-  assert.equal(source.includes('lg:sticky lg:top-6 lg:self-start'), true);
-  assert.equal(source.includes('lg:flex lg:max-h-[calc(100vh-8rem)] lg:flex-col'), true);
-  assert.equal(source.includes('lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:pr-1'), true);
-  assert.equal(source.includes('lg:border-t lg:border-[var(--color-border)]/50 lg:pt-4'), true);
   assert.equal(source.includes('desktop'), true);
   assert.equal(source.includes('entries={shuffledEntries}'), true);
   assert.equal(source.includes('handleMovieClick={handleMovieClick}'), true);
@@ -49,8 +70,15 @@ test('SimpleVotingClient keeps mobile-only accessibility affordances for the hid
   const source = readFileSync(filePath, 'utf8');
 
   assert.equal(source.includes('<h1 className="sr-only">{survey.title}</h1>'), true);
+  assert.equal(source.includes('Closes'), true);
   assert.equal(source.includes('aria-live="polite"'), true);
-  assert.equal(source.includes('{ballot.size} of {survey.maxRankN} ranks selected.'), true);
+  assert.equal(source.includes('{ballotSize} of {survey.maxRankN} ranks selected.'), true);
   assert.equal(source.includes('aria-hidden="true"'), true);
   assert.equal(source.includes('aria-label={`Rank ${i + 1}`}'), false);
+  assert.equal(source.includes('fixed bottom-0 left-0 right-0 z-20'), false);
+  assert.equal(source.includes('fixed bottom-0 inset-x-0 z-20'), true);
+  assert.equal(source.includes('max-w-2xl mx-auto flex items-center gap-2'), true);
+  assert.equal(source.includes('form action={formAction} className="flex-1"'), true);
+  assert.equal(source.includes('function CompactBallotActions({'), true);
+  assert.equal(source.includes('<CompactBallotActions'), true);
 });

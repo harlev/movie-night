@@ -45,3 +45,14 @@ test('AppNav uses a dedicated mobile logo while keeping the desktop logo unchang
   assert.equal(source.includes('src="/logo.png"'), true);
   assert.equal(source.includes('className="hidden h-14 w-auto sm:block"'), true);
 });
+
+test('AppNav adds Feedback as a top-level destination and moves desktop account actions into an avatar menu', () => {
+  const filePath = path.join(process.cwd(), 'src/components/AppNav.tsx');
+  const source = readFileSync(filePath, 'utf8');
+
+  assert.equal(source.includes("{ href: '/feedback', label: 'Feedback' }"), true);
+  assert.equal(source.includes('const [accountMenuOpen, setAccountMenuOpen] = useState(false);'), true);
+  assert.equal(source.includes('aria-label="Open account menu"'), true);
+  assert.equal(source.includes('aria-haspopup="menu"'), true);
+  assert.equal(source.includes('className="text-[var(--color-text-muted)] text-sm"'), false);
+});

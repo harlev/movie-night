@@ -124,7 +124,8 @@ export interface AdminLog {
     | 'suggestion'
     | 'banner'
     | 'setting'
-    | 'budget';
+    | 'budget'
+    | 'feedback';
   target_id: string;
   details: Record<string, unknown> | null;
   created_at: string;
@@ -195,4 +196,41 @@ export interface QuickPollVote {
   disabled: boolean;
   created_at: string;
   updated_at: string;
+}
+
+export type FeedbackStatus = 'visible' | 'hidden';
+export type FeedbackSortMode = 'active' | 'new';
+
+export interface FeedbackThread {
+  id: string;
+  author_id: string;
+  author_display_name_snapshot: string;
+  content: string;
+  is_anonymous: boolean;
+  status: FeedbackStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FeedbackReply {
+  id: string;
+  thread_id: string;
+  author_id: string;
+  author_display_name_snapshot: string;
+  content: string;
+  is_anonymous: boolean;
+  status: FeedbackStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FeedbackReplyView extends FeedbackReply {
+  publicAuthorLabel: string;
+}
+
+export interface FeedbackThreadView extends FeedbackThread {
+  publicAuthorLabel: string;
+  replyCount: number;
+  lastActivityAt: string;
+  replies: FeedbackReplyView[];
 }

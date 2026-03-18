@@ -26,6 +26,7 @@ test('quick poll seed includes scheduled closes_at support', () => {
 test('feedback schema and seed define thread/reply tables with snapshot names and moderation status', () => {
   const schema = readSupabaseFile('schema.sql');
   const seed = readSupabaseFile('seed.sql');
+  const migration = readSupabaseFile(path.join('migrations', '20260316_add_feedback.sql'));
 
   assert.equal(schema.includes('create table public.feedback_threads'), true);
   assert.equal(schema.includes('create table public.feedback_replies'), true);
@@ -36,6 +37,47 @@ test('feedback schema and seed define thread/reply tables with snapshot names an
   assert.equal(seed.includes('create table if not exists public.feedback_replies'), true);
   assert.equal(seed.includes('author_display_name_snapshot text not null'), true);
   assert.equal(seed.includes("status text not null default 'visible' check (status in ('visible', 'hidden'))"), true);
+
+  assert.equal(
+    schema.includes('create policy "feedback_replies_select" on public.feedback_replies for select to authenticated'),
+    true
+  );
+  assert.equal(
+    schema.includes('and exists (') && schema.includes("feedback_threads.status = 'visible'"),
+    true
+  );
+  assert.equal(
+    seed.includes('create policy "feedback_replies_select" on public.feedback_replies for select to authenticated'),
+    true
+  );
+  assert.equal(
+    seed.includes('and exists (') && seed.includes("feedback_threads.status = 'visible'"),
+    true
+  );
+  assert.equal(
+    migration.includes('create policy "feedback_replies_select" on public.feedback_replies for select to authenticated'),
+    true
+  );
+  assert.equal(
+    migration.includes('and exists (') && migration.includes("feedback_threads.status = 'visible'"),
+    true
+  );
+  assert.equal(
+    schema.includes('create policy "feedback_replies_insert" on public.feedback_replies for insert to authenticated'),
+    true
+  );
+  assert.equal(
+    schema.includes("feedback_threads.id = feedback_replies.thread_id"),
+    true
+  );
+  assert.equal(
+    seed.includes("feedback_threads.id = feedback_replies.thread_id"),
+    true
+  );
+  assert.equal(
+    migration.includes("feedback_threads.id = feedback_replies.thread_id"),
+    true
+  );
 });
 
 test('feedback schema updates admin logs to accept feedback targets', () => {

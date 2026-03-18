@@ -549,14 +549,31 @@ create policy "feedback_threads_admin_update" on public.feedback_threads for upd
 
 create policy "feedback_replies_select" on public.feedback_replies for select to authenticated
   using (
-    status = 'visible'
-    or (select role from public.profiles where id = auth.uid()) = 'admin'
+    (select role from public.profiles where id = auth.uid()) = 'admin'
+    or (
+      status = 'visible'
+      and exists (
+        select 1
+        from public.feedback_threads
+        where feedback_threads.id = feedback_replies.thread_id
+          and feedback_threads.status = 'visible'
+      )
+    )
   );
 create policy "feedback_replies_insert" on public.feedback_replies for insert to authenticated
   with check (
     author_id = auth.uid()
     and status = 'visible'
     and (select role from public.profiles where id = auth.uid()) != 'viewer'
+    and exists (
+      select 1
+      from public.feedback_threads
+      where feedback_threads.id = feedback_replies.thread_id
+        and (
+          feedback_threads.status = 'visible'
+          or (select role from public.profiles where id = auth.uid()) = 'admin'
+        )
+    )
   );
 create policy "feedback_replies_admin_update" on public.feedback_replies for update to authenticated
   using ((select role from public.profiles where id = auth.uid()) = 'admin');

@@ -16,13 +16,18 @@ interface FeedbackSortableThread {
 }
 
 function getThreadActivityTimestamp(thread: FeedbackSortableThread): number {
-  const latestVisibleReply = thread.replies
-    .filter((reply) => reply.status === 'visible')
-    .sort((left, right) => Date.parse(right.created_at) - Date.parse(left.created_at))[0];
+  let latestTimestamp = Date.parse(thread.created_at);
 
-  return latestVisibleReply
-    ? Date.parse(latestVisibleReply.created_at)
-    : Date.parse(thread.created_at);
+  for (const reply of thread.replies) {
+    if (reply.status !== 'visible') continue;
+
+    const replyTimestamp = Date.parse(reply.created_at);
+    if (replyTimestamp > latestTimestamp) {
+      latestTimestamp = replyTimestamp;
+    }
+  }
+
+  return latestTimestamp;
 }
 
 export function getFeedbackAuthorLabel({
@@ -37,17 +42,35 @@ export function buildDirectedReplyPrefix(publicAuthorLabel: string): string {
   return normalizedLabel ? `@${normalizedLabel} ` : '';
 }
 
+export function getNextFeedbackComposerContent({
+  currentContent,
+  previousInitialContent,
+  nextInitialContent,
+}: {
+  currentContent: string;
+  previousInitialContent: string;
+  nextInitialContent: string;
+}): string {
+  return currentContent === previousInitialContent ? nextInitialContent : currentContent;
+}
+
 export function sortFeedbackThreads<T extends FeedbackSortableThread>(
   threads: T[],
   sortMode: FeedbackSortMode
 ): T[] {
+  const activityTimestamps = new Map<T, number>();
+
+  for (const thread of threads) {
+    activityTimestamps.set(thread, getThreadActivityTimestamp(thread));
+  }
+
   return [...threads].sort((left, right) => {
     if (sortMode === 'new') {
       return Date.parse(right.created_at) - Date.parse(left.created_at);
     }
 
     const activityDifference =
-      getThreadActivityTimestamp(right) - getThreadActivityTimestamp(left);
+      (activityTimestamps.get(right) || 0) - (activityTimestamps.get(left) || 0);
 
     if (activityDifference !== 0) {
       return activityDifference;

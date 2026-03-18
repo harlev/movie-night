@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
   buildDirectedReplyPrefix,
   getFeedbackAuthorLabel,
+  getNextFeedbackComposerContent,
   sortFeedbackThreads,
 } from './feedback';
 
@@ -85,4 +86,26 @@ test('sortFeedbackThreads keeps newest sort tied to thread creation time', () =>
 test('buildDirectedReplyPrefix trims labels and formats a mention-style prefix', () => {
   assert.equal(buildDirectedReplyPrefix('Yogev'), '@Yogev ');
   assert.equal(buildDirectedReplyPrefix('  Anonymous  '), '@Anonymous ');
+});
+
+test('getNextFeedbackComposerContent clears a stale directed-reply prefix when the reply target is cleared', () => {
+  assert.equal(
+    getNextFeedbackComposerContent({
+      currentContent: '@Anonymous hello',
+      previousInitialContent: '@Anonymous hello',
+      nextInitialContent: '',
+    }),
+    ''
+  );
+});
+
+test('getNextFeedbackComposerContent preserves user edits when the reply target changes', () => {
+  assert.equal(
+    getNextFeedbackComposerContent({
+      currentContent: '@Anonymous hello and more',
+      previousInitialContent: '@Anonymous hello',
+      nextInitialContent: '',
+    }),
+    '@Anonymous hello and more'
+  );
 });

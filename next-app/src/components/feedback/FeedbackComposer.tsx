@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useEffectEvent, useRef, useState } from 'react';
 import Card from '@/components/ui/Card';
+import { getNextFeedbackComposerContent } from '@/lib/utils/feedback';
 
 interface FeedbackComposerProps {
   action: (prevState: any, formData: FormData) => Promise<{ error?: string; success?: boolean }>;
@@ -26,6 +27,7 @@ export default function FeedbackComposer({
 }: FeedbackComposerProps) {
   const isViewer = userRole === 'viewer';
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const previousInitialContentRef = useRef(initialContent);
   const [content, setContent] = useState(initialContent);
   const [postAnonymously, setPostAnonymously] = useState(false);
   const [state, formAction, isPending] = useActionState(action, null);
@@ -42,9 +44,14 @@ export default function FeedbackComposer({
   }, [state?.success]);
 
   useEffect(() => {
-    if (!initialContent) return;
-
-    setContent(initialContent);
+    setContent((currentContent) =>
+      getNextFeedbackComposerContent({
+        currentContent,
+        previousInitialContent: previousInitialContentRef.current,
+        nextInitialContent: initialContent,
+      })
+    );
+    previousInitialContentRef.current = initialContent;
   }, [initialContent]);
 
   useEffect(() => {

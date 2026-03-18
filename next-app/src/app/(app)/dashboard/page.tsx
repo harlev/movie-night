@@ -8,11 +8,13 @@ import { calculateStandings, type Standing } from '@/lib/services/scoring';
 import { getSiteBanner } from '@/lib/queries/siteBanner';
 import { getSiteSettings } from '@/lib/queries/siteSettings';
 import { getOpenBudget } from '@/lib/queries/budgets';
+import { getFeedbackThreads } from '@/lib/queries/feedback';
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import EmptyState from '@/components/ui/EmptyState';
 import CountdownTimer from '@/components/CountdownTimer';
 import SiteBanner from '@/components/SiteBanner';
+import FeedbackDashboardCard from '@/components/feedback/FeedbackDashboardCard';
 import BudgetConsumptionBar from './BudgetConsumptionBar';
 import { getPrimaryStatusSlot } from './primaryStatusSlot';
 import { getNextMovieNightLabel } from '@/lib/utils/nextMovieNight';
@@ -50,7 +52,7 @@ export default async function DashboardPage() {
   } = await supabase.auth.getUser();
 
   // Fetch data in parallel
-  const [liveSurvey, livePolls, allMovies, allUsers, siteBanner, siteSettings, openBudget] = await Promise.all([
+  const [liveSurvey, livePolls, allMovies, allUsers, siteBanner, siteSettings, openBudget, feedbackThreads] = await Promise.all([
     getLiveSurvey().catch(() => null),
     getLivePolls().catch(() => []),
     getAllMovies(),
@@ -58,6 +60,7 @@ export default async function DashboardPage() {
     getSiteBanner(),
     getSiteSettings(),
     getOpenBudget(),
+    getFeedbackThreads('active', { limit: 3 }),
   ]);
 
   const currentUser = user ? allUsers.find((u) => u.id === user.id) : null;
@@ -432,6 +435,9 @@ export default async function DashboardPage() {
           </div>
         </div>
       )}
+
+      {/* Recent Feedback */}
+      <FeedbackDashboardCard threads={feedbackThreads} userRole={currentUser?.role} />
 
       {/* Recent Movies */}
       <div>

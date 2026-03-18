@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { logout } from '@/lib/actions/auth';
 
 interface AppNavProps {
@@ -17,6 +17,7 @@ interface AppNavProps {
 const navItems = [
   { href: '/dashboard', label: 'Dashboard' },
   { href: '/movies', label: 'Movies' },
+  { href: '/feedback', label: 'Feedback' },
   { href: '/history', label: 'History' },
   { href: '/leaderboard', label: 'Leaderboard' },
 ];
@@ -46,6 +47,8 @@ export default function AppNav({ user }: AppNavProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const accountMenuRef = useRef<HTMLDivElement | null>(null);
   const [mobileSurveyTitle, setMobileSurveyTitle] = useState('');
   const view = searchParams.get('view');
   const hideMobileSurveyTitle =
@@ -59,6 +62,34 @@ export default function AppNav({ user }: AppNavProps) {
 
     setMobileSurveyTitle(document.title.replace(/\s*-\s*Movie Night$/, ''));
   }, [hideMobileSurveyTitle, pathname]);
+
+  useEffect(() => {
+    setAccountMenuOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!accountMenuOpen) return;
+
+    function handlePointerDown(event: MouseEvent) {
+      if (!accountMenuRef.current?.contains(event.target as Node)) {
+        setAccountMenuOpen(false);
+      }
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setAccountMenuOpen(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [accountMenuOpen]);
 
   const showMobileSurveyTitle =
     pathname.startsWith('/survey/') &&
@@ -115,29 +146,65 @@ export default function AppNav({ user }: AppNavProps) {
             </div>
           </div>
 
-          <div className="hidden sm:flex sm:items-center sm:space-x-3">
-            <UserAvatar name={user.displayName} avatarUrl={user.avatarUrl} />
-            <span className="text-[var(--color-text-muted)] text-sm">
-              {user.displayName}
-            </span>
-            <Link
-              href="/settings"
-              className="text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
-              title="Settings"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-            </Link>
-            <form action={logout}>
+          <div className="hidden sm:flex sm:items-center">
+            <div ref={accountMenuRef} className="relative">
               <button
-                type="submit"
-                className="text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors ml-2"
+                type="button"
+                onClick={() => setAccountMenuOpen((current) => !current)}
+                aria-label="Open account menu"
+                aria-haspopup="menu"
+                aria-expanded={accountMenuOpen}
+                className="inline-flex items-center gap-2 rounded-xl border border-[var(--color-border)]/60 bg-[var(--color-surface-elevated)] px-2.5 py-2 text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text)]"
               >
-                Logout
+                <UserAvatar name={user.displayName} avatarUrl={user.avatarUrl} />
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
               </button>
-            </form>
+
+              {accountMenuOpen && (
+                <div
+                  role="menu"
+                  className="absolute right-0 top-full z-50 mt-2 w-64 overflow-hidden rounded-xl border border-[var(--color-border)]/60 bg-[var(--color-surface)] shadow-xl shadow-black/30"
+                >
+                  <div className="border-b border-[var(--color-border)]/50 px-4 py-3">
+                    <p className="text-sm font-medium text-[var(--color-text)]">{user.displayName}</p>
+                    {user.email ? (
+                      <p className="mt-1 text-xs text-[var(--color-text-muted)]">{user.email}</p>
+                    ) : null}
+                  </div>
+
+                  <div className="p-2">
+                    <Link
+                      href="/settings"
+                      role="menuitem"
+                      onClick={() => setAccountMenuOpen(false)}
+                      className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-elevated)] hover:text-[var(--color-text)]"
+                    >
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      Settings
+                    </Link>
+
+                    <form action={logout}>
+                      <button
+                        type="submit"
+                        role="menuitem"
+                        className="mt-1 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-elevated)] hover:text-[var(--color-text)]"
+                      >
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7" />
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M3 5h8v14H3z" />
+                        </svg>
+                        Logout
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           {showMobileSurveyTitle && (

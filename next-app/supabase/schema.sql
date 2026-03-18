@@ -123,7 +123,7 @@ create table public.admin_logs (
   id text primary key,
   actor_id uuid not null references public.profiles(id),
   action text not null,
-  target_type text not null check (target_type in ('user', 'movie', 'survey', 'invite', 'poll', 'suggestion', 'banner', 'setting', 'budget')),
+  target_type text not null check (target_type in ('user', 'movie', 'survey', 'invite', 'poll', 'suggestion', 'banner', 'setting', 'budget', 'feedback')),
   target_id text not null,
   details jsonb,
   created_at timestamptz not null default now()
@@ -187,6 +187,33 @@ create table public.budget_lifecycle_events (
 );
 create index budget_lifecycle_events_budget_id_idx
   on public.budget_lifecycle_events (budget_id, created_at desc);
+
+create table public.feedback_threads (
+  id text primary key,
+  author_id uuid not null references public.profiles(id) on delete cascade,
+  author_display_name_snapshot text not null,
+  content text not null,
+  is_anonymous boolean not null default false,
+  status text not null default 'visible' check (status in ('visible', 'hidden')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index feedback_threads_created_at_idx on public.feedback_threads(created_at desc);
+
+create table public.feedback_replies (
+  id text primary key,
+  thread_id text not null references public.feedback_threads(id) on delete cascade,
+  author_id uuid not null references public.profiles(id) on delete cascade,
+  author_display_name_snapshot text not null,
+  content text not null,
+  is_anonymous boolean not null default false,
+  status text not null default 'visible' check (status in ('visible', 'hidden')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index feedback_replies_thread_id_idx on public.feedback_replies(thread_id);
+create index feedback_replies_thread_created_at_idx
+  on public.feedback_replies (thread_id, created_at asc);
 
 -- Trigger: auto-create profile on signup
 create or replace function public.handle_new_user()
@@ -346,6 +373,8 @@ alter table public.site_banners enable row level security;
 alter table public.site_settings enable row level security;
 alter table public.budgets enable row level security;
 alter table public.budget_lifecycle_events enable row level security;
+alter table public.feedback_threads enable row level security;
+alter table public.feedback_replies enable row level security;
 
 -- RLS Policies
 
@@ -460,3 +489,31 @@ create policy "budget_lifecycle_events_select" on public.budget_lifecycle_events
   using ((select role from public.profiles where id = auth.uid()) = 'admin');
 create policy "budget_lifecycle_events_admin_insert" on public.budget_lifecycle_events for insert to authenticated
   with check ((select role from public.profiles where id = auth.uid()) = 'admin');
+
+create policy "feedback_threads_select" on public.feedback_threads for select to authenticated
+  using (
+    status = 'visible'
+    or (select role from public.profiles where id = auth.uid()) = 'admin'
+  );
+create policy "feedback_threads_insert" on public.feedback_threads for insert to authenticated
+  with check (
+    author_id = auth.uid()
+    and status = 'visible'
+    and (select role from public.profiles where id = auth.uid()) != 'viewer'
+  );
+create policy "feedback_threads_admin_update" on public.feedback_threads for update to authenticated
+  using ((select role from public.profiles where id = auth.uid()) = 'admin');
+
+create policy "feedback_replies_select" on public.feedback_replies for select to authenticated
+  using (
+    status = 'visible'
+    or (select role from public.profiles where id = auth.uid()) = 'admin'
+  );
+create policy "feedback_replies_insert" on public.feedback_replies for insert to authenticated
+  with check (
+    author_id = auth.uid()
+    and status = 'visible'
+    and (select role from public.profiles where id = auth.uid()) != 'viewer'
+  );
+create policy "feedback_replies_admin_update" on public.feedback_replies for update to authenticated
+  using ((select role from public.profiles where id = auth.uid()) = 'admin');

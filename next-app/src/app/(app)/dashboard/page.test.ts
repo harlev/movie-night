@@ -135,3 +135,24 @@ test('dashboard renders voting panel before the movie night fund panel', () => {
   assert.notEqual(movieNightFundSectionIndex, -1);
   assert.equal(liveSurveySectionIndex < movieNightFundSectionIndex, true);
 });
+
+test('dashboard includes a recent feedback preview card before recent suggestions', () => {
+  const source = readFileSync(DASHBOARD_PAGE_PATH, 'utf8');
+
+  assert.equal(
+    source.includes("import { getFeedbackThreads } from '@/lib/queries/feedback';"),
+    true
+  );
+  assert.equal(
+    source.includes("import FeedbackDashboardCard from '@/components/feedback/FeedbackDashboardCard';"),
+    true
+  );
+  assert.equal(source.includes('{/* Recent Feedback */}'), true);
+
+  const feedbackSectionIndex = source.indexOf('{/* Recent Feedback */}');
+  const recentMoviesSectionIndex = source.indexOf('{/* Recent Movies */}');
+
+  assert.notEqual(feedbackSectionIndex, -1);
+  assert.notEqual(recentMoviesSectionIndex, -1);
+  assert.equal(feedbackSectionIndex < recentMoviesSectionIndex, true);
+});

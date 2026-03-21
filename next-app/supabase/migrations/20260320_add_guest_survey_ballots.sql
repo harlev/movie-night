@@ -39,6 +39,9 @@ create unique index if not exists ballots_guest_owner_idx
   on public.ballots(survey_id, guest_session_id_hash)
   where guest_session_id_hash is not null;
 
+drop function if exists public.submit_ballot(text, uuid, jsonb);
+drop function if exists public.remove_ballot_movie(text, text);
+
 alter table public.ballot_change_logs
   add column if not exists owner_mode text,
   add column if not exists owner_label text;

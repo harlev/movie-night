@@ -4,12 +4,15 @@ import { cookies } from 'next/headers';
 export const SURVEY_GUEST_COOKIE_NAME = 'sv_guest_id';
 
 function getSurveyGuestHashSecret(): string {
-  return (
+  const secret =
     process.env.SURVEY_GUEST_HASH_SECRET ||
-    process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-    'movie-night-survey-guest'
-  );
+    process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!secret) {
+    throw new Error('Missing SURVEY_GUEST_HASH_SECRET or SUPABASE_SERVICE_ROLE_KEY');
+  }
+
+  return secret;
 }
 
 export async function getSurveyGuestSessionId(): Promise<string | null> {

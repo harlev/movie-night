@@ -89,7 +89,12 @@ export default function AuthMethodPicker({
       </div>
 
       {/* Magic link form */}
-      <form action={formAction}>
+      <form
+        action={formAction}
+        onSubmit={() => {
+          onAuthStart?.();
+        }}
+      >
         <input type="hidden" name="flow" value={flow} />
         <input type="hidden" name="next" value={nextPath || ''} />
         <div className="mb-4">

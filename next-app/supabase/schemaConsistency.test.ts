@@ -117,9 +117,15 @@ test('survey ballot schema supports identified and guest owners in schema, seed,
     seed.includes('create unique index if not exists ballots_guest_owner_idx on public.ballots(survey_id, guest_session_id_hash) where guest_session_id_hash is not null;'),
     true
   );
+  assert.equal(schema.includes('create or replace function public.submit_ballot('), false);
+  assert.equal(schema.includes('create or replace function public.remove_ballot_movie('), false);
+  assert.equal(seed.includes('create or replace function public.submit_ballot('), false);
+  assert.equal(seed.includes('create or replace function public.remove_ballot_movie('), false);
 
   assert.equal(migration.includes('alter table public.ballots add column if not exists owner_mode text'), true);
   assert.equal(migration.includes('add column if not exists guest_display_name text'), true);
   assert.equal(migration.includes('add column if not exists guest_session_id_hash text'), true);
   assert.equal(migration.includes('ballots_guest_owner_idx'), true);
+  assert.equal(migration.includes('drop function if exists public.submit_ballot(text, uuid, jsonb);'), true);
+  assert.equal(migration.includes('drop function if exists public.remove_ballot_movie(text, text);'), true);
 });

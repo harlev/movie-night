@@ -52,11 +52,12 @@ async function getBallotRanks(
   admin: ReturnType<typeof createAdminClient>,
   ballotId: string
 ): Promise<(BallotRank & { movie: { id: string; title: string } })[]> {
-  const { data: ranks } = await admin
+  const { data: ranks, error } = await admin
     .from('ballot_ranks')
     .select('*, movies!movie_id(id, title)')
     .eq('ballot_id', ballotId)
     .order('rank');
+  ensureNoError(error, 'Failed to fetch ballot ranks');
 
   return (ranks || []).map((rank: any) => ({
     ...rank,
@@ -69,13 +70,14 @@ export async function getBallot(
   userId: string
 ): Promise<BallotWithRanks | null> {
   const admin = createAdminClient();
-  const { data: ballot } = await admin
+  const { data: ballot, error } = await admin
     .from('ballots')
     .select('*')
     .eq('survey_id', surveyId)
     .eq('owner_mode', 'identified')
     .eq('user_id', userId)
     .maybeSingle();
+  ensureNoError(error, 'Failed to fetch identified ballot');
 
   if (!ballot) return null;
 
@@ -90,13 +92,14 @@ export async function getGuestBallot(
   guestSessionIdHash: string
 ): Promise<BallotWithRanks | null> {
   const admin = createAdminClient();
-  const { data: ballot } = await admin
+  const { data: ballot, error } = await admin
     .from('ballots')
     .select('*')
     .eq('survey_id', surveyId)
     .eq('owner_mode', 'guest')
     .eq('guest_session_id_hash', guestSessionIdHash)
     .maybeSingle();
+  ensureNoError(error, 'Failed to fetch guest ballot');
 
   if (!ballot) return null;
 
@@ -129,21 +132,23 @@ export async function getAllBallots(
   surveyId: string
 ): Promise<BallotListItem[]> {
   const admin = createAdminClient();
-  const { data: allBallots } = await admin
+  const { data: allBallots, error } = await admin
     .from('ballots')
     .select('*, profiles!user_id(id, display_name)')
     .eq('survey_id', surveyId)
     .order('created_at');
+  ensureNoError(error, 'Failed to fetch ballots');
 
   if (!allBallots) return [];
 
   const result = await Promise.all(
     allBallots.map(async (b: any) => {
-      const { data: ranks } = await admin
+      const { data: ranks, error: ranksError } = await admin
         .from('ballot_ranks')
         .select('rank, movie_id, movies!movie_id(title)')
         .eq('ballot_id', b.id)
         .order('rank');
+      ensureNoError(ranksError, 'Failed to fetch ballot list ranks');
       const ownerLabel = mapBallotOwnerLabel(b);
       const badge = getSurveyBallotOwnerBadge(b.owner_mode);
 
@@ -270,10 +275,11 @@ export async function upsertBallot(data: UpsertBallotInput): Promise<void> {
 
 export async function removeBallotMovie(surveyId: string, movieId: string): Promise<number> {
   const admin = createAdminClient();
-  const { data: ballots } = await admin
+  const { data: ballots, error } = await admin
     .from('ballots')
     .select('*, profiles!user_id(display_name), ballot_ranks(rank, movie_id)')
     .eq('survey_id', surveyId);
+  ensureNoError(error, 'Failed to load ballots for movie removal');
 
   let affected = 0;
 
@@ -292,16 +298,20 @@ export async function removeBallotMovie(surveyId: string, movieId: string): Prom
     }));
     const newRanks = previousRanks.filter((rank) => rank.movieId !== movieId);
 
-    await admin
+    const { error: deleteRankError } = await admin
       .from('ballot_ranks')
       .delete()
       .eq('ballot_id', ballot.id)
       .eq('movie_id', movieId);
-    await admin
+    ensureNoError(deleteRankError, 'Failed to remove ballot movie rank');
+
+    const { error: updateBallotError } = await admin
       .from('ballots')
       .update({ updated_at: new Date().toISOString() })
       .eq('id', ballot.id);
-    await admin.from('ballot_change_logs').insert({
+    ensureNoError(updateBallotError, 'Failed to update ballot timestamp');
+
+    const { error: changeLogError } = await admin.from('ballot_change_logs').insert({
       id: generateId(),
       survey_id: surveyId,
       user_id: ballot.user_id,
@@ -311,6 +321,7 @@ export async function removeBallotMovie(surveyId: string, movieId: string): Prom
       new_ranks: newRanks,
       reason: 'movie_removed',
     });
+    ensureNoError(changeLogError, 'Failed to record ballot movie removal');
 
     affected += 1;
   }
@@ -322,11 +333,12 @@ export async function getBallotChangeLogs(
   surveyId: string
 ): Promise<(BallotChangeLog & { userName: string })[]> {
   const admin = createAdminClient();
-  const { data } = await admin
+  const { data, error } = await admin
     .from('ballot_change_logs')
     .select('*')
     .eq('survey_id', surveyId)
     .order('created_at', { ascending: false });
+  ensureNoError(error, 'Failed to fetch ballot change logs');
   return (data || []).map((l: any) => ({
     ...l,
     userName: l.owner_label || 'Unknown',

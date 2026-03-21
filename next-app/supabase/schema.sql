@@ -521,7 +521,7 @@ create policy "feedback_threads_select" on public.feedback_threads for select to
   );
 create policy "feedback_threads_insert" on public.feedback_threads for insert to authenticated
   with check (
-    and status = 'visible'
+    status = 'visible'
     and (select role from public.profiles where id = auth.uid()) != 'viewer'
     and (
       (

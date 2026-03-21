@@ -38,14 +38,15 @@ test('feedback schema and seed define thread/reply tables with snapshot names an
   assert.equal(schema.includes("status text not null default 'visible' check (status in ('visible', 'hidden'))"), true);
   assert.equal(schema.includes('constraint feedback_threads_identity_check check'), true);
   assert.equal(schema.includes('constraint feedback_replies_identity_check check'), true);
+  assert.equal(schema.includes('with check (\n    and status = \'visible\''), false);
 
+  assert.equal(seed.includes('-- Migration: 20260316_add_feedback.sql'), true);
+  assert.equal(seed.includes('-- Migration: 20260320_anonymize_feedback_authors.sql'), true);
   assert.equal(seed.includes('create table if not exists public.feedback_threads'), true);
   assert.equal(seed.includes('create table if not exists public.feedback_replies'), true);
-  assert.equal(seed.includes('author_display_name_snapshot text,'), true);
-  assert.equal(seed.includes('author_display_name_snapshot text not null'), false);
-  assert.equal(seed.includes("status text not null default 'visible' check (status in ('visible', 'hidden'))"), true);
-  assert.equal(seed.includes('constraint feedback_threads_identity_check check'), true);
-  assert.equal(seed.includes('constraint feedback_replies_identity_check check'), true);
+  assert.equal(seed.includes('author_display_name_snapshot text not null'), true);
+  assert.equal(seed.includes('alter table public.feedback_threads alter column author_id drop not null;'), true);
+  assert.equal(seed.includes('alter table public.feedback_replies alter column author_id drop not null;'), true);
   assert.equal(anonymityMigration.includes('update public.feedback_threads'), true);
   assert.equal(anonymityMigration.includes('update public.feedback_replies'), true);
   assert.equal(

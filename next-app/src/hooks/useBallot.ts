@@ -9,6 +9,7 @@ interface UseBallotOptions {
   maxRankN: number;
   initialRanks: RankEntry[] | null;
   isLive: boolean;
+  storageKey?: string | null;
 }
 
 export interface FilledRankItem {
@@ -49,7 +50,30 @@ export function applyMovieClick(
   return { ballot: nextBallot, assignedRank };
 }
 
-export function useBallot({ maxRankN, initialRanks, isLive }: UseBallotOptions) {
+function normalizeStoredRanks(
+  storedRanks: unknown,
+  maxRankN: number
+): RankEntry[] {
+  if (!Array.isArray(storedRanks)) {
+    return [];
+  }
+
+  return storedRanks.filter(
+    (entry): entry is RankEntry =>
+      typeof entry?.rank === 'number' &&
+      entry.rank >= 1 &&
+      entry.rank <= maxRankN &&
+      typeof entry.movieId === 'string' &&
+      entry.movieId.length > 0
+  );
+}
+
+export function useBallot({
+  maxRankN,
+  initialRanks,
+  isLive,
+  storageKey,
+}: UseBallotOptions) {
   const initialBallot = useMemo(() => {
     const map = new Map<number, string>();
     if (initialRanks) {
@@ -58,11 +82,12 @@ export function useBallot({ maxRankN, initialRanks, isLive }: UseBallotOptions) 
       }
     }
     return map;
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [initialRanks]);
 
   const [ballot, setBallot] = useState<Map<number, string>>(initialBallot);
   const [lastChangedRank, setLastChangedRank] = useState<number | null>(null);
   const lastChangedRankTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hydratedFromStorageRef = useRef(false);
 
   useEffect(() => {
     return () => {
@@ -71,6 +96,56 @@ export function useBallot({ maxRankN, initialRanks, isLive }: UseBallotOptions) 
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (!storageKey || hydratedFromStorageRef.current) {
+      return;
+    }
+
+    hydratedFromStorageRef.current = true;
+    if (initialRanks?.length) {
+      return;
+    }
+
+    const storedValue = localStorage.getItem(storageKey);
+    if (!storedValue) {
+      return;
+    }
+
+    try {
+      const storedRanks = normalizeStoredRanks(
+        JSON.parse(storedValue),
+        maxRankN
+      );
+      if (storedRanks.length === 0) {
+        return;
+      }
+
+      const hydratedBallot = new Map<number, string>();
+      for (const { rank, movieId } of storedRanks) {
+        hydratedBallot.set(rank, movieId);
+      }
+      setBallot(hydratedBallot);
+    } catch {
+      localStorage.removeItem(storageKey);
+    }
+  }, [initialRanks, maxRankN, storageKey]);
+
+  useEffect(() => {
+    if (!storageKey) {
+      return;
+    }
+
+    localStorage.setItem(
+      storageKey,
+      JSON.stringify(
+        Array.from(ballot.entries()).map(([rank, movieId]) => ({
+          rank,
+          movieId,
+        }))
+      )
+    );
+  }, [ballot, storageKey]);
 
   const pulseRank = useCallback((rank: number | null) => {
     if (lastChangedRankTimeoutRef.current) {

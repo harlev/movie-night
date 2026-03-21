@@ -78,6 +78,8 @@ export async function getLeaderboardData(): Promise<{
     const maxRankN = survey.max_rank_n;
 
     for (const ballot of ballots) {
+      if (ballot.user.mode !== 'identified') continue;
+
       const userId = ballot.user.id;
 
       if (!userStats.has(userId)) {

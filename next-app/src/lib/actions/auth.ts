@@ -31,6 +31,23 @@ async function setPendingBootstrapCookie(data: { displayName: string }) {
   });
 }
 
+async function setPendingAuthRedirectCookie(next: string | null) {
+  const cookieStore = await cookies();
+
+  if (!next) {
+    cookieStore.delete('pending_auth_redirect');
+    return;
+  }
+
+  cookieStore.set('pending_auth_redirect', next, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+    maxAge: 600,
+  });
+}
+
 // --- Validate invite (signup step 1) ---
 
 export async function validateInviteAndSetCookie(prevState: any, formData: FormData) {
@@ -88,6 +105,9 @@ export async function sendMagicLink(prevState: any, formData: FormData) {
   const supabase = await createClient();
   const email = formData.get('email') as string;
   const flow = formData.get('flow') as string;
+  const rawNext = formData.get('next') as string | null;
+  const next = rawNext && rawNext.startsWith('/') ? rawNext : '';
+  await setPendingAuthRedirectCookie(next || null);
 
   if (!email) return { error: 'Email is required' };
   if (!isValidEmail(email)) return { error: 'Invalid email format' };
@@ -110,7 +130,9 @@ export async function sendMagicLink(prevState: any, formData: FormData) {
   const { error } = await supabase.auth.signInWithOtp({
     email,
     options: {
-      emailRedirectTo: `${siteUrl}/auth/callback`,
+      emailRedirectTo: next
+        ? `${siteUrl}/auth/callback?next=${encodeURIComponent(next)}`
+        : `${siteUrl}/auth/callback`,
       shouldCreateUser: true,
     },
   });
@@ -124,14 +146,19 @@ export async function sendMagicLink(prevState: any, formData: FormData) {
 
 // --- OAuth sign-in (Google) ---
 
-export async function signInWithOAuth() {
+export async function signInWithOAuth(formData: FormData) {
   const supabase = await createClient();
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+  const rawNext = formData.get('next') as string | null;
+  const next = rawNext && rawNext.startsWith('/') ? rawNext : '';
+  await setPendingAuthRedirectCookie(next || null);
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: `${siteUrl}/auth/callback`,
+      redirectTo: next
+        ? `${siteUrl}/auth/callback?next=${encodeURIComponent(next)}`
+        : `${siteUrl}/auth/callback`,
     },
   });
 

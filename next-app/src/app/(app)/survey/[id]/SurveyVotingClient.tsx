@@ -1,6 +1,15 @@
 'use client';
 
-import { useState, useEffect, useRef, useActionState, useCallback, useMemo } from 'react';
+import {
+  startTransition,
+  useState,
+  useEffect,
+  useRef,
+  useActionState,
+  useCallback,
+  useMemo,
+  type FormEvent,
+} from 'react';
 import Link from 'next/link';
 import { submitBallotAction } from '@/lib/actions/ballots';
 import type { Standing } from '@/lib/services/scoring';
@@ -8,6 +17,7 @@ import { useBallot } from '@/hooks/useBallot';
 import { getRankBadgeClasses, getRankOverlayClasses, getRankRingClasses, getStandingBorderColor, shuffle } from '@/lib/utils/rankStyles';
 import SortableBallotList from '@/components/SortableBallotList';
 import CountdownTimer from '@/components/CountdownTimer';
+import SurveyIdentityModal from '@/components/SurveyIdentityModal';
 
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w92';
 const TMDB_IMAGE_BASE_GRID = 'https://image.tmdb.org/t/p/w185';
@@ -36,7 +46,7 @@ interface ClientEntry {
 }
 
 interface ClientBallot {
-  user: { id: string; displayName: string };
+  user: { id: string; displayName: string; badge?: string | null };
   ranks: Array<{ rank: number; movieId: string; movieTitle: string }>;
 }
 
@@ -49,6 +59,8 @@ interface SurveyVotingClientProps {
   pointsBreakdown: Array<{ rank: number; points: number; label: string }>;
   hasExistingBallot: boolean;
   userRole?: 'admin' | 'member' | 'viewer';
+  isLoggedIn?: boolean;
+  currentGuestDisplayName?: string | null;
 }
 
 export default function SurveyVotingClient({
@@ -60,9 +72,13 @@ export default function SurveyVotingClient({
   pointsBreakdown,
   hasExistingBallot,
   userRole,
+  isLoggedIn = false,
+  currentGuestDisplayName = null,
 }: SurveyVotingClientProps) {
   const isLive = survey.state === 'live';
   const canVote = isLive && userRole !== 'viewer';
+  const ballotStorageKey = `survey-ballot:${survey.id}`;
+  const authResumeKey = `survey-auth-resume:${survey.id}`;
 
   const [shuffledEntries, setShuffledEntries] = useState(entries);
   const hasShuffled = useRef(false);
@@ -73,6 +89,11 @@ export default function SurveyVotingClient({
     }
   }, [entries]);
   const [formState, formAction, isSubmitting] = useActionState(submitBallotAction, null);
+  const [identityModalOpen, setIdentityModalOpen] = useState(false);
+  const [guestDisplayName, setGuestDisplayName] = useState(
+    currentGuestDisplayName || ''
+  );
+  const [authResumeNotice, setAuthResumeNotice] = useState('');
 
   const {
     ballot,
@@ -90,6 +111,7 @@ export default function SurveyVotingClient({
     maxRankN: survey.maxRankN,
     initialRanks: userBallotRanks,
     isLive,
+    storageKey: ballotStorageKey,
   });
 
   const getMovieById = useCallback(
@@ -113,6 +135,19 @@ export default function SurveyVotingClient({
     localStorage.setItem('survey-view-mode', viewMode);
   }, [viewMode]);
 
+  useEffect(() => {
+    if (!isLoggedIn) {
+      return;
+    }
+
+    if (localStorage.getItem(authResumeKey) === '1') {
+      setAuthResumeNotice(
+        'You are signed in. Your ballot is still here and ready to submit.'
+      );
+      localStorage.removeItem(authResumeKey);
+    }
+  }, [authResumeKey, isLoggedIn]);
+
   const filteredEntries = useMemo(() => {
     if (!filterQuery.trim()) return shuffledEntries;
     const query = filterQuery.toLowerCase().trim();
@@ -121,24 +156,58 @@ export default function SurveyVotingClient({
     );
   }, [shuffledEntries, filterQuery]);
 
+  const handleBallotSubmit = useCallback(
+    (event: FormEvent<HTMLFormElement>) => {
+      if (isLoggedIn) {
+        return;
+      }
+
+      event.preventDefault();
+      setIdentityModalOpen(true);
+    },
+    [isLoggedIn]
+  );
+
+  const handleGuestSubmit = useCallback(
+    (
+      mode: 'guest_named' | 'guest_anonymous',
+      nextGuestDisplayName: string | null
+    ) => {
+      const nextName = nextGuestDisplayName || '';
+      setGuestDisplayName(nextName);
+      setIdentityModalOpen(false);
+      const formData = new FormData();
+      formData.set('surveyId', survey.id);
+      formData.set('ranks', JSON.stringify(getBallotAsArray()));
+      formData.set('submissionMode', mode);
+      formData.set('guestDisplayName', nextName);
+      startTransition(() => {
+        formAction(formData);
+      });
+    },
+    [formAction, getBallotAsArray, survey.id]
+  );
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div>
-        <Link
-          href="/dashboard"
-          className="text-[var(--color-primary)] hover:text-[var(--color-primary-light)] text-sm inline-flex items-center gap-1 transition-colors"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M15 19l-7-7 7-7"
-            />
-          </svg>
-          Back to Dashboard
-        </Link>
+        {isLoggedIn ? (
+          <Link
+            href="/dashboard"
+            className="text-[var(--color-primary)] hover:text-[var(--color-primary-light)] text-sm inline-flex items-center gap-1 transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 19l-7-7 7-7"
+              />
+            </svg>
+            Back to Dashboard
+          </Link>
+        ) : null}
         <div className="flex items-center gap-3 mt-2">
           <h1 className="text-2xl font-display font-bold text-[var(--color-text)]">{survey.title}</h1>
           <span
@@ -168,6 +237,12 @@ export default function SurveyVotingClient({
           Your ballot has been submitted!
         </div>
       )}
+
+      {authResumeNotice ? (
+        <div className="rounded-xl border border-[var(--color-primary)]/35 bg-[var(--color-primary)]/10 p-3 text-sm text-[var(--color-primary-light)]">
+          {authResumeNotice}
+        </div>
+      ) : null}
 
       {isLive && survey.closesAt && (
         <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 py-3 px-3 sm:px-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)]/50">
@@ -231,7 +306,11 @@ export default function SurveyVotingClient({
             </div>
 
             {canVote ? (
-              <form action={formAction} className="mt-4">
+              <form
+                action={formAction}
+                className="mt-4"
+                onSubmit={handleBallotSubmit}
+              >
                 <input type="hidden" name="surveyId" value={survey.id} />
                 <input
                   type="hidden"
@@ -251,6 +330,12 @@ export default function SurveyVotingClient({
                       ? 'Update Ballot'
                       : 'Submit Ballot'}
                 </button>
+                {!isLoggedIn ? (
+                  <p className="mt-3 text-center text-xs text-[var(--color-text-muted)]">
+                    You&apos;ll choose how to identify this ballot when you
+                    submit.
+                  </p>
+                ) : null}
               </form>
             ) : userRole === 'viewer' ? (
               <p className="mt-4 text-center text-sm text-[var(--color-text-muted)]">
@@ -505,9 +590,16 @@ export default function SurveyVotingClient({
                     key={b.user.id}
                     className="p-3 bg-[var(--color-surface-elevated)] rounded-xl"
                   >
-                    <p className="font-medium text-[var(--color-text)] mb-2">
-                      {b.user.displayName}
-                    </p>
+                    <div className="mb-2 flex items-center gap-2">
+                      <p className="font-medium text-[var(--color-text)]">
+                        {b.user.displayName}
+                      </p>
+                      {b.user.badge ? (
+                        <span className="rounded-full border border-[var(--color-border)]/60 px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-[var(--color-text-muted)]">
+                          {b.user.badge}
+                        </span>
+                      ) : null}
+                    </div>
                     {b.ranks.length > 0 ? (
                       <div className="flex flex-wrap gap-2">
                         {[...b.ranks]
@@ -535,6 +627,15 @@ export default function SurveyVotingClient({
           </div>
         </div>
       </div>
+
+      <SurveyIdentityModal
+        open={identityModalOpen}
+        surveyId={survey.id}
+        returnTo={`/survey/${survey.id}`}
+        defaultGuestDisplayName={guestDisplayName}
+        onClose={() => setIdentityModalOpen(false)}
+        onSubmitGuest={handleGuestSubmit}
+      />
     </div>
   );
 }

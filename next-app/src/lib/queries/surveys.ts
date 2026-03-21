@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import type { Survey, SurveyEntry, Movie } from '@/lib/types';
 import { generateId } from '@/lib/utils/id';
 
@@ -22,19 +23,19 @@ export async function createSurvey(data: {
 }
 
 export async function getSurveyById(id: string): Promise<Survey | null> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { data } = await supabase.from('surveys').select('*').eq('id', id).single();
   return data;
 }
 
 export async function getAllSurveys(): Promise<Survey[]> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { data } = await supabase.from('surveys').select('*').order('created_at', { ascending: false });
   return data || [];
 }
 
 export async function getLiveSurvey(): Promise<Survey | null> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { data } = await supabase.from('surveys').select('*').eq('state', 'live').limit(1).single();
   return data;
 }
@@ -117,7 +118,7 @@ export async function removeSurveyEntry(entryId: string): Promise<void> {
 }
 
 export async function getSurveyEntries(surveyId: string): Promise<(SurveyEntry & { movie: Pick<Movie, 'id' | 'title' | 'tmdb_id' | 'metadata_snapshot' | 'watched' | 'watched_at'> })[]> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { data } = await supabase
     .from('survey_entries')
     .select('*, movies!movie_id(id, title, tmdb_id, metadata_snapshot, watched, watched_at)')

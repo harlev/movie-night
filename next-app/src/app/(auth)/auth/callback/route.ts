@@ -8,17 +8,23 @@ export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get('code');
   const next = searchParams.get('next');
+  const cookieStore = await cookies();
+  const cookieNext = cookieStore.get('pending_auth_redirect')?.value || null;
 
   // Sanitize: only allow relative paths
-  const safeNext = next && next.startsWith('/') && !next.startsWith('//') ? next : null;
+  const sanitizeNext = (value: string | null) =>
+    value && value.startsWith('/') && !value.startsWith('//') ? value : null;
+  const safeNext = sanitizeNext(next) || sanitizeNext(cookieNext);
 
   if (!code) {
+    cookieStore.delete('pending_auth_redirect');
     return NextResponse.redirect(`${origin}/login`);
   }
 
   const supabase = await createClient();
   const { error } = await supabase.auth.exchangeCodeForSession(code);
   if (error) {
+    cookieStore.delete('pending_auth_redirect');
     return NextResponse.redirect(`${origin}/login?error=auth_failed`);
   }
 
@@ -26,11 +32,11 @@ export async function GET(request: Request) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
+    cookieStore.delete('pending_auth_redirect');
     return NextResponse.redirect(`${origin}/login?error=auth_failed`);
   }
 
   const admin = createAdminClient();
-  const cookieStore = await cookies();
 
   // Check if user already has a profile
   const { data: existingProfile } = await admin
@@ -88,6 +94,7 @@ export async function GET(request: Request) {
     // Clear any stale cookies
     cookieStore.delete('pending_signup');
     cookieStore.delete('pending_bootstrap');
+    cookieStore.delete('pending_auth_redirect');
     return NextResponse.redirect(`${origin}${safeNext || '/dashboard'}`);
   }
 
@@ -114,6 +121,7 @@ export async function GET(request: Request) {
           status: 'active',
         });
         cookieStore.delete('pending_bootstrap');
+        cookieStore.delete('pending_auth_redirect');
         return NextResponse.redirect(`${origin}${safeNext || '/dashboard'}`);
       }
     } catch {
@@ -143,6 +151,7 @@ export async function GET(request: Request) {
         }, { onConflict: 'id' });
         await recordInviteUse(inviteValidation.invite.id, user.id);
         cookieStore.delete('pending_signup');
+        cookieStore.delete('pending_auth_redirect');
         return NextResponse.redirect(`${origin}${safeNext || '/dashboard'}`);
       }
     } catch {
@@ -151,8 +160,8 @@ export async function GET(request: Request) {
     cookieStore.delete('pending_signup');
   }
 
-  // New user arriving from a poll — auto-create profile (no invite needed)
-  if (safeNext && safeNext.startsWith('/poll/')) {
+  // New user arriving from a poll or survey — auto-create profile (no invite needed)
+  if (safeNext && (safeNext.startsWith('/poll/') || safeNext.startsWith('/survey/'))) {
     const emailPrefix = user.email!.split('@')[0];
     const fullName = user.user_metadata?.full_name?.trim();
     // Google OAuth provides a real full_name; magic link users may get a
@@ -169,11 +178,12 @@ export async function GET(request: Request) {
       role: 'member',
       status: 'active',
     });
-
+    cookieStore.delete('pending_auth_redirect');
     return NextResponse.redirect(`${origin}${safeNext}`);
   }
 
   // No profile, no valid cookie, not a poll signup: unauthorized signup
   await supabase.auth.signOut();
+  cookieStore.delete('pending_auth_redirect');
   return NextResponse.redirect(`${origin}/signup?error=no_invite`);
 }

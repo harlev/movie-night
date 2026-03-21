@@ -236,9 +236,16 @@ export default async function HistoryDetailPage({ params }: PageProps) {
                     key={b.user.id}
                     className="p-3 bg-[var(--color-surface-elevated)] rounded-xl"
                   >
-                    <p className="font-medium text-[var(--color-text)] mb-2">
-                      {b.user.displayName}
-                    </p>
+                    <div className="mb-2 flex items-center gap-2">
+                      <p className="font-medium text-[var(--color-text)]">
+                        {b.user.displayName}
+                      </p>
+                      {b.user.badge ? (
+                        <span className="rounded-full border border-[var(--color-border)]/60 px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-[var(--color-text-muted)]">
+                          {b.user.badge}
+                        </span>
+                      ) : null}
+                    </div>
                     {b.ranks.length > 0 ? (
                       <div className="flex flex-wrap gap-2">
                         {[...b.ranks]

@@ -91,11 +91,19 @@ create table if not exists public.survey_entries (
 create table if not exists public.ballots (
   id text primary key,
   survey_id text not null references public.surveys(id) on delete cascade,
-  user_id uuid not null references public.profiles(id),
+  owner_mode text not null default 'identified' check (owner_mode in ('identified', 'guest')),
+  user_id uuid references public.profiles(id),
+  guest_display_name text,
+  guest_session_id_hash text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  unique(survey_id, user_id)
+  constraint ballots_owner_identity_check check (
+    (owner_mode = 'identified' and user_id is not null and guest_session_id_hash is null)
+    or (owner_mode = 'guest' and user_id is null and guest_session_id_hash is not null)
+  )
 );
+create unique index if not exists ballots_identified_owner_idx on public.ballots(survey_id, user_id) where user_id is not null;
+create unique index if not exists ballots_guest_owner_idx on public.ballots(survey_id, guest_session_id_hash) where guest_session_id_hash is not null;
 
 create table if not exists public.ballot_ranks (
   id text primary key,
@@ -107,7 +115,9 @@ create table if not exists public.ballot_ranks (
 create table if not exists public.ballot_change_logs (
   id text primary key,
   survey_id text not null references public.surveys(id) on delete cascade,
-  user_id uuid not null references public.profiles(id),
+  user_id uuid references public.profiles(id),
+  owner_mode text not null default 'identified' check (owner_mode in ('identified', 'guest')),
+  owner_label text not null,
   previous_ranks jsonb,
   new_ranks jsonb,
   reason text not null check (reason in ('user_update', 'movie_removed', 'system')),
@@ -192,81 +202,6 @@ grant usage on schema public to supabase_auth_admin;
 grant select on public.profiles to supabase_auth_admin;
 revoke execute on function public.custom_access_token_hook from anon, authenticated;
 grant execute on function public.custom_access_token_hook to supabase_auth_admin;
-
--- RPC: submit ballot
-create or replace function public.submit_ballot(
-  p_survey_id text,
-  p_user_id uuid,
-  p_ranks jsonb
-) returns void as $$
-declare
-  v_ballot_id text;
-  v_previous_ranks jsonb;
-  v_rank record;
-begin
-  select id into v_ballot_id from public.ballots
-  where survey_id = p_survey_id and user_id = p_user_id;
-
-  if v_ballot_id is not null then
-    select jsonb_agg(jsonb_build_object('rank', rank, 'movieId', movie_id))
-    into v_previous_ranks
-    from public.ballot_ranks where ballot_id = v_ballot_id;
-
-    delete from public.ballot_ranks where ballot_id = v_ballot_id;
-    update public.ballots set updated_at = now() where id = v_ballot_id;
-  else
-    v_ballot_id := gen_random_uuid()::text;
-    insert into public.ballots (id, survey_id, user_id) values (v_ballot_id, p_survey_id, p_user_id);
-  end if;
-
-  for v_rank in select * from jsonb_to_recordset(p_ranks) as x(rank integer, "movieId" text)
-  loop
-    insert into public.ballot_ranks (id, ballot_id, rank, movie_id)
-    values (gen_random_uuid()::text, v_ballot_id, v_rank.rank, v_rank."movieId");
-  end loop;
-
-  insert into public.ballot_change_logs (id, survey_id, user_id, previous_ranks, new_ranks, reason)
-  values (gen_random_uuid()::text, p_survey_id, p_user_id, v_previous_ranks, p_ranks, 'user_update');
-end;
-$$ language plpgsql security definer;
-
--- RPC: remove ballot movie
-create or replace function public.remove_ballot_movie(
-  p_survey_id text,
-  p_movie_id text
-) returns integer as $$
-declare
-  v_ballot record;
-  v_current_ranks jsonb;
-  v_new_ranks jsonb;
-  v_affected integer := 0;
-begin
-  for v_ballot in
-    select distinct b.id as ballot_id, b.user_id
-    from public.ballots b
-    inner join public.ballot_ranks br on b.id = br.ballot_id
-    where b.survey_id = p_survey_id and br.movie_id = p_movie_id
-  loop
-    select jsonb_agg(jsonb_build_object('rank', rank, 'movieId', movie_id))
-    into v_current_ranks
-    from public.ballot_ranks where ballot_id = v_ballot.ballot_id;
-
-    delete from public.ballot_ranks
-    where ballot_id = v_ballot.ballot_id and movie_id = p_movie_id;
-
-    select jsonb_agg(jsonb_build_object('rank', rank, 'movieId', movie_id))
-    into v_new_ranks
-    from public.ballot_ranks where ballot_id = v_ballot.ballot_id;
-
-    insert into public.ballot_change_logs (id, survey_id, user_id, previous_ranks, new_ranks, reason)
-    values (gen_random_uuid()::text, p_survey_id, v_ballot.user_id, v_current_ranks, v_new_ranks, 'movie_removed');
-
-    v_affected := v_affected + 1;
-  end loop;
-
-  return v_affected;
-end;
-$$ language plpgsql security definer;
 
 -- Enable RLS on all tables
 alter table public.profiles enable row level security;

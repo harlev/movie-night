@@ -153,7 +153,9 @@ export default function FeedbackComposer({
                 />
               </span>
             </label>
-            <p className="text-xs leading-5 text-[var(--color-text-muted)]">Shown as Anonymous.</p>
+            <p className="text-xs leading-5 text-[var(--color-text-muted)]">
+              Your identity will remain private - including from site admins.
+            </p>
           </div>
 
           {state?.error ? (

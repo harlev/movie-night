@@ -27,16 +27,32 @@ test('feedback schema and seed define thread/reply tables with snapshot names an
   const schema = readSupabaseFile('schema.sql');
   const seed = readSupabaseFile('seed.sql');
   const migration = readSupabaseFile(path.join('migrations', '20260316_add_feedback.sql'));
+  const anonymityMigration = readSupabaseFile(
+    path.join('migrations', '20260320_anonymize_feedback_authors.sql')
+  );
 
   assert.equal(schema.includes('create table public.feedback_threads'), true);
   assert.equal(schema.includes('create table public.feedback_replies'), true);
-  assert.equal(schema.includes('author_display_name_snapshot text not null'), true);
+  assert.equal(schema.includes('author_display_name_snapshot text,'), true);
+  assert.equal(schema.includes('author_display_name_snapshot text not null'), false);
   assert.equal(schema.includes("status text not null default 'visible' check (status in ('visible', 'hidden'))"), true);
+  assert.equal(schema.includes('constraint feedback_threads_identity_check check'), true);
+  assert.equal(schema.includes('constraint feedback_replies_identity_check check'), true);
+  assert.equal(schema.includes('with check (\n    and status = \'visible\''), false);
 
+  assert.equal(seed.includes('-- Migration: 20260316_add_feedback.sql'), true);
+  assert.equal(seed.includes('-- Migration: 20260320_anonymize_feedback_authors.sql'), true);
   assert.equal(seed.includes('create table if not exists public.feedback_threads'), true);
   assert.equal(seed.includes('create table if not exists public.feedback_replies'), true);
   assert.equal(seed.includes('author_display_name_snapshot text not null'), true);
-  assert.equal(seed.includes("status text not null default 'visible' check (status in ('visible', 'hidden'))"), true);
+  assert.equal(seed.includes('alter table public.feedback_threads alter column author_id drop not null;'), true);
+  assert.equal(seed.includes('alter table public.feedback_replies alter column author_id drop not null;'), true);
+  assert.equal(anonymityMigration.includes('update public.feedback_threads'), true);
+  assert.equal(anonymityMigration.includes('update public.feedback_replies'), true);
+  assert.equal(
+    anonymityMigration.includes('set author_id = null, author_display_name_snapshot = null'),
+    true
+  );
 
   assert.equal(
     schema.includes('create policy "feedback_replies_select" on public.feedback_replies for select to authenticated'),
@@ -76,6 +92,16 @@ test('feedback schema and seed define thread/reply tables with snapshot names an
   );
   assert.equal(
     migration.includes("feedback_threads.id = feedback_replies.thread_id"),
+    true
+  );
+  assert.equal(schema.includes('is_anonymous\n        and author_id is null'), true);
+  assert.equal(seed.includes('is_anonymous\n        and author_id is null'), true);
+  assert.equal(
+    anonymityMigration.includes('alter table public.feedback_threads alter column author_id drop not null'),
+    true
+  );
+  assert.equal(
+    anonymityMigration.includes('alter table public.feedback_replies alter column author_id drop not null'),
     true
   );
 });

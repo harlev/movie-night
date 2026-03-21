@@ -15,6 +15,12 @@ interface FeedbackThreadTarget {
   status: 'visible' | 'hidden';
 }
 
+interface StoredFeedbackIdentityInput {
+  authorId: string;
+  authorDisplayNameSnapshot: string;
+  isAnonymous: boolean;
+}
+
 export function validateFeedbackPostingAccess(
   userRole: FeedbackUserRole,
   postingKind: FeedbackPostingKind
@@ -71,6 +77,27 @@ function isAnonymousPosting(formData: FormData): boolean {
   return formData.get('postingIdentity') === 'anonymous';
 }
 
+export function getStoredFeedbackIdentity({
+  authorId,
+  authorDisplayNameSnapshot,
+  isAnonymous,
+}: StoredFeedbackIdentityInput): {
+  authorId: string | null;
+  authorDisplayNameSnapshot: string | null;
+} {
+  if (isAnonymous) {
+    return {
+      authorId: null,
+      authorDisplayNameSnapshot: null,
+    };
+  }
+
+  return {
+    authorId,
+    authorDisplayNameSnapshot,
+  };
+}
+
 export async function createFeedbackThreadAction(prevState: any, formData: FormData) {
   'use server';
 
@@ -88,13 +115,18 @@ export async function createFeedbackThreadAction(prevState: any, formData: FormD
   const content = (formData.get('content') as string | null)?.trim() || '';
   const contentValidation = validateFeedbackContent(content, 'thread');
   if (!contentValidation.ok) return { error: contentValidation.error };
+  const postingIdentity = getStoredFeedbackIdentity({
+    authorId: user.id,
+    authorDisplayNameSnapshot: profile.display_name,
+    isAnonymous: isAnonymousPosting(formData),
+  });
 
   try {
     const thread = await createFeedbackThread({
-      authorId: user.id,
-      authorDisplayNameSnapshot: profile.display_name,
+      authorId: postingIdentity.authorId,
+      authorDisplayNameSnapshot: postingIdentity.authorDisplayNameSnapshot,
       content,
-      isAnonymous: isAnonymousPosting(formData),
+      isAnonymous: postingIdentity.authorId === null,
     });
 
     revalidatePath('/feedback');
@@ -131,14 +163,19 @@ export async function createFeedbackReplyAction(prevState: any, formData: FormDa
   const content = (formData.get('content') as string | null)?.trim() || '';
   const contentValidation = validateFeedbackContent(content, 'reply');
   if (!contentValidation.ok) return { error: contentValidation.error };
+  const postingIdentity = getStoredFeedbackIdentity({
+    authorId: user.id,
+    authorDisplayNameSnapshot: profile.display_name,
+    isAnonymous: isAnonymousPosting(formData),
+  });
 
   try {
     await createFeedbackReply({
       threadId,
-      authorId: user.id,
-      authorDisplayNameSnapshot: profile.display_name,
+      authorId: postingIdentity.authorId,
+      authorDisplayNameSnapshot: postingIdentity.authorDisplayNameSnapshot,
       content,
-      isAnonymous: isAnonymousPosting(formData),
+      isAnonymous: postingIdentity.authorId === null,
     });
 
     revalidatePath('/feedback');

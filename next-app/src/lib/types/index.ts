@@ -203,8 +203,8 @@ export type FeedbackSortMode = 'active' | 'new';
 
 export interface FeedbackThread {
   id: string;
-  author_id: string;
-  author_display_name_snapshot: string;
+  author_id: string | null;
+  author_display_name_snapshot: string | null;
   content: string;
   is_anonymous: boolean;
   status: FeedbackStatus;
@@ -215,8 +215,8 @@ export interface FeedbackThread {
 export interface FeedbackReply {
   id: string;
   thread_id: string;
-  author_id: string;
-  author_display_name_snapshot: string;
+  author_id: string | null;
+  author_display_name_snapshot: string | null;
   content: string;
   is_anonymous: boolean;
   status: FeedbackStatus;

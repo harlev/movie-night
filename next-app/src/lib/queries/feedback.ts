@@ -55,8 +55,8 @@ function buildFeedbackThreadViews(
 }
 
 export async function createFeedbackThread(data: {
-  authorId: string;
-  authorDisplayNameSnapshot: string;
+  authorId: string | null;
+  authorDisplayNameSnapshot: string | null;
   content: string;
   isAnonymous: boolean;
 }): Promise<FeedbackThread> {
@@ -80,8 +80,8 @@ export async function createFeedbackThread(data: {
 
 export async function createFeedbackReply(data: {
   threadId: string;
-  authorId: string;
-  authorDisplayNameSnapshot: string;
+  authorId: string | null;
+  authorDisplayNameSnapshot: string | null;
   content: string;
   isAnonymous: boolean;
 }): Promise<FeedbackReply> {

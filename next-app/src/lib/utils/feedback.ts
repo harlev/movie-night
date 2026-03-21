@@ -2,7 +2,7 @@ import type { FeedbackSortMode } from '@/lib/types';
 
 interface FeedbackAuthorLabelInput {
   isAnonymous: boolean;
-  authorDisplayNameSnapshot: string;
+  authorDisplayNameSnapshot: string | null;
 }
 
 interface FeedbackSortableReply {
@@ -34,7 +34,7 @@ export function getFeedbackAuthorLabel({
   isAnonymous,
   authorDisplayNameSnapshot,
 }: FeedbackAuthorLabelInput): string {
-  return isAnonymous ? 'Anonymous' : authorDisplayNameSnapshot;
+  return isAnonymous ? 'Anonymous' : authorDisplayNameSnapshot || 'Unknown';
 }
 
 export function buildDirectedReplyPrefix(publicAuthorLabel: string): string {

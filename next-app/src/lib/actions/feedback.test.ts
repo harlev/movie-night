@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  getStoredFeedbackIdentity,
   validateFeedbackPostingAccess,
   validateFeedbackReplyThread,
 } from './feedback';
@@ -37,6 +38,32 @@ test('validateFeedbackReplyThread rejects replies for hidden threads', () => {
     {
       ok: false,
       error: 'Thread is unavailable',
+    }
+  );
+});
+
+test('getStoredFeedbackIdentity removes author fields for anonymous feedback', () => {
+  assert.deepEqual(
+    getStoredFeedbackIdentity({
+      authorId: 'user-1',
+      authorDisplayNameSnapshot: 'Yogev',
+      isAnonymous: true,
+    }),
+    {
+      authorId: null,
+      authorDisplayNameSnapshot: null,
+    }
+  );
+
+  assert.deepEqual(
+    getStoredFeedbackIdentity({
+      authorId: 'user-1',
+      authorDisplayNameSnapshot: 'Yogev',
+      isAnonymous: false,
+    }),
+    {
+      authorId: 'user-1',
+      authorDisplayNameSnapshot: 'Yogev',
     }
   );
 });

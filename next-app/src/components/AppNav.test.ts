@@ -56,3 +56,18 @@ test('AppNav adds Feedback as a top-level destination and moves desktop account 
   assert.equal(source.includes('aria-haspopup="menu"'), true);
   assert.equal(source.includes('className="text-[var(--color-text-muted)] text-sm"'), false);
 });
+
+test('AppNav separates desktop navigation and account controls into distinct header zones', () => {
+  const filePath = path.join(process.cwd(), 'src/components/AppNav.tsx');
+  const source = readFileSync(filePath, 'utf8');
+
+  assert.equal(source.includes('className="flex min-w-0 items-center sm:flex-1"'), true);
+  assert.equal(source.includes('className="hidden sm:ml-8 sm:flex sm:items-center sm:space-x-1"'), true);
+  assert.equal(
+    source.includes(
+      'className="hidden sm:ml-6 sm:flex sm:flex-none sm:items-center sm:border-l sm:border-[var(--color-border)]/50 sm:pl-6"'
+    ),
+    true
+  );
+  assert.equal(source.includes('className="hidden sm:flex sm:items-center"'), false);
+});

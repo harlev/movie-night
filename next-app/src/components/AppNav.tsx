@@ -101,14 +101,14 @@ export default function AppNav({ user }: AppNavProps) {
     <nav className="bg-[var(--color-surface)]/80 backdrop-blur-xl border-b border-[var(--color-border)]/50 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="relative flex h-16 items-center">
-          <div className="flex">
+          <div className="flex min-w-0 items-center sm:flex-1">
             <div className="flex-shrink-0 flex items-center">
               <Link href="/dashboard" aria-label="Movie Night home" className="block">
                 <img src="/logo-mobile.png" alt="Movie Night" className="h-16 w-auto block sm:hidden" />
                 <img src="/logo.png" alt="Movie Night" className="hidden h-14 w-auto sm:block" />
               </Link>
             </div>
-            <div className="hidden sm:ml-8 sm:flex sm:space-x-1">
+            <div className="hidden sm:ml-8 sm:flex sm:items-center sm:space-x-1">
               {navItems.map((item) => {
                 const isActive = pathname.startsWith(item.href);
                 return (
@@ -146,7 +146,7 @@ export default function AppNav({ user }: AppNavProps) {
             </div>
           </div>
 
-          <div className="hidden sm:flex sm:items-center">
+          <div className="hidden sm:ml-6 sm:flex sm:flex-none sm:items-center sm:border-l sm:border-[var(--color-border)]/50 sm:pl-6">
             <div ref={accountMenuRef} className="relative">
               <button
                 type="button"

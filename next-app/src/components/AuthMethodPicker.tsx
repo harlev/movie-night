@@ -1,21 +1,30 @@
 'use client';
 
-import { useActionState, useState } from 'react';
+import { useActionState, useState, type ReactNode } from 'react';
 import { sendMagicLink, signInWithOAuth } from '@/lib/actions/auth';
 
 interface AuthMethodPickerProps {
   flow: 'login' | 'signup' | 'bootstrap';
+  nextPath?: string;
+  onAuthStart?: () => void;
+  extraContent?: ReactNode;
 }
 
-export default function AuthMethodPicker({ flow }: AuthMethodPickerProps) {
+export default function AuthMethodPicker({
+  flow,
+  nextPath,
+  onAuthStart,
+  extraContent,
+}: AuthMethodPickerProps) {
   const [state, formAction, pending] = useActionState(sendMagicLink, null);
   const [oauthPending, setOauthPending] = useState(false);
+  const [oauthError, setOauthError] = useState('');
 
   return (
     <>
-      {state?.error && (
+      {(state?.error || oauthError) && (
         <div className="bg-red-500/10 border border-red-500/50 text-red-400 rounded-xl p-3 mb-6">
-          {state.error}
+          {oauthError || state?.error}
         </div>
       )}
 
@@ -28,11 +37,18 @@ export default function AuthMethodPicker({ flow }: AuthMethodPickerProps) {
 
       {/* Google OAuth */}
       <form
-        action={async () => {
+        action={async (formData) => {
           setOauthPending(true);
-          await signInWithOAuth();
+          setOauthError('');
+          onAuthStart?.();
+          const result = await signInWithOAuth(formData);
+          if (result?.error) {
+            setOauthError(result.error);
+            setOauthPending(false);
+          }
         }}
       >
+        <input type="hidden" name="next" value={nextPath || ''} />
         <button
           type="submit"
           disabled={oauthPending}
@@ -75,6 +91,7 @@ export default function AuthMethodPicker({ flow }: AuthMethodPickerProps) {
       {/* Magic link form */}
       <form action={formAction}>
         <input type="hidden" name="flow" value={flow} />
+        <input type="hidden" name="next" value={nextPath || ''} />
         <div className="mb-4">
           <label htmlFor="email" className="block text-sm font-medium text-[var(--color-text)] mb-2">
             Email
@@ -96,6 +113,8 @@ export default function AuthMethodPicker({ flow }: AuthMethodPickerProps) {
           {pending ? 'Sending link...' : 'Send Magic Link'}
         </button>
       </form>
+
+      {extraContent ? <div className="mt-6">{extraContent}</div> : null}
     </>
   );
 }

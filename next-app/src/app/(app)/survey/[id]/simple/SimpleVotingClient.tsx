@@ -1,10 +1,14 @@
 'use client';
 
 import {
+  startTransition,
   useActionState,
+  useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
+  type FormEvent,
   type ReactNode,
 } from 'react';
 import Link from 'next/link';
@@ -17,6 +21,7 @@ import {
   shuffle,
 } from '@/lib/utils/rankStyles';
 import CountdownTimer from '@/components/CountdownTimer';
+import SurveyIdentityModal from '@/components/SurveyIdentityModal';
 
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w92';
 
@@ -44,7 +49,7 @@ interface ClientEntry {
 }
 
 interface ClientBallot {
-  user: { id: string; displayName: string };
+  user: { id: string; displayName: string; badge?: string | null };
   ranks: Array<{ rank: number; movieId: string; movieTitle: string }>;
 }
 
@@ -60,6 +65,8 @@ interface SimpleVotingClientProps {
   showBackToBallot: boolean;
   showSubmittedFlash: boolean;
   userRole?: 'admin' | 'member' | 'viewer';
+  isLoggedIn?: boolean;
+  currentGuestDisplayName?: string | null;
 }
 
 interface AlertState {
@@ -332,14 +339,33 @@ function BallotStatusRow({
 function CompactBallotHeader({
   survey,
   isLive,
+  isLoggedIn,
   mobile,
 }: {
   survey: SurveyInfo;
   isLive: boolean;
+  isLoggedIn: boolean;
   mobile?: boolean;
 }) {
   return (
     <div className={mobile ? 'mb-3 space-y-2' : 'mb-6 space-y-3'}>
+      {isLoggedIn ? (
+        <Link
+          href="/dashboard"
+          className="text-[var(--color-primary)] hover:text-[var(--color-primary-light)] text-sm inline-flex items-center gap-1 transition-colors"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M15 19l-7-7 7-7"
+            />
+          </svg>
+          Back to Dashboard
+        </Link>
+      ) : null}
+
       {mobile ? (
         <h1 className="sr-only">{survey.title}</h1>
       ) : (
@@ -373,10 +399,12 @@ function CompactBallotActions({
   canVote,
   clearBallot,
   formAction,
+  onSubmit,
   getBallotAsArray,
   hasExistingBallot,
   isBallotComplete,
   isSubmitting,
+  isLoggedIn,
   userRole,
 }: {
   survey: SurveyInfo;
@@ -384,10 +412,12 @@ function CompactBallotActions({
   canVote: boolean;
   clearBallot: () => void;
   formAction: (payload: FormData) => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   getBallotAsArray: () => Array<{ rank: number; movieId: string }>;
   hasExistingBallot: boolean;
   isBallotComplete: boolean;
   isSubmitting: boolean;
+  isLoggedIn: boolean;
   userRole?: 'admin' | 'member' | 'viewer';
 }) {
   const mobileActionBarClassName =
@@ -439,7 +469,7 @@ function CompactBallotActions({
           Clear
         </button>
 
-        <form action={formAction} className="flex-1">
+        <form action={formAction} className="flex-1" onSubmit={onSubmit}>
           <input type="hidden" name="surveyId" value={survey.id} />
           <input
             type="hidden"
@@ -466,6 +496,11 @@ function CompactBallotActions({
                 ? 'Update Ballot'
                 : 'Submit Ballot'}
           </button>
+          {!isLoggedIn ? (
+            <p className="mt-2 text-center text-xs text-[var(--color-text-muted)]">
+              You&apos;ll choose how to identify this ballot when you submit.
+            </p>
+          ) : null}
         </form>
       </div>
     </div>
@@ -499,6 +534,7 @@ function CountdownBanner({
 function SimpleSurveyIntro({
   survey,
   isLive,
+  isLoggedIn,
   viewLabel,
   viewLabelStyle,
   helperText,
@@ -507,6 +543,7 @@ function SimpleSurveyIntro({
 }: {
   survey: SurveyInfo;
   isLive: boolean;
+  isLoggedIn: boolean;
   viewLabel: 'Ballot' | 'Results';
   viewLabelStyle?: 'pill' | 'eyebrow';
   helperText: string;
@@ -517,20 +554,22 @@ function SimpleSurveyIntro({
 
   return (
     <div className="space-y-4">
-      <Link
-        href="/dashboard"
-        className="text-[var(--color-primary)] hover:text-[var(--color-primary-light)] text-sm inline-flex items-center gap-1 transition-colors"
-      >
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M15 19l-7-7 7-7"
-          />
-        </svg>
-        Back to Dashboard
-      </Link>
+      {isLoggedIn ? (
+        <Link
+          href="/dashboard"
+          className="text-[var(--color-primary)] hover:text-[var(--color-primary-light)] text-sm inline-flex items-center gap-1 transition-colors"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M15 19l-7-7 7-7"
+            />
+          </svg>
+          Back to Dashboard
+        </Link>
+      ) : null}
 
       <div className="rounded-[1.75rem] border border-[var(--color-border)]/50 bg-[linear-gradient(135deg,rgba(34,27,18,0.96),rgba(18,15,11,0.94))] p-5 shadow-xl shadow-black/25 sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -753,9 +792,16 @@ function AllBallotsCard({ allBallots }: { allBallots: ClientBallot[] }) {
               key={ballotEntry.user.id}
               className="p-3 bg-[var(--color-surface-elevated)] rounded-xl"
             >
-              <p className="font-medium text-[var(--color-text)] mb-2">
-                {ballotEntry.user.displayName}
-              </p>
+              <div className="mb-2 flex items-center gap-2">
+                <p className="font-medium text-[var(--color-text)]">
+                  {ballotEntry.user.displayName}
+                </p>
+                {ballotEntry.user.badge ? (
+                  <span className="rounded-full border border-[var(--color-border)]/60 px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-[var(--color-text-muted)]">
+                    {ballotEntry.user.badge}
+                  </span>
+                ) : null}
+              </div>
               {ballotEntry.ranks.length > 0 ? (
                 <div className="flex flex-wrap gap-1.5">
                   {[...ballotEntry.ranks]
@@ -796,12 +842,25 @@ export default function SimpleVotingClient({
   showBackToBallot,
   showSubmittedFlash,
   userRole,
+  isLoggedIn = false,
+  currentGuestDisplayName = null,
 }: SimpleVotingClientProps) {
   const router = useRouter();
   const isLive = survey.state === 'live';
   const canVote = isLive && userRole !== 'viewer';
   const resultsStandings = standings ?? [];
   const resultsAllBallots = allBallots ?? [];
+  const ballotStorageKey = `survey-ballot:${survey.id}`;
+  const authResumeKey = `survey-auth-resume:${survey.id}`;
+  const [identityModalOpen, setIdentityModalOpen] = useState(false);
+  const [guestDisplayName, setGuestDisplayName] = useState(
+    currentGuestDisplayName || ''
+  );
+  const [authResumeNotice, setAuthResumeNotice] = useState('');
+  const authReturnTo = useMemo(
+    () => `/survey/${survey.id}/simple?view=ballot`,
+    [survey.id]
+  );
 
   const [shuffledEntries, setShuffledEntries] = useState(entries);
   const hasShuffled = useRef(false);
@@ -827,6 +886,19 @@ export default function SimpleVotingClient({
     null
   );
 
+  useEffect(() => {
+    if (!isLoggedIn) {
+      return;
+    }
+
+    if (localStorage.getItem(authResumeKey) === '1') {
+      setAuthResumeNotice(
+        'You are signed in. Your ballot is still here and ready to submit.'
+      );
+      localStorage.removeItem(authResumeKey);
+    }
+  }, [authResumeKey, isLoggedIn]);
+
   const {
     ballot,
     clearBallot,
@@ -839,7 +911,44 @@ export default function SimpleVotingClient({
     maxRankN: survey.maxRankN,
     initialRanks: userBallotRanks,
     isLive,
+    storageKey: ballotStorageKey,
   });
+
+  const handleBallotSubmit = useCallback(
+    (event: FormEvent<HTMLFormElement>) => {
+      if (isLoggedIn) {
+        return;
+      }
+
+      event.preventDefault();
+      setIdentityModalOpen(true);
+    },
+    [isLoggedIn]
+  );
+
+  const handleGuestSubmit = useCallback(
+    (
+      mode: 'guest_named' | 'guest_anonymous',
+      nextGuestDisplayName: string | null
+    ) => {
+      const nextName = nextGuestDisplayName || '';
+      setGuestDisplayName(nextName);
+      setIdentityModalOpen(false);
+      const formData = new FormData();
+      formData.set('surveyId', survey.id);
+      formData.set('ranks', JSON.stringify(getBallotAsArray()));
+      formData.set(
+        'successRedirect',
+        `/survey/${survey.id}/simple?view=results&submitted=1`
+      );
+      formData.set('submissionMode', mode);
+      formData.set('guestDisplayName', nextName);
+      startTransition(() => {
+        formAction(formData);
+      });
+    },
+    [formAction, getBallotAsArray, survey.id]
+  );
 
   const resultsIntroText = showSubmittedFlash
     ? 'Ballot submitted successfully. Current standings are now unlocked. You can still edit your ballot until voting closes.'
@@ -847,105 +956,146 @@ export default function SimpleVotingClient({
 
   if (view === 'ballot') {
     return (
-      <div className="animate-fade-in space-y-6">
-        <div className="hidden md:block">
-          <div className="max-w-5xl">
-            <CompactBallotHeader survey={survey} isLive={isLive} />
-            <VotingAlerts formState={formState} />
-            <div className="bg-[var(--color-surface)] rounded-xl p-6 border border-[var(--color-border)]/50 shadow-lg shadow-black/20 overflow-hidden lg:flex lg:max-h-[calc(100vh-8rem)] lg:flex-col">
-              <h2 className="text-lg font-display font-semibold text-[var(--color-text)] mb-4">
-                Movies{' '}
-                <span className="text-sm font-normal text-[var(--color-text-muted)]">
-                  ({shuffledEntries.length})
-                </span>
-              </h2>
-              <div className="lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:pr-1">
-                <SimpleMovieList
-                  ballotSize={ballot.size}
-                  canVote={canVote}
-                  desktop
-                  entries={shuffledEntries}
-                  handleMovieClick={handleMovieClick}
-                  isMovieSelected={isMovieSelected}
-                  moveRank={moveRank}
-                  showMoveControls
-                />
-              </div>
-
-              {canVote ? (
-                <div className="mt-5 lg:mt-4 lg:border-t lg:border-[var(--color-border)]/50 lg:pt-4">
-                  <div className="rounded-2xl bg-gradient-to-t from-[var(--color-surface)] via-[var(--color-surface)]/95 to-transparent backdrop-blur-sm">
-                    <form action={formAction}>
-                      <input type="hidden" name="surveyId" value={survey.id} />
-                      <input
-                        type="hidden"
-                        name="ranks"
-                        value={JSON.stringify(getBallotAsArray())}
-                      />
-                      <input
-                        type="hidden"
-                        name="successRedirect"
-                        value={`/survey/${survey.id}/simple?view=results&submitted=1`}
-                      />
-                      <button
-                        type="submit"
-                        disabled={isSubmitting || ballot.size === 0}
-                        className={`w-full py-2.5 px-4 bg-[var(--color-primary)] hover:bg-[var(--color-primary-dark)] text-white font-medium rounded-xl transition-all duration-150 active:scale-[0.97] disabled:opacity-50 disabled:active:scale-100 ${
-                          isBallotComplete
-                            ? 'shadow-lg shadow-[var(--color-primary)]/30'
-                            : 'shadow-md shadow-[var(--color-primary)]/20'
-                        }`}
-                      >
-                        {isSubmitting
-                          ? 'Submitting...'
-                          : hasExistingBallot
-                            ? 'Update Ballot'
-                            : 'Submit Ballot'}
-                      </button>
-                    </form>
-                  </div>
+      <>
+        <div className="animate-fade-in space-y-6">
+          <div className="hidden md:block">
+            <div className="max-w-5xl">
+              <CompactBallotHeader
+                survey={survey}
+                isLive={isLive}
+                isLoggedIn={isLoggedIn}
+              />
+              <VotingAlerts formState={formState} />
+              {authResumeNotice ? (
+                <div className="mb-4 rounded-xl border border-[var(--color-primary)]/35 bg-[var(--color-primary)]/10 p-3 text-sm text-[var(--color-primary-light)]">
+                  {authResumeNotice}
                 </div>
-              ) : userRole === 'viewer' ? (
-                <p className="mt-4 text-center text-sm text-[var(--color-text-muted)]">
-                  Viewers cannot vote on surveys.
-                </p>
-              ) : (
-                <p className="mt-4 text-center text-sm text-[var(--color-text-muted)]">
-                  This survey is closed for voting.
-                </p>
-              )}
+              ) : null}
+              <div className="bg-[var(--color-surface)] rounded-xl p-6 border border-[var(--color-border)]/50 shadow-lg shadow-black/20 overflow-hidden lg:flex lg:max-h-[calc(100vh-8rem)] lg:flex-col">
+                <h2 className="text-lg font-display font-semibold text-[var(--color-text)] mb-4">
+                  Movies{' '}
+                  <span className="text-sm font-normal text-[var(--color-text-muted)]">
+                    ({shuffledEntries.length})
+                  </span>
+                </h2>
+                <div className="lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:pr-1">
+                  <SimpleMovieList
+                    ballotSize={ballot.size}
+                    canVote={canVote}
+                    desktop
+                    entries={shuffledEntries}
+                    handleMovieClick={handleMovieClick}
+                    isMovieSelected={isMovieSelected}
+                    moveRank={moveRank}
+                    showMoveControls
+                  />
+                </div>
+
+                {canVote ? (
+                  <div className="mt-5 lg:mt-4 lg:border-t lg:border-[var(--color-border)]/50 lg:pt-4">
+                    <div className="rounded-2xl bg-gradient-to-t from-[var(--color-surface)] via-[var(--color-surface)]/95 to-transparent backdrop-blur-sm">
+                      <form
+                        action={formAction}
+                        onSubmit={handleBallotSubmit}
+                      >
+                        <input type="hidden" name="surveyId" value={survey.id} />
+                        <input
+                          type="hidden"
+                          name="ranks"
+                          value={JSON.stringify(getBallotAsArray())}
+                        />
+                        <input
+                          type="hidden"
+                          name="successRedirect"
+                          value={`/survey/${survey.id}/simple?view=results&submitted=1`}
+                        />
+                        <button
+                          type="submit"
+                          disabled={isSubmitting || ballot.size === 0}
+                          className={`w-full py-2.5 px-4 bg-[var(--color-primary)] hover:bg-[var(--color-primary-dark)] text-white font-medium rounded-xl transition-all duration-150 active:scale-[0.97] disabled:opacity-50 disabled:active:scale-100 ${
+                            isBallotComplete
+                              ? 'shadow-lg shadow-[var(--color-primary)]/30'
+                              : 'shadow-md shadow-[var(--color-primary)]/20'
+                          }`}
+                        >
+                          {isSubmitting
+                            ? 'Submitting...'
+                            : hasExistingBallot
+                              ? 'Update Ballot'
+                              : 'Submit Ballot'}
+                        </button>
+                        {!isLoggedIn ? (
+                          <p className="mt-3 text-center text-xs text-[var(--color-text-muted)]">
+                            You&apos;ll choose how to identify this ballot when you
+                            submit.
+                          </p>
+                        ) : null}
+                      </form>
+                    </div>
+                  </div>
+                ) : userRole === 'viewer' ? (
+                  <p className="mt-4 text-center text-sm text-[var(--color-text-muted)]">
+                    Viewers cannot vote on surveys.
+                  </p>
+                ) : (
+                  <p className="mt-4 text-center text-sm text-[var(--color-text-muted)]">
+                    This survey is closed for voting.
+                  </p>
+                )}
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="md:hidden pb-24 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]">
-          <CompactBallotHeader mobile survey={survey} isLive={isLive} />
-          <VotingAlerts formState={formState} mobile />
-          <CompactBallotActions
+          <div className="md:hidden pb-24 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]">
+            <CompactBallotHeader
+              mobile
+              survey={survey}
+              isLive={isLive}
+              isLoggedIn={isLoggedIn}
+            />
+            <VotingAlerts formState={formState} mobile />
+            {authResumeNotice ? (
+              <div className="mb-4 rounded-xl border border-[var(--color-primary)]/35 bg-[var(--color-primary)]/10 p-3 text-sm text-[var(--color-primary-light)]">
+                {authResumeNotice}
+              </div>
+            ) : null}
+            <CompactBallotActions
             survey={survey}
             ballotSize={ballot.size}
             canVote={canVote}
             clearBallot={clearBallot}
             formAction={formAction}
+            onSubmit={handleBallotSubmit}
             getBallotAsArray={getBallotAsArray}
             hasExistingBallot={hasExistingBallot}
             isBallotComplete={isBallotComplete}
             isSubmitting={isSubmitting}
+            isLoggedIn={isLoggedIn}
             userRole={userRole}
           />
-          <div className="mb-6">
-            <SimpleMovieList
-              ballotSize={ballot.size}
-              canVote={canVote}
-              entries={shuffledEntries}
-              handleMovieClick={handleMovieClick}
-              isMovieSelected={isMovieSelected}
-              moveRank={moveRank}
-              showMoveControls
-            />
+            <div className="mb-6">
+              <SimpleMovieList
+                ballotSize={ballot.size}
+                canVote={canVote}
+                entries={shuffledEntries}
+                handleMovieClick={handleMovieClick}
+                isMovieSelected={isMovieSelected}
+                moveRank={moveRank}
+                showMoveControls
+              />
+            </div>
           </div>
         </div>
-      </div>
+
+        <SurveyIdentityModal
+          open={identityModalOpen}
+          surveyId={survey.id}
+          returnTo={authReturnTo}
+          defaultGuestDisplayName={guestDisplayName}
+          onClose={() => setIdentityModalOpen(false)}
+          onSubmitGuest={handleGuestSubmit}
+        />
+      </>
     );
   }
 
@@ -955,6 +1105,7 @@ export default function SimpleVotingClient({
         <SimpleSurveyIntro
           survey={survey}
           isLive={isLive}
+          isLoggedIn={isLoggedIn}
           viewLabel="Results"
           viewLabelStyle="eyebrow"
           helperText={resultsIntroText}

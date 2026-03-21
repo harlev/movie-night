@@ -43,7 +43,7 @@ interface SurveyEntry {
 }
 
 interface BallotInfo {
-  user: { id: string; displayName: string };
+  user: { id: string; displayName: string; badge?: string | null };
   ranks: Array<{ rank: number; movieId: string; movieTitle: string }>;
 }
 
@@ -761,7 +761,16 @@ export default function SurveyDetailClient({
                 key={ballot.user.id}
                 className="p-3 bg-[var(--color-surface-elevated)] rounded-lg"
               >
-                <p className="font-medium text-[var(--color-text)] mb-2">{ballot.user.displayName}</p>
+                <div className="mb-2 flex items-center gap-2">
+                  <p className="font-medium text-[var(--color-text)]">
+                    {ballot.user.displayName}
+                  </p>
+                  {ballot.user.badge ? (
+                    <span className="rounded-full border border-[var(--color-border)]/60 px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-[var(--color-text-muted)]">
+                      {ballot.user.badge}
+                    </span>
+                  ) : null}
+                </div>
                 {ballot.ranks.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
                     {ballot.ranks.map((r) => (

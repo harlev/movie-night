@@ -4,8 +4,10 @@ import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { getSurveyById, getSurveyEntries } from '@/lib/queries/surveys';
-import { submitBallot } from '@/lib/queries/ballots';
+import { upsertBallot } from '@/lib/queries/ballots';
 import { getUserById } from '@/lib/queries/profiles';
+import { getSurveyGuestSessionIdHash } from '@/lib/utils/surveyGuest.server';
+import { isValidDisplayName } from '@/lib/utils/validation';
 
 function getSimpleSurveySuccessRedirect(
   surveyId: string,
@@ -35,14 +37,13 @@ function getSimpleSurveySuccessRedirect(
 export async function submitBallotAction(prevState: any, formData: FormData) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: 'Not authenticated' };
-
-  const profile = await getUserById(user.id);
-  if (profile?.role === 'viewer') return { error: 'Viewers cannot submit ballots' };
 
   const surveyId = formData.get('surveyId') as string;
   const ranksJson = formData.get('ranks') as string;
   const successRedirect = formData.get('successRedirect') as string | null;
+  const submissionMode = (formData.get('submissionMode') as string | null) ?? 'identified';
+  const guestDisplayName = (formData.get('guestDisplayName') as string | null)?.trim() || null;
+  const guestSessionIdHash = await getSurveyGuestSessionIdHash(surveyId);
 
   const survey = await getSurveyById(surveyId);
   if (!survey) return { error: 'Survey not found' };
@@ -79,7 +80,56 @@ export async function submitBallotAction(prevState: any, formData: FormData) {
     if (!validMovieIds.has(movieId)) return { error: 'Invalid movie in ballot' };
   }
 
-  await submitBallot({ surveyId: survey.id, userId: user.id, ranks: validRanks });
+  if (submissionMode === 'guest_named') {
+    if (!guestDisplayName) {
+      return { error: 'Enter a display name or continue anonymously' };
+    }
+    const validation = isValidDisplayName(guestDisplayName);
+    if (!validation.valid) {
+      return { error: validation.error };
+    }
+  }
+
+  try {
+    if (submissionMode === 'identified') {
+      if (!user) {
+        return { error: 'Please sign in to submit with an account' };
+      }
+
+      const profile = await getUserById(user.id);
+      if (profile?.role === 'viewer') return { error: 'Viewers cannot submit ballots' };
+
+      await upsertBallot({
+        surveyId: survey.id,
+        ownerMode: 'identified',
+        userId: user.id,
+        identifiedDisplayName: profile?.display_name || null,
+        guestDisplayName: null,
+        guestSessionIdHash: null,
+        ranks: validRanks,
+      });
+    } else {
+      if (!guestSessionIdHash) {
+        return { error: 'Guest voting requires cookies to stay enabled' };
+      }
+
+      await upsertBallot({
+        surveyId: survey.id,
+        ownerMode: 'guest',
+        userId: null,
+        identifiedDisplayName: null,
+        guestDisplayName: submissionMode === 'guest_named' ? guestDisplayName : null,
+        guestSessionIdHash,
+        ranks: validRanks,
+      });
+    }
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error ? error.message : 'Failed to save ballot',
+    };
+  }
+
   revalidatePath(`/survey/${surveyId}`);
   revalidatePath(`/survey/${surveyId}/simple`);
   revalidatePath('/dashboard');

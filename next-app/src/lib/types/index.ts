@@ -64,7 +64,10 @@ export interface SurveyEntry {
 export interface Ballot {
   id: string;
   survey_id: string;
-  user_id: string;
+  owner_mode: 'identified' | 'guest';
+  user_id: string | null;
+  guest_display_name: string | null;
+  guest_session_id_hash: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -79,7 +82,9 @@ export interface BallotRank {
 export interface BallotChangeLog {
   id: string;
   survey_id: string;
-  user_id: string;
+  user_id: string | null;
+  owner_mode: 'identified' | 'guest';
+  owner_label: string;
   previous_ranks: Array<{ rank: number; movieId: string }> | null;
   new_ranks: Array<{ rank: number; movieId: string }> | null;
   reason: 'user_update' | 'movie_removed' | 'system';

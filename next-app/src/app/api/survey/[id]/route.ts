@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
 import { getSurveyById, getSurveyEntries } from '@/lib/queries/surveys';
 import { getAllBallots } from '@/lib/queries/ballots';
 import { calculateStandings } from '@/lib/services/scoring';
@@ -8,13 +7,6 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (!user) {
-    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
-  }
-
   const { id } = await params;
   const survey = await getSurveyById(id);
 

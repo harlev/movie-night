@@ -89,3 +89,37 @@ test('feedback schema updates admin logs to accept feedback targets', () => {
   assert.equal(seed.includes("'feedback'"), true);
   assert.equal(migration.includes("'feedback'"), true);
 });
+
+test('survey ballot schema supports identified and guest owners in schema, seed, and migration', () => {
+  const schema = readSupabaseFile('schema.sql');
+  const seed = readSupabaseFile('seed.sql');
+  const migration = readSupabaseFile(
+    path.join('migrations', '20260320_add_guest_survey_ballots.sql')
+  );
+
+  assert.equal(schema.includes("owner_mode text not null default 'identified'"), true);
+  assert.equal(schema.includes("check (owner_mode in ('identified', 'guest'))"), true);
+  assert.equal(schema.includes('guest_display_name text'), true);
+  assert.equal(schema.includes('guest_session_id_hash text'), true);
+  assert.equal(
+    schema.includes('create unique index ballots_identified_owner_idx on public.ballots(survey_id, user_id) where user_id is not null;'),
+    true
+  );
+  assert.equal(
+    schema.includes('create unique index ballots_guest_owner_idx on public.ballots(survey_id, guest_session_id_hash) where guest_session_id_hash is not null;'),
+    true
+  );
+
+  assert.equal(seed.includes("owner_mode text not null default 'identified'"), true);
+  assert.equal(seed.includes('guest_display_name text'), true);
+  assert.equal(seed.includes('guest_session_id_hash text'), true);
+  assert.equal(
+    seed.includes('create unique index if not exists ballots_guest_owner_idx on public.ballots(survey_id, guest_session_id_hash) where guest_session_id_hash is not null;'),
+    true
+  );
+
+  assert.equal(migration.includes('alter table public.ballots add column if not exists owner_mode text'), true);
+  assert.equal(migration.includes('add column if not exists guest_display_name text'), true);
+  assert.equal(migration.includes('add column if not exists guest_session_id_hash text'), true);
+  assert.equal(migration.includes('ballots_guest_owner_idx'), true);
+});

@@ -93,11 +93,19 @@ create table public.survey_entries (
 create table public.ballots (
   id text primary key,
   survey_id text not null references public.surveys(id) on delete cascade,
-  user_id uuid not null references public.profiles(id),
+  owner_mode text not null default 'identified' check (owner_mode in ('identified', 'guest')),
+  user_id uuid references public.profiles(id),
+  guest_display_name text,
+  guest_session_id_hash text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  unique(survey_id, user_id)
+  constraint ballots_owner_identity_check check (
+    (owner_mode = 'identified' and user_id is not null and guest_session_id_hash is null)
+    or (owner_mode = 'guest' and user_id is null and guest_session_id_hash is not null)
+  )
 );
+create unique index ballots_identified_owner_idx on public.ballots(survey_id, user_id) where user_id is not null;
+create unique index ballots_guest_owner_idx on public.ballots(survey_id, guest_session_id_hash) where guest_session_id_hash is not null;
 
 -- Ballot ranks
 create table public.ballot_ranks (
@@ -111,7 +119,9 @@ create table public.ballot_ranks (
 create table public.ballot_change_logs (
   id text primary key,
   survey_id text not null references public.surveys(id) on delete cascade,
-  user_id uuid not null references public.profiles(id),
+  user_id uuid references public.profiles(id),
+  owner_mode text not null default 'identified' check (owner_mode in ('identified', 'guest')),
+  owner_label text not null,
   previous_ranks jsonb,
   new_ranks jsonb,
   reason text not null check (reason in ('user_update', 'movie_removed', 'system')),

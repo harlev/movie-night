@@ -7,7 +7,6 @@ import { getSurveyById, getSurveyEntries } from '@/lib/queries/surveys';
 import { upsertBallot } from '@/lib/queries/ballots';
 import { getUserById } from '@/lib/queries/profiles';
 import { getSurveyGuestSessionIdHash } from '@/lib/utils/surveyGuest.server';
-import { isValidDisplayName } from '@/lib/utils/validation';
 
 function getSimpleSurveySuccessRedirect(
   surveyId: string,
@@ -41,9 +40,15 @@ export async function submitBallotAction(prevState: any, formData: FormData) {
   const surveyId = formData.get('surveyId') as string;
   const ranksJson = formData.get('ranks') as string;
   const successRedirect = formData.get('successRedirect') as string | null;
-  const submissionMode = (formData.get('submissionMode') as string | null) ?? 'identified';
+  const rawSubmissionMode = formData.get('submissionMode') as string | null;
   const guestDisplayName = (formData.get('guestDisplayName') as string | null)?.trim() || null;
   const guestSessionIdHash = await getSurveyGuestSessionIdHash(surveyId);
+
+  if (rawSubmissionMode && rawSubmissionMode !== 'identified' && rawSubmissionMode !== 'guest_named') {
+    return { error: 'Invalid submission mode' };
+  }
+
+  const submissionMode = rawSubmissionMode ?? 'identified';
 
   const survey = await getSurveyById(surveyId);
   if (!survey) return { error: 'Survey not found' };
@@ -82,11 +87,7 @@ export async function submitBallotAction(prevState: any, formData: FormData) {
 
   if (submissionMode === 'guest_named') {
     if (!guestDisplayName) {
-      return { error: 'Enter a display name or continue anonymously' };
-    }
-    const validation = isValidDisplayName(guestDisplayName);
-    if (!validation.valid) {
-      return { error: validation.error };
+      return { error: 'Enter your name to vote as guest' };
     }
   }
 
@@ -108,7 +109,7 @@ export async function submitBallotAction(prevState: any, formData: FormData) {
         guestSessionIdHash: null,
         ranks: validRanks,
       });
-    } else {
+    } else if (submissionMode === 'guest_named') {
       if (!guestSessionIdHash) {
         return { error: 'Guest voting requires cookies to stay enabled' };
       }
@@ -122,6 +123,8 @@ export async function submitBallotAction(prevState: any, formData: FormData) {
         guestSessionIdHash,
         ranks: validRanks,
       });
+    } else {
+      return { error: 'Invalid submission mode' };
     }
   } catch (error) {
     return {

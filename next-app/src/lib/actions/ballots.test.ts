@@ -20,9 +20,14 @@ test('submitBallotAction supports guest ballot submission without forcing auth u
   const source = readFileSync(filePath, 'utf8');
 
   assert.equal(
-    source.includes("const submissionMode = (formData.get('submissionMode') as string | null) ?? 'identified';"),
+    source.includes("const rawSubmissionMode = formData.get('submissionMode') as string | null;"),
     true
   );
+  assert.equal(
+    source.includes("if (rawSubmissionMode && rawSubmissionMode !== 'identified' && rawSubmissionMode !== 'guest_named') {"),
+    true
+  );
+  assert.equal(source.includes("return { error: 'Invalid submission mode' };"), true);
   assert.equal(
     source.includes("const guestDisplayName = (formData.get('guestDisplayName') as string | null)?.trim() || null;"),
     true
@@ -30,6 +35,8 @@ test('submitBallotAction supports guest ballot submission without forcing auth u
   assert.equal(source.includes('const guestSessionIdHash = await getSurveyGuestSessionIdHash(surveyId);'), true);
   assert.equal(source.includes("if (!user) return { error: 'Not authenticated' };"), false);
   assert.equal(source.includes('await upsertBallot({'), true);
+  assert.equal(source.includes("return { error: 'Enter your name to vote as guest' };"), true);
+  assert.equal(source.includes('isValidDisplayName'), false);
 });
 
 test('submitBallotAction surfaces ballot persistence failures instead of succeeding silently', () => {

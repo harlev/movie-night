@@ -169,11 +169,8 @@ export default function SurveyVotingClient({
   );
 
   const handleGuestSubmit = useCallback(
-    (
-      mode: 'guest_named' | 'guest_anonymous',
-      nextGuestDisplayName: string | null
-    ) => {
-      const nextName = nextGuestDisplayName || '';
+    (mode: 'guest_named', nextGuestDisplayName: string) => {
+      const nextName = nextGuestDisplayName;
       setGuestDisplayName(nextName);
       setIdentityModalOpen(false);
       const formData = new FormData();

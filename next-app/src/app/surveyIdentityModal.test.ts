@@ -11,8 +11,9 @@ test('survey identity modal reuses the login picker with a simple skip-login pat
   const source = readFileSync(filePath, 'utf8');
 
   assert.equal(source.includes('Finish submitting your ballot'), true);
-  assert.equal(source.includes('Log in, enter a name, or continue as guest.'), true);
-  assert.equal(source.includes('or continue as guest'), true);
+  assert.equal(source.includes('Log in or enter a name to vote as a guest.'), true);
+  assert.equal(source.includes('or vote as guest with your name'), true);
+  assert.equal(source.includes('continue as guest'), false);
   assert.equal(source.includes('Your name'), true);
   assert.equal(source.includes('Your name (optional)'), false);
   assert.equal(source.includes('aria-hidden="true"'), true);

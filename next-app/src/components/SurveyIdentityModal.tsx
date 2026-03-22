@@ -65,7 +65,7 @@ export default function SurveyIdentityModal({
           Finish submitting your ballot
         </h2>
         <p className="mt-1 text-sm text-[var(--color-text-muted)]">
-          Log in, enter a name, or continue as guest.
+          Log in or enter a name to vote as a guest.
         </p>
 
         <div className="mt-5">
@@ -81,7 +81,7 @@ export default function SurveyIdentityModal({
                   </div>
                   <div className="relative flex justify-center text-sm">
                     <span className="px-2 bg-[var(--color-surface)] text-[var(--color-text-muted)]">
-                      or continue as guest
+                      or vote as guest with your name
                     </span>
                   </div>
                 </div>

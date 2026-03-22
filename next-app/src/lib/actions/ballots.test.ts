@@ -20,9 +20,14 @@ test('submitBallotAction supports guest ballot submission without forcing auth u
   const source = readFileSync(filePath, 'utf8');
 
   assert.equal(
-    source.includes("const submissionMode = (formData.get('submissionMode') as string | null) ?? 'identified';"),
+    source.includes("const rawSubmissionMode = formData.get('submissionMode') as string | null;"),
     true
   );
+  assert.equal(
+    source.includes("if (rawSubmissionMode && rawSubmissionMode !== 'identified' && rawSubmissionMode !== 'guest_named') {"),
+    true
+  );
+  assert.equal(source.includes("return { error: 'Invalid submission mode' };"), true);
   assert.equal(
     source.includes("const guestDisplayName = (formData.get('guestDisplayName') as string | null)?.trim() || null;"),
     true

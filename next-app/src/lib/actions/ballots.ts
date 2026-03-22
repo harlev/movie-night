@@ -7,7 +7,6 @@ import { getSurveyById, getSurveyEntries } from '@/lib/queries/surveys';
 import { upsertBallot } from '@/lib/queries/ballots';
 import { getUserById } from '@/lib/queries/profiles';
 import { getSurveyGuestSessionIdHash } from '@/lib/utils/surveyGuest.server';
-import { isValidDisplayName } from '@/lib/utils/validation';
 
 function getSimpleSurveySuccessRedirect(
   surveyId: string,
@@ -82,11 +81,7 @@ export async function submitBallotAction(prevState: any, formData: FormData) {
 
   if (submissionMode === 'guest_named') {
     if (!guestDisplayName) {
-      return { error: 'Enter a display name or continue anonymously' };
-    }
-    const validation = isValidDisplayName(guestDisplayName);
-    if (!validation.valid) {
-      return { error: validation.error };
+      return { error: 'Enter your name to vote as guest' };
     }
   }
 

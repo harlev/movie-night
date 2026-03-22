@@ -9,10 +9,7 @@ interface SurveyIdentityModalProps {
   returnTo: string;
   defaultGuestDisplayName?: string | null;
   onClose: () => void;
-  onSubmitGuest: (
-    mode: 'guest_named' | 'guest_anonymous',
-    guestDisplayName: string | null
-  ) => void;
+  onSubmitGuest: (mode: 'guest_named', guestDisplayName: string) => void;
 }
 
 export default function SurveyIdentityModal({
@@ -46,10 +43,11 @@ export default function SurveyIdentityModal({
 
   const handleSkipLogin = () => {
     const trimmedName = guestDisplayName.trim();
-    onSubmitGuest(
-      trimmedName ? 'guest_named' : 'guest_anonymous',
-      trimmedName || null
-    );
+    if (!trimmedName) {
+      return;
+    }
+
+    onSubmitGuest('guest_named', trimmedName);
   };
 
   return (
@@ -93,11 +91,18 @@ export default function SurveyIdentityModal({
                     htmlFor="surveyGuestDisplayName"
                     className="mb-2 block text-sm font-medium text-[var(--color-text)]"
                   >
-                    Your name (optional)
+                    Your name{' '}
+                    <span
+                      aria-hidden="true"
+                      className="text-[var(--color-primary)]"
+                    >
+                      *
+                    </span>
                   </label>
                   <input
                     id="surveyGuestDisplayName"
                     type="text"
+                    required
                     value={guestDisplayName}
                     onChange={(event) => setGuestDisplayName(event.target.value)}
                     maxLength={50}
@@ -109,7 +114,8 @@ export default function SurveyIdentityModal({
                 <button
                   type="button"
                   onClick={handleSkipLogin}
-                  className="w-full rounded-xl border border-[var(--color-border)]/60 px-4 py-2.5 text-sm font-medium text-[var(--color-text)] transition-colors hover:bg-[var(--color-surface-elevated)]"
+                  disabled={!guestDisplayName.trim()}
+                  className="w-full rounded-xl border border-[var(--color-border)]/60 px-4 py-2.5 text-sm font-medium text-[var(--color-text)] transition-colors enabled:hover:bg-[var(--color-surface-elevated)] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Vote as guest
                 </button>

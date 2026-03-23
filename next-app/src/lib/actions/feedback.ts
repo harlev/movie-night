@@ -75,6 +75,21 @@ export function validateFeedbackReplyThread(
   return { ok: true };
 }
 
+export function validateFeedbackReplyMutationThread(
+  thread: FeedbackThreadTarget | null,
+  userRole: FeedbackUserRole
+): { ok: true } | { ok: false; error: string } {
+  if (!thread || thread.deletedAt) {
+    return { ok: false, error: 'Feedback is unavailable' };
+  }
+
+  if (thread.status !== 'visible' && userRole !== 'admin') {
+    return { ok: false, error: 'Feedback is unavailable' };
+  }
+
+  return { ok: true };
+}
+
 export function validateFeedbackEditAccess(
   input: FeedbackMutationAccessInput
 ): { ok: true } | { ok: false; error: string } {
@@ -115,8 +130,8 @@ export function validateFeedbackDeleteAccess(
   return { ok: true };
 }
 
-export function getThreadDeleteMode(visibleReplyCount: number): 'hard-delete' | 'tombstone' {
-  return visibleReplyCount > 0 ? 'tombstone' : 'hard-delete';
+export function getThreadDeleteMode(replyCount: number): 'hard-delete' | 'tombstone' {
+  return replyCount > 0 ? 'tombstone' : 'hard-delete';
 }
 
 function validateFeedbackContent(
@@ -333,7 +348,8 @@ export async function updateFeedbackReplyAction(
   if (!reply) return { error: 'Reply not found' };
 
   const thread = await getFeedbackThreadRecordById(reply.threadId);
-  if (!thread || thread.status !== 'visible') return { error: 'Feedback is unavailable' };
+  const threadAccess = validateFeedbackReplyMutationThread(thread, auth.userRole);
+  if (!threadAccess.ok) return { error: threadAccess.error };
 
   const access = validateFeedbackEditAccess({
     userRole: auth.userRole,
@@ -427,7 +443,8 @@ export async function deleteFeedbackReplyAction(
   if (!reply) return { error: 'Reply not found' };
 
   const thread = await getFeedbackThreadRecordById(reply.threadId);
-  if (!thread || thread.deletedAt) return { error: 'Feedback is unavailable' };
+  const threadAccess = validateFeedbackReplyMutationThread(thread, auth.userRole);
+  if (!threadAccess.ok) return { error: threadAccess.error };
 
   const access = validateFeedbackDeleteAccess({
     userRole: auth.userRole,

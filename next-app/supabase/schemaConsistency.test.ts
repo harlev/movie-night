@@ -100,7 +100,15 @@ test('feedback schema and seed define thread/reply tables with snapshot names an
     true
   );
   assert.equal(
+    schema.includes('feedback_threads.deleted_at is null'),
+    true
+  );
+  assert.equal(
     seed.includes("feedback_threads.id = feedback_replies.thread_id"),
+    true
+  );
+  assert.equal(
+    seed.includes('feedback_threads.deleted_at is null'),
     true
   );
   assert.equal(
@@ -126,6 +134,7 @@ test('feedback schema and seed define thread/reply tables with snapshot names an
   assert.equal(selfManageMigration.includes('and author_id is not null'), true);
   assert.equal(selfManageMigration.includes('author_display_name_snapshot is null'), true);
   assert.equal(selfManageMigration.includes('and author_id is null'), true);
+  assert.equal(selfManageMigration.includes('feedback_threads.deleted_at is null'), true);
 });
 
 test('feedback schema updates admin logs to accept feedback targets', () => {

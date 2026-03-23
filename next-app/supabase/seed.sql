@@ -504,6 +504,7 @@ create policy "feedback_replies_insert" on public.feedback_replies for insert to
       select 1
       from public.feedback_threads
       where feedback_threads.id = feedback_replies.thread_id
+        and feedback_threads.deleted_at is null
         and (
           feedback_threads.status = 'visible'
           or (select role from public.profiles where id = auth.uid()) = 'admin'

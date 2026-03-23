@@ -6,6 +6,7 @@ import {
   validateFeedbackDeleteAccess,
   validateFeedbackEditAccess,
   validateFeedbackPostingAccess,
+  validateFeedbackReplyMutationThread,
   validateFeedbackReplyThread,
 } from './feedback';
 
@@ -55,6 +56,54 @@ test('validateFeedbackReplyThread rejects replies for author-deleted threads', (
     {
       ok: false,
       error: 'You can’t reply to a deleted thread.',
+    }
+  );
+});
+
+test('validateFeedbackReplyMutationThread blocks deleted threads for everyone and hidden threads for non-admins', () => {
+  assert.deepEqual(
+    validateFeedbackReplyMutationThread(
+      {
+        id: 'thread-1',
+        status: 'visible',
+        deletedAt: '2026-03-21T12:00:00.000Z',
+      },
+      'member'
+    ),
+    {
+      ok: false,
+      error: 'Feedback is unavailable',
+    }
+  );
+
+  assert.deepEqual(
+    validateFeedbackReplyMutationThread(
+      {
+        id: 'thread-1',
+        status: 'hidden',
+        deletedAt: null,
+      },
+      'member'
+    ),
+    {
+      ok: false,
+      error: 'Feedback is unavailable',
+    }
+  );
+});
+
+test('validateFeedbackReplyMutationThread allows admins to mutate replies in hidden threads', () => {
+  assert.deepEqual(
+    validateFeedbackReplyMutationThread(
+      {
+        id: 'thread-1',
+        status: 'hidden',
+        deletedAt: null,
+      },
+      'admin'
+    ),
+    {
+      ok: true,
     }
   );
 });

@@ -4,21 +4,43 @@ import { getUserById } from '@/lib/queries/profiles';
 import {
   createFeedbackReply,
   createFeedbackThread,
+  deleteFeedbackReplyRecord,
+  getFeedbackReplyCountForThread,
+  getFeedbackReplyRecordById,
   getFeedbackThreadRecordById,
+  hardDeleteFeedbackThreadRecord,
+  tombstoneFeedbackThreadRecord,
+  updateFeedbackReplyContent,
+  updateFeedbackThreadContent,
 } from '@/lib/queries/feedback';
 
 type FeedbackPostingKind = 'thread' | 'reply';
 type FeedbackUserRole = 'admin' | 'member' | 'viewer' | undefined;
+type FeedbackActionResult = {
+  error?: string;
+  success?: boolean;
+  redirectTo?: string;
+  threadId?: string;
+};
 
 interface FeedbackThreadTarget {
   id: string;
   status: 'visible' | 'hidden';
+  deletedAt?: string | null;
 }
 
 interface StoredFeedbackIdentityInput {
   authorId: string;
   authorDisplayNameSnapshot: string;
   isAnonymous: boolean;
+}
+
+interface FeedbackMutationAccessInput {
+  userRole: FeedbackUserRole;
+  currentUserId: string;
+  authorId: string | null;
+  status: 'visible' | 'hidden';
+  deletedAt: string | null;
 }
 
 export function validateFeedbackPostingAccess(
@@ -46,7 +68,70 @@ export function validateFeedbackReplyThread(
     return { ok: false, error: 'Thread is unavailable' };
   }
 
+  if (thread.deletedAt) {
+    return { ok: false, error: 'You can’t reply to a deleted thread.' };
+  }
+
   return { ok: true };
+}
+
+export function validateFeedbackReplyMutationThread(
+  thread: FeedbackThreadTarget | null,
+  userRole: FeedbackUserRole
+): { ok: true } | { ok: false; error: string } {
+  if (!thread || thread.deletedAt) {
+    return { ok: false, error: 'Feedback is unavailable' };
+  }
+
+  if (thread.status !== 'visible' && userRole !== 'admin') {
+    return { ok: false, error: 'Feedback is unavailable' };
+  }
+
+  return { ok: true };
+}
+
+export function validateFeedbackEditAccess(
+  input: FeedbackMutationAccessInput
+): { ok: true } | { ok: false; error: string } {
+  if (input.status !== 'visible' || input.deletedAt) {
+    return { ok: false, error: 'Feedback is unavailable' };
+  }
+
+  if (!input.authorId || input.authorId !== input.currentUserId) {
+    return { ok: false, error: 'You can only edit your own feedback' };
+  }
+
+  if (input.userRole === 'viewer') {
+    return { ok: false, error: 'Viewers cannot edit feedback' };
+  }
+
+  return { ok: true };
+}
+
+export function validateFeedbackDeleteAccess(
+  input: FeedbackMutationAccessInput
+): { ok: true } | { ok: false; error: string } {
+  if (input.deletedAt) {
+    return { ok: false, error: 'Feedback is unavailable' };
+  }
+
+  if (input.userRole === 'admin') {
+    return { ok: true };
+  }
+
+  if (input.status !== 'visible') {
+    return { ok: false, error: 'Feedback is unavailable' };
+  }
+
+  if (!input.authorId || input.authorId !== input.currentUserId) {
+    return { ok: false, error: 'You can only delete your own feedback' };
+  }
+
+  return { ok: true };
+}
+
+export function getThreadDeleteMode(replyCount: number): 'hard-delete' | 'tombstone' {
+  return replyCount > 0 ? 'tombstone' : 'hard-delete';
 }
 
 function validateFeedbackContent(
@@ -73,6 +158,15 @@ function validateFeedbackContent(
   return { ok: true };
 }
 
+function revalidateFeedbackPaths(threadId?: string) {
+  revalidatePath('/feedback');
+  revalidatePath('/dashboard');
+
+  if (threadId) {
+    revalidatePath(`/feedback/${threadId}`);
+  }
+}
+
 function isAnonymousPosting(formData: FormData): boolean {
   return formData.get('postingIdentity') === 'anonymous';
 }
@@ -82,12 +176,12 @@ export function getStoredFeedbackIdentity({
   authorDisplayNameSnapshot,
   isAnonymous,
 }: StoredFeedbackIdentityInput): {
-  authorId: string | null;
+  authorId: string;
   authorDisplayNameSnapshot: string | null;
 } {
   if (isAnonymous) {
     return {
-      authorId: null,
+      authorId,
       authorDisplayNameSnapshot: null,
     };
   }
@@ -98,9 +192,10 @@ export function getStoredFeedbackIdentity({
   };
 }
 
-export async function createFeedbackThreadAction(prevState: any, formData: FormData) {
-  'use server';
-
+async function getAuthenticatedFeedbackUser(): Promise<
+  | { userId: string; userRole: FeedbackUserRole; displayName: string }
+  | { error: string }
+> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -108,16 +203,30 @@ export async function createFeedbackThreadAction(prevState: any, formData: FormD
   if (!user) return { error: 'Not authenticated' };
 
   const profile = await getUserById(user.id);
-  const access = validateFeedbackPostingAccess(profile?.role, 'thread');
-  if (!access.ok) return { error: access.error };
   if (!profile) return { error: 'Profile not found' };
+
+  return {
+    userId: user.id,
+    userRole: profile.role,
+    displayName: profile.display_name,
+  };
+}
+
+export async function createFeedbackThreadAction(prevState: any, formData: FormData): Promise<FeedbackActionResult> {
+  'use server';
+
+  const auth = await getAuthenticatedFeedbackUser();
+  if ('error' in auth) return { error: auth.error };
+
+  const access = validateFeedbackPostingAccess(auth.userRole, 'thread');
+  if (!access.ok) return { error: access.error };
 
   const content = (formData.get('content') as string | null)?.trim() || '';
   const contentValidation = validateFeedbackContent(content, 'thread');
   if (!contentValidation.ok) return { error: contentValidation.error };
   const postingIdentity = getStoredFeedbackIdentity({
-    authorId: user.id,
-    authorDisplayNameSnapshot: profile.display_name,
+    authorId: auth.userId,
+    authorDisplayNameSnapshot: auth.displayName,
     isAnonymous: isAnonymousPosting(formData),
   });
 
@@ -126,11 +235,10 @@ export async function createFeedbackThreadAction(prevState: any, formData: FormD
       authorId: postingIdentity.authorId,
       authorDisplayNameSnapshot: postingIdentity.authorDisplayNameSnapshot,
       content,
-      isAnonymous: postingIdentity.authorId === null,
+      isAnonymous: postingIdentity.authorDisplayNameSnapshot === null,
     });
 
-    revalidatePath('/feedback');
-    revalidatePath('/dashboard');
+    revalidateFeedbackPaths(thread.id);
 
     return { success: true, threadId: thread.id };
   } catch (error) {
@@ -139,19 +247,14 @@ export async function createFeedbackThreadAction(prevState: any, formData: FormD
   }
 }
 
-export async function createFeedbackReplyAction(prevState: any, formData: FormData) {
+export async function createFeedbackReplyAction(prevState: any, formData: FormData): Promise<FeedbackActionResult> {
   'use server';
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: 'Not authenticated' };
+  const auth = await getAuthenticatedFeedbackUser();
+  if ('error' in auth) return { error: auth.error };
 
-  const profile = await getUserById(user.id);
-  const access = validateFeedbackPostingAccess(profile?.role, 'reply');
+  const access = validateFeedbackPostingAccess(auth.userRole, 'reply');
   if (!access.ok) return { error: access.error };
-  if (!profile) return { error: 'Profile not found' };
 
   const threadId = (formData.get('threadId') as string | null)?.trim() || '';
   if (!threadId) return { error: 'Thread not found' };
@@ -164,8 +267,8 @@ export async function createFeedbackReplyAction(prevState: any, formData: FormDa
   const contentValidation = validateFeedbackContent(content, 'reply');
   if (!contentValidation.ok) return { error: contentValidation.error };
   const postingIdentity = getStoredFeedbackIdentity({
-    authorId: user.id,
-    authorDisplayNameSnapshot: profile.display_name,
+    authorId: auth.userId,
+    authorDisplayNameSnapshot: auth.displayName,
     isAnonymous: isAnonymousPosting(formData),
   });
 
@@ -175,16 +278,190 @@ export async function createFeedbackReplyAction(prevState: any, formData: FormDa
       authorId: postingIdentity.authorId,
       authorDisplayNameSnapshot: postingIdentity.authorDisplayNameSnapshot,
       content,
-      isAnonymous: postingIdentity.authorId === null,
+      isAnonymous: postingIdentity.authorDisplayNameSnapshot === null,
     });
 
-    revalidatePath('/feedback');
-    revalidatePath(`/feedback/${threadId}`);
-    revalidatePath('/dashboard');
+    revalidateFeedbackPaths(threadId);
 
     return { success: true };
   } catch (error) {
     console.error('Failed to create feedback reply:', error);
     return { error: 'Failed to post reply' };
+  }
+}
+
+export async function updateFeedbackThreadAction(
+  prevState: any,
+  formData: FormData
+): Promise<FeedbackActionResult> {
+  'use server';
+
+  const auth = await getAuthenticatedFeedbackUser();
+  if ('error' in auth) return { error: auth.error };
+
+  const threadId = (formData.get('threadId') as string | null)?.trim() || '';
+  if (!threadId) return { error: 'Thread not found' };
+
+  const thread = await getFeedbackThreadRecordById(threadId);
+  if (!thread) return { error: 'Thread not found' };
+
+  const access = validateFeedbackEditAccess({
+    userRole: auth.userRole,
+    currentUserId: auth.userId,
+    authorId: thread.authorId,
+    status: thread.status,
+    deletedAt: thread.deletedAt,
+  });
+  if (!access.ok) return { error: access.error };
+
+  const content = (formData.get('content') as string | null)?.trim() || '';
+  const contentValidation = validateFeedbackContent(content, 'thread');
+  if (!contentValidation.ok) return { error: contentValidation.error };
+
+  try {
+    await updateFeedbackThreadContent({
+      id: threadId,
+      content,
+    });
+
+    revalidateFeedbackPaths(threadId);
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to update feedback thread:', error);
+    return { error: 'Failed to update feedback' };
+  }
+}
+
+export async function updateFeedbackReplyAction(
+  prevState: any,
+  formData: FormData
+): Promise<FeedbackActionResult> {
+  'use server';
+
+  const auth = await getAuthenticatedFeedbackUser();
+  if ('error' in auth) return { error: auth.error };
+
+  const replyId = (formData.get('replyId') as string | null)?.trim() || '';
+  if (!replyId) return { error: 'Reply not found' };
+
+  const reply = await getFeedbackReplyRecordById(replyId);
+  if (!reply) return { error: 'Reply not found' };
+
+  const thread = await getFeedbackThreadRecordById(reply.threadId);
+  const threadAccess = validateFeedbackReplyMutationThread(thread, auth.userRole);
+  if (!threadAccess.ok) return { error: threadAccess.error };
+
+  const access = validateFeedbackEditAccess({
+    userRole: auth.userRole,
+    currentUserId: auth.userId,
+    authorId: reply.authorId,
+    status: reply.status,
+    deletedAt: null,
+  });
+  if (!access.ok) return { error: access.error };
+
+  const content = (formData.get('content') as string | null)?.trim() || '';
+  const contentValidation = validateFeedbackContent(content, 'reply');
+  if (!contentValidation.ok) return { error: contentValidation.error };
+
+  try {
+    await updateFeedbackReplyContent({
+      id: replyId,
+      content,
+    });
+
+    revalidateFeedbackPaths(reply.threadId);
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to update feedback reply:', error);
+    return { error: 'Failed to update reply' };
+  }
+}
+
+export async function deleteFeedbackThreadAction(
+  prevState: any,
+  formData: FormData
+): Promise<FeedbackActionResult> {
+  'use server';
+
+  const auth = await getAuthenticatedFeedbackUser();
+  if ('error' in auth) return { error: auth.error };
+
+  const threadId = (formData.get('threadId') as string | null)?.trim() || '';
+  if (!threadId) return { error: 'Thread not found' };
+
+  const thread = await getFeedbackThreadRecordById(threadId);
+  if (!thread) return { error: 'Thread not found' };
+
+  const access = validateFeedbackDeleteAccess({
+    userRole: auth.userRole,
+    currentUserId: auth.userId,
+    authorId: thread.authorId,
+    status: thread.status,
+    deletedAt: thread.deletedAt,
+  });
+  if (!access.ok) return { error: access.error };
+
+  try {
+    const replyCount = await getFeedbackReplyCountForThread(threadId);
+    const deleteMode = getThreadDeleteMode(replyCount);
+
+    if (deleteMode === 'hard-delete') {
+      await hardDeleteFeedbackThreadRecord(threadId);
+    } else {
+      await tombstoneFeedbackThreadRecord(threadId, {
+        deletedByAuthor: thread.authorId === auth.userId,
+      });
+    }
+
+    revalidateFeedbackPaths(threadId);
+
+    const returnTo = (formData.get('returnTo') as string | null)?.trim() || '';
+    return {
+      success: true,
+      redirectTo: deleteMode === 'hard-delete' && returnTo ? returnTo : undefined,
+    };
+  } catch (error) {
+    console.error('Failed to delete feedback thread:', error);
+    return { error: 'Failed to delete feedback' };
+  }
+}
+
+export async function deleteFeedbackReplyAction(
+  prevState: any,
+  formData: FormData
+): Promise<FeedbackActionResult> {
+  'use server';
+
+  const auth = await getAuthenticatedFeedbackUser();
+  if ('error' in auth) return { error: auth.error };
+
+  const replyId = (formData.get('replyId') as string | null)?.trim() || '';
+  if (!replyId) return { error: 'Reply not found' };
+
+  const reply = await getFeedbackReplyRecordById(replyId);
+  if (!reply) return { error: 'Reply not found' };
+
+  const thread = await getFeedbackThreadRecordById(reply.threadId);
+  const threadAccess = validateFeedbackReplyMutationThread(thread, auth.userRole);
+  if (!threadAccess.ok) return { error: threadAccess.error };
+
+  const access = validateFeedbackDeleteAccess({
+    userRole: auth.userRole,
+    currentUserId: auth.userId,
+    authorId: reply.authorId,
+    status: reply.status,
+    deletedAt: null,
+  });
+  if (!access.ok) return { error: access.error };
+
+  try {
+    await deleteFeedbackReplyRecord(replyId);
+
+    revalidateFeedbackPaths(reply.threadId);
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to delete feedback reply:', error);
+    return { error: 'Failed to delete reply' };
   }
 }

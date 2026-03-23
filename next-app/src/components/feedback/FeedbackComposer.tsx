@@ -154,7 +154,7 @@ export default function FeedbackComposer({
               </span>
             </label>
             <p className="text-xs leading-5 text-[var(--color-text-muted)]">
-              Your identity will remain private - including from site admins.
+              Your name will be hidden from other users and shown as Anonymous.
             </p>
           </div>
 

@@ -3,7 +3,11 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { getUserById } from '@/lib/queries/profiles';
 import { getFeedbackThreads } from '@/lib/queries/feedback';
-import { createFeedbackThreadAction } from '@/lib/actions/feedback';
+import {
+  createFeedbackThreadAction,
+  deleteFeedbackThreadAction,
+  updateFeedbackThreadAction,
+} from '@/lib/actions/feedback';
 import FeedbackComposer from '@/components/feedback/FeedbackComposer';
 import FeedbackThreadCard from '@/components/feedback/FeedbackThreadCard';
 import EmptyState from '@/components/ui/EmptyState';
@@ -29,10 +33,11 @@ export default async function FeedbackPage({
     data: { user },
   } = await supabase.auth.getUser();
 
-  const [profile, threads] = await Promise.all([
-    user ? getUserById(user.id) : null,
-    getFeedbackThreads(sortMode),
-  ]);
+  const profile = user ? await getUserById(user.id) : null;
+  const threads = await getFeedbackThreads(sortMode, {
+    currentUserId: user?.id,
+    userRole: profile?.role,
+  });
 
   return (
     <div className="mx-auto max-w-4xl space-y-6 animate-fade-in">
@@ -81,7 +86,12 @@ export default async function FeedbackPage({
       {threads.length > 0 ? (
         <div className="space-y-4">
           {threads.map((thread) => (
-            <FeedbackThreadCard key={thread.id} thread={thread} />
+            <FeedbackThreadCard
+              key={thread.id}
+              thread={thread}
+              editAction={updateFeedbackThreadAction}
+              deleteAction={deleteFeedbackThreadAction}
+            />
           ))}
         </div>
       ) : (

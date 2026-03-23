@@ -22,3 +22,18 @@ test('Feedback page uses lighter movie-night copy and thread hierarchy', () => {
   assert.equal(source.includes('No feedback yet'), false);
   assert.equal(source.includes('Leave Feedback'), false);
 });
+
+test('Feedback page passes viewer context and thread mutation actions into thread cards', () => {
+  const filePath = path.join(process.cwd(), 'src/app/(app)/feedback/page.tsx');
+  const source = readFileSync(filePath, 'utf8');
+
+  assert.equal(source.includes("import {"), true);
+  assert.equal(source.includes("createFeedbackThreadAction"), true);
+  assert.equal(source.includes("updateFeedbackThreadAction"), true);
+  assert.equal(source.includes("deleteFeedbackThreadAction"), true);
+  assert.equal(source.includes('getFeedbackThreads(sortMode, {'), true);
+  assert.equal(source.includes('currentUserId: user?.id'), true);
+  assert.equal(source.includes('userRole: profile?.role'), true);
+  assert.equal(source.includes('editAction={updateFeedbackThreadAction}'), true);
+  assert.equal(source.includes('deleteAction={deleteFeedbackThreadAction}'), true);
+});

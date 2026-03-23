@@ -207,8 +207,16 @@ create table public.feedback_threads (
   status text not null default 'visible' check (status in ('visible', 'hidden')),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
+  edited_at timestamptz,
+  deleted_at timestamptz,
+  deleted_by_author boolean not null default false,
   constraint feedback_threads_identity_check check (
     (
+      is_anonymous
+      and author_id is not null
+      and author_display_name_snapshot is null
+    )
+    or (
       is_anonymous
       and author_id is null
       and author_display_name_snapshot is null
@@ -232,8 +240,14 @@ create table public.feedback_replies (
   status text not null default 'visible' check (status in ('visible', 'hidden')),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
+  edited_at timestamptz,
   constraint feedback_replies_identity_check check (
     (
+      is_anonymous
+      and author_id is not null
+      and author_display_name_snapshot is null
+    )
+    or (
       is_anonymous
       and author_id is null
       and author_display_name_snapshot is null
@@ -442,7 +456,7 @@ create policy "feedback_threads_insert" on public.feedback_threads for insert to
     and (
       (
         is_anonymous
-        and author_id is null
+        and author_id = auth.uid()
         and author_display_name_snapshot is null
       )
       or (
@@ -475,7 +489,7 @@ create policy "feedback_replies_insert" on public.feedback_replies for insert to
     and (
       (
         is_anonymous
-        and author_id is null
+        and author_id = auth.uid()
         and author_display_name_snapshot is null
       )
       or (
@@ -488,6 +502,7 @@ create policy "feedback_replies_insert" on public.feedback_replies for insert to
       select 1
       from public.feedback_threads
       where feedback_threads.id = feedback_replies.thread_id
+        and feedback_threads.deleted_at is null
         and (
           feedback_threads.status = 'visible'
           or (select role from public.profiles where id = auth.uid()) = 'admin'

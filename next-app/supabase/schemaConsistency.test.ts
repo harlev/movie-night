@@ -30,23 +30,36 @@ test('feedback schema and seed define thread/reply tables with snapshot names an
   const anonymityMigration = readSupabaseFile(
     path.join('migrations', '20260320_anonymize_feedback_authors.sql')
   );
+  const selfManageMigration = readSupabaseFile(
+    path.join('migrations', '20260321_feedback_self_manage.sql')
+  );
 
   assert.equal(schema.includes('create table public.feedback_threads'), true);
   assert.equal(schema.includes('create table public.feedback_replies'), true);
   assert.equal(schema.includes('author_display_name_snapshot text,'), true);
   assert.equal(schema.includes('author_display_name_snapshot text not null'), false);
   assert.equal(schema.includes("status text not null default 'visible' check (status in ('visible', 'hidden'))"), true);
+  assert.equal(schema.includes('edited_at timestamptz'), true);
+  assert.equal(schema.includes('deleted_at timestamptz'), true);
+  assert.equal(schema.includes('deleted_by_author boolean not null default false'), true);
   assert.equal(schema.includes('constraint feedback_threads_identity_check check'), true);
   assert.equal(schema.includes('constraint feedback_replies_identity_check check'), true);
   assert.equal(schema.includes('with check (\n    and status = \'visible\''), false);
+  assert.equal(schema.includes('is_anonymous\n      and author_id is not null'), true);
+  assert.equal(schema.includes('author_display_name_snapshot is null'), true);
+  assert.equal(schema.includes('is_anonymous\n      and author_id is null'), true);
 
   assert.equal(seed.includes('-- Migration: 20260316_add_feedback.sql'), true);
   assert.equal(seed.includes('-- Migration: 20260320_anonymize_feedback_authors.sql'), true);
+  assert.equal(seed.includes('-- Migration: 20260321_feedback_self_manage.sql'), true);
   assert.equal(seed.includes('create table if not exists public.feedback_threads'), true);
   assert.equal(seed.includes('create table if not exists public.feedback_replies'), true);
   assert.equal(seed.includes('author_display_name_snapshot text not null'), true);
   assert.equal(seed.includes('alter table public.feedback_threads alter column author_id drop not null;'), true);
   assert.equal(seed.includes('alter table public.feedback_replies alter column author_id drop not null;'), true);
+  assert.equal(seed.includes('add column if not exists edited_at timestamptz;'), true);
+  assert.equal(seed.includes('add column if not exists deleted_at timestamptz;'), true);
+  assert.equal(seed.includes('add column if not exists deleted_by_author boolean not null default false;'), true);
   assert.equal(anonymityMigration.includes('update public.feedback_threads'), true);
   assert.equal(anonymityMigration.includes('update public.feedback_replies'), true);
   assert.equal(
@@ -87,14 +100,21 @@ test('feedback schema and seed define thread/reply tables with snapshot names an
     true
   );
   assert.equal(
+    schema.includes('feedback_threads.deleted_at is null'),
+    true
+  );
+  assert.equal(
     seed.includes("feedback_threads.id = feedback_replies.thread_id"),
+    true
+  );
+  assert.equal(
+    seed.includes('feedback_threads.deleted_at is null'),
     true
   );
   assert.equal(
     migration.includes("feedback_threads.id = feedback_replies.thread_id"),
     true
   );
-  assert.equal(schema.includes('is_anonymous\n        and author_id is null'), true);
   assert.equal(seed.includes('is_anonymous\n        and author_id is null'), true);
   assert.equal(
     anonymityMigration.includes('alter table public.feedback_threads alter column author_id drop not null'),
@@ -104,6 +124,17 @@ test('feedback schema and seed define thread/reply tables with snapshot names an
     anonymityMigration.includes('alter table public.feedback_replies alter column author_id drop not null'),
     true
   );
+  assert.equal(selfManageMigration.includes('alter table public.feedback_threads'), true);
+  assert.equal(selfManageMigration.includes('alter table public.feedback_replies'), true);
+  assert.equal(selfManageMigration.includes('add column if not exists edited_at timestamptz'), true);
+  assert.equal(selfManageMigration.includes('add column if not exists deleted_at timestamptz'), true);
+  assert.equal(selfManageMigration.includes('add column if not exists deleted_by_author boolean not null default false'), true);
+  assert.equal(selfManageMigration.includes('drop constraint if exists feedback_threads_identity_check'), true);
+  assert.equal(selfManageMigration.includes('drop constraint if exists feedback_replies_identity_check'), true);
+  assert.equal(selfManageMigration.includes('and author_id is not null'), true);
+  assert.equal(selfManageMigration.includes('author_display_name_snapshot is null'), true);
+  assert.equal(selfManageMigration.includes('and author_id is null'), true);
+  assert.equal(selfManageMigration.includes('feedback_threads.deleted_at is null'), true);
 });
 
 test('feedback schema updates admin logs to accept feedback targets', () => {

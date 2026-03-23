@@ -4,7 +4,13 @@ import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getUserById } from '@/lib/queries/profiles';
 import { getFeedbackThreadById } from '@/lib/queries/feedback';
-import { createFeedbackReplyAction } from '@/lib/actions/feedback';
+import {
+  createFeedbackReplyAction,
+  deleteFeedbackReplyAction,
+  deleteFeedbackThreadAction,
+  updateFeedbackReplyAction,
+  updateFeedbackThreadAction,
+} from '@/lib/actions/feedback';
 import FeedbackThreadCard from '@/components/feedback/FeedbackThreadCard';
 import FeedbackThreadConversation from '@/components/feedback/FeedbackThreadConversation';
 
@@ -32,10 +38,11 @@ export default async function FeedbackThreadPage({
     data: { user },
   } = await supabase.auth.getUser();
 
-  const [profile, thread] = await Promise.all([
-    user ? getUserById(user.id) : null,
-    getFeedbackThreadById(id),
-  ]);
+  const profile = user ? await getUserById(user.id) : null;
+  const thread = await getFeedbackThreadById(id, {
+    currentUserId: user?.id,
+    userRole: profile?.role,
+  });
 
   if (!thread) {
     notFound();
@@ -58,9 +65,16 @@ export default async function FeedbackThreadPage({
         <p className="text-[var(--color-text-muted)]">See the full conversation.</p>
       </div>
 
-      <FeedbackThreadCard thread={thread} variant="detail" />
+      <FeedbackThreadCard
+        thread={thread}
+        variant="detail"
+        editAction={updateFeedbackThreadAction}
+        deleteAction={deleteFeedbackThreadAction}
+      />
       <FeedbackThreadConversation
         action={createFeedbackReplyAction}
+        editReplyAction={updateFeedbackReplyAction}
+        deleteReplyAction={deleteFeedbackReplyAction}
         thread={thread}
         userRole={profile?.role}
       />

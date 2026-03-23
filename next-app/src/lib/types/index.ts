@@ -215,6 +215,9 @@ export interface FeedbackThread {
   status: FeedbackStatus;
   created_at: string;
   updated_at: string;
+  edited_at: string | null;
+  deleted_at: string | null;
+  deleted_by_author: boolean;
 }
 
 export interface FeedbackReply {
@@ -227,14 +230,37 @@ export interface FeedbackReply {
   status: FeedbackStatus;
   created_at: string;
   updated_at: string;
+  edited_at: string | null;
 }
 
-export interface FeedbackReplyView extends FeedbackReply {
+export interface FeedbackReplyView {
+  id: string;
+  thread_id: string;
+  content: string;
+  is_anonymous: boolean;
+  status: FeedbackStatus;
+  created_at: string;
+  updated_at: string;
+  editedAt: string | null;
   publicAuthorLabel: string;
+  canEdit: boolean;
+  canDelete: boolean;
 }
 
-export interface FeedbackThreadView extends FeedbackThread {
+export interface FeedbackThreadView {
+  id: string;
+  content: string;
+  is_anonymous: boolean;
+  status: FeedbackStatus;
+  created_at: string;
+  updated_at: string;
+  editedAt: string | null;
+  deletedAt: string | null;
+  deletedByAuthor: boolean;
   publicAuthorLabel: string;
+  canEdit: boolean;
+  canDelete: boolean;
+  canReply: boolean;
   replyCount: number;
   lastActivityAt: string;
   replies: FeedbackReplyView[];

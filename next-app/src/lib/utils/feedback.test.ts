@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
   buildDirectedReplyPrefix,
   getFeedbackAuthorLabel,
+  getFeedbackThreadDisplayContent,
   getNextFeedbackComposerContent,
   sortFeedbackThreads,
 } from './feedback';
@@ -22,6 +23,24 @@ test('getFeedbackAuthorLabel renders anonymous posts as Anonymous', () => {
       authorDisplayNameSnapshot: 'Yogev',
     }),
     'Yogev'
+  );
+});
+
+test('getFeedbackThreadDisplayContent returns the generic tombstone copy for deleted threads', () => {
+  assert.equal(
+    getFeedbackThreadDisplayContent({
+      content: 'Original content',
+      deletedAt: '2026-03-21T12:00:00.000Z',
+    }),
+    'This feedback was deleted.'
+  );
+
+  assert.equal(
+    getFeedbackThreadDisplayContent({
+      content: 'Original content',
+      deletedAt: null,
+    }),
+    'Original content'
   );
 });
 

@@ -56,7 +56,7 @@ test('FeedbackComposer uses an inline switch for anonymous posting', () => {
     false
   );
   assert.equal(
-    source.includes('Your identity will remain private - including from site admins.'),
+    source.includes('Your name will be hidden from other users and shown as Anonymous.'),
     true
   );
   assert.equal(source.includes('Shown as Anonymous.'), false);

@@ -15,6 +15,8 @@ interface FeedbackSortableThread {
   replies: FeedbackSortableReply[];
 }
 
+const FEEDBACK_DELETED_MESSAGE = 'This feedback was deleted.';
+
 function getThreadActivityTimestamp(thread: FeedbackSortableThread): number {
   let latestTimestamp = Date.parse(thread.created_at);
 
@@ -35,6 +37,16 @@ export function getFeedbackAuthorLabel({
   authorDisplayNameSnapshot,
 }: FeedbackAuthorLabelInput): string {
   return isAnonymous ? 'Anonymous' : authorDisplayNameSnapshot || 'Unknown';
+}
+
+export function getFeedbackThreadDisplayContent({
+  content,
+  deletedAt,
+}: {
+  content: string;
+  deletedAt: string | null;
+}): string {
+  return deletedAt ? FEEDBACK_DELETED_MESSAGE : content;
 }
 
 export function buildDirectedReplyPrefix(publicAuthorLabel: string): string {

@@ -23,8 +23,10 @@ test('survey actions enforce option permissions, closing, upload cleanup, and tw
   assert.equal(source.includes('canDisableResponderOptions'), true);
   assert.equal(source.includes('isSurveyClosed'), true);
   assert.equal(source.includes('reconcileExpiredSurvey'), true);
+  assert.equal(source.includes('updateSurveyClosingTime'), true);
   assert.equal(source.includes('queueSurveyOptionImageCleanup'), true);
   assert.equal(source.includes('cleanupSurveyOptionImages'), true);
+  assert.equal(source.indexOf('await updateSurvey(surveyId, { allow_responder_options: true })') < source.indexOf('const imageCleanup = await cleanupSurveyOptionImages()'), true);
   assert.equal(source.includes("choices.some((choice) => choice.id === optionId)"), true);
   assert.equal(source.includes("await updateSurvey(surveyId, { allow_responder_options: true })"), true);
 });

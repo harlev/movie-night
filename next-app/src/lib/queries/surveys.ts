@@ -110,21 +110,26 @@ export async function updateSurvey(
 
 export async function updateSurveyState(
   id: string,
-  state: 'draft' | 'live' | 'frozen'
+  state: 'draft' | 'live' | 'frozen',
+  adminId: string
 ): Promise<{ success: boolean; error?: string }> {
-  const supabase = await createClient();
-  const survey = await getSurveyById(id);
-  if (!survey) return { success: false, error: 'Survey not found' };
-
-  if (state === 'live' && survey.survey_type === 'movie') {
-    const existing = await getLiveSurvey();
-    if (existing && existing.id !== id) return { success: false, error: 'Another movie survey is already live' };
-  }
-
-  const updates: Record<string, unknown> = { state, updated_at: new Date().toISOString() };
-  if (state === 'frozen') updates.frozen_at = new Date().toISOString();
-  const { error } = await supabase.from('surveys').update(updates).eq('id', id);
+  const admin = createAdminClient();
+  const { error } = await admin.rpc('set_survey_state', {
+    p_survey_id: id,
+    p_state: state,
+    p_admin_id: adminId,
+  });
   return error ? { success: false, error: error.message } : { success: true };
+}
+
+export async function updateSurveyClosingTime(id: string, closesAt: string | null, adminId: string): Promise<void> {
+  const admin = createAdminClient();
+  const { error } = await admin.rpc('update_survey_closing_time', {
+    p_survey_id: id,
+    p_closes_at: closesAt,
+    p_admin_id: adminId,
+  });
+  if (error) throw error;
 }
 
 export async function updateSurveyArchived(id: string, archived: boolean): Promise<void> {
@@ -144,37 +149,15 @@ export async function addSurveyEntry(data: {
   movieId: string;
   addedBy: string;
 }): Promise<SurveyEntry> {
-  const supabase = await createClient();
-  const { data: existing } = await supabase
-    .from('survey_entries')
-    .select('*')
-    .eq('survey_id', data.surveyId)
-    .eq('movie_id', data.movieId)
-    .single();
-
-  if (existing) {
-    if (existing.removed_at) {
-      const { data: restored, error } = await supabase
-        .from('survey_entries')
-        .update({ removed_at: null, added_by: data.addedBy })
-        .eq('id', existing.id)
-        .select()
-        .single();
-      if (error) throw error;
-      return restored;
-    }
-    throw new Error('Movie already in survey');
-  }
-
-  const { data: entry, error } = await supabase.from('survey_entries').insert({
-    id: generateId(),
-    survey_id: data.surveyId,
-    movie_id: data.movieId,
-    added_by: data.addedBy,
-    created_by_mode: 'admin',
-  }).select().single();
+  const admin = createAdminClient();
+  const { data: entry, error } = await admin.rpc('add_movie_survey_entry', {
+    p_entry_id: generateId(),
+    p_survey_id: data.surveyId,
+    p_movie_id: data.movieId,
+    p_admin_id: data.addedBy,
+  });
   if (error) throw error;
-  return entry;
+  return entry as SurveyEntry;
 }
 
 export async function addOpenSurveyOption(data: {

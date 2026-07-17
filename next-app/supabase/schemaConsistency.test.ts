@@ -36,6 +36,9 @@ test('open survey migration and canonical schemas define generic entries and bal
     assert.equal(source.includes("update public.survey_entries set removed_at = now()"), true);
     assert.equal(source.includes('survey_image_cleanup_queue'), true);
     assert.equal(source.includes('delete_draft_survey'), true);
+    assert.equal(source.includes('update_survey_closing_time'), true);
+    assert.equal(source.includes('set_survey_state'), true);
+    assert.equal(source.includes('add_movie_survey_entry'), true);
     assert.equal(source.includes('Authenticated account is not active'), true);
   }
 

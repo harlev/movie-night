@@ -20,6 +20,7 @@ import {
   queueSurveyOptionImageCleanup,
   updateSurvey,
   updateSurveyArchived,
+  updateSurveyClosingTime,
   updateSurveyState,
 } from '@/lib/queries/surveys';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -184,7 +185,12 @@ export async function updateSurveyClosesAtAction(_prevState: ActionState | null,
   if (await reconcileExpiredSurvey(survey)) return { error: 'Cannot update the closing time of a closed survey' };
   const closesAtLocal = String(formData.get('closesAt') ?? '').trim();
   const closesAt = closesAtLocal ? pacificToUTC(closesAtLocal) : null;
-  await updateSurvey(surveyId, { closes_at: closesAt });
+  try {
+    await updateSurveyClosingTime(surveyId, closesAt, adminAccess.userId);
+  } catch (error) {
+    const message = error && typeof error === 'object' && 'message' in error ? String(error.message) : null;
+    return { error: message || 'Could not update the closing time' };
+  }
   revalidateSurvey(surveyId);
   return { success: true, message: closesAt ? 'Closing time updated' : 'Closing time cleared' };
 }
@@ -215,7 +221,7 @@ export async function changeSurveyStateAction(_prevState: ActionState | null, fo
     }
   }
 
-  const result = await updateSurveyState(surveyId, newState);
+  const result = await updateSurveyState(surveyId, newState, adminAccess.userId);
   if (!result.success) return { error: result.error };
   revalidateSurvey(surveyId);
   return { success: true, message: `Survey is now ${newState}` };
@@ -327,12 +333,12 @@ export async function removeOpenSurveyOptionAction(_prevState: ActionState | nul
   const choices = await getSurveyChoices(surveyId);
   if (!choices.some((choice) => choice.id === optionId)) return { error: 'Survey option not found' };
   const affected = await removeBallotOption(surveyId, optionId);
-  const imageCleanup = await cleanupSurveyOptionImages();
   const adminOptionCount = await getAdminSurveyOptionCount(surveyId);
   const responderOptionsReenabled = !survey.allow_responder_options && !canDisableResponderOptions(adminOptionCount);
   if (responderOptionsReenabled) {
     await updateSurvey(surveyId, { allow_responder_options: true });
   }
+  const imageCleanup = await cleanupSurveyOptionImages();
   revalidateSurvey(surveyId);
   return {
     success: true,

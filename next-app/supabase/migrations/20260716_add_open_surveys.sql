@@ -221,6 +221,88 @@ begin
 end;
 $$ language plpgsql security definer set search_path = public;
 
+create or replace function public.update_survey_closing_time(
+  p_survey_id text, p_closes_at timestamptz, p_admin_id uuid
+) returns void as $$
+declare v_survey public.surveys%rowtype;
+begin
+  if not exists (select 1 from public.profiles where id = p_admin_id and role = 'admin' and status = 'active') then
+    raise exception 'Admin access required';
+  end if;
+  select * into v_survey from public.surveys where id = p_survey_id for update;
+  if not found then raise exception 'Survey not found'; end if;
+  if v_survey.state = 'frozen' or (v_survey.state = 'live' and v_survey.closes_at is not null and now() >= v_survey.closes_at) then
+    raise exception 'Cannot update the closing time of a closed survey';
+  end if;
+  update public.surveys set closes_at = p_closes_at, updated_at = now() where id = p_survey_id;
+end;
+$$ language plpgsql security definer set search_path = public;
+
+create or replace function public.set_survey_state(
+  p_survey_id text, p_state text, p_admin_id uuid
+) returns void as $$
+declare v_survey public.surveys%rowtype; v_option_count integer;
+begin
+  if not exists (select 1 from public.profiles where id = p_admin_id and role = 'admin' and status = 'active') then
+    raise exception 'Admin access required';
+  end if;
+  select * into v_survey from public.surveys where id = p_survey_id for update;
+  if not found then raise exception 'Survey not found'; end if;
+  if p_state not in ('draft', 'live', 'frozen') then raise exception 'Invalid state'; end if;
+  if v_survey.state = 'frozen' or (v_survey.state = 'live' and v_survey.closes_at is not null and now() >= v_survey.closes_at) then
+    raise exception 'Cannot change the state of a closed survey';
+  end if;
+  if v_survey.state = 'draft' and p_state = 'frozen' then raise exception 'Cannot freeze a draft survey directly'; end if;
+  if p_state = 'live' then
+    if v_survey.closes_at is not null and now() >= v_survey.closes_at then raise exception 'Set a future closing time before making the survey live'; end if;
+    select count(*) into v_option_count from public.survey_entries
+      where survey_id = p_survey_id and removed_at is null
+        and (v_survey.survey_type = 'movie' or created_by_mode = 'admin');
+    if v_survey.survey_type = 'movie' and v_option_count = 0 then raise exception 'Cannot go live without any movies'; end if;
+    if v_survey.survey_type = 'open' and not v_survey.allow_responder_options and v_option_count < 2 then
+      raise exception 'Add at least two admin options or allow responders to add options';
+    end if;
+    if v_survey.survey_type = 'movie' then
+      perform pg_advisory_xact_lock(hashtext('one-live-movie-survey'));
+      if exists (select 1 from public.surveys where id <> p_survey_id and survey_type = 'movie' and state = 'live') then
+        raise exception 'Another movie survey is already live';
+      end if;
+    end if;
+  end if;
+  update public.surveys set state = p_state,
+    frozen_at = case when p_state = 'frozen' then now() else frozen_at end,
+    updated_at = now()
+  where id = p_survey_id;
+end;
+$$ language plpgsql security definer set search_path = public;
+
+create or replace function public.add_movie_survey_entry(
+  p_entry_id text, p_survey_id text, p_movie_id text, p_admin_id uuid
+) returns public.survey_entries as $$
+declare v_survey public.surveys%rowtype; v_entry public.survey_entries%rowtype;
+begin
+  if not exists (select 1 from public.profiles where id = p_admin_id and role = 'admin' and status = 'active') then
+    raise exception 'Admin access required';
+  end if;
+  select * into v_survey from public.surveys where id = p_survey_id for update;
+  if not found or v_survey.survey_type <> 'movie' then raise exception 'Movie survey not found'; end if;
+  if v_survey.state = 'frozen' or (v_survey.state = 'live' and v_survey.closes_at is not null and now() >= v_survey.closes_at) then
+    raise exception 'Cannot add movies to a closed survey';
+  end if;
+  select * into v_entry from public.survey_entries
+    where survey_id = p_survey_id and movie_id = p_movie_id for update;
+  if found then
+    if v_entry.removed_at is null then raise exception 'Movie already in survey'; end if;
+    update public.survey_entries set removed_at = null, added_by = p_admin_id
+      where id = v_entry.id returning * into v_entry;
+  else
+    insert into public.survey_entries (id, survey_id, movie_id, added_by, created_by_mode)
+      values (p_entry_id, p_survey_id, p_movie_id, p_admin_id, 'admin') returning * into v_entry;
+  end if;
+  return v_entry;
+end;
+$$ language plpgsql security definer set search_path = public;
+
 create or replace function public.submit_ballot(
   p_survey_id text,
   p_authenticated_user_id uuid,
@@ -437,6 +519,12 @@ revoke execute on function public.submit_ballot(text, uuid, text, text, text, js
 grant execute on function public.submit_ballot(text, uuid, text, text, text, jsonb) to service_role;
 revoke execute on function public.add_open_survey_option(text, text, text, text, text, text, text, uuid, uuid, text) from public, anon, authenticated;
 grant execute on function public.add_open_survey_option(text, text, text, text, text, text, text, uuid, uuid, text) to service_role;
+revoke execute on function public.update_survey_closing_time(text, timestamptz, uuid) from public, anon, authenticated;
+grant execute on function public.update_survey_closing_time(text, timestamptz, uuid) to service_role;
+revoke execute on function public.set_survey_state(text, text, uuid) from public, anon, authenticated;
+grant execute on function public.set_survey_state(text, text, uuid) to service_role;
+revoke execute on function public.add_movie_survey_entry(text, text, text, uuid) from public, anon, authenticated;
+grant execute on function public.add_movie_survey_entry(text, text, text, uuid) to service_role;
 revoke execute on function public.remove_ballot_option(text, text) from public, anon, authenticated;
 grant execute on function public.remove_ballot_option(text, text) to service_role;
 revoke execute on function public.delete_draft_survey(text) from public, anon, authenticated;

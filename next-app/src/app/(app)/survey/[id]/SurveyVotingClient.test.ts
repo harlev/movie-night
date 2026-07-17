@@ -23,6 +23,8 @@ test('SurveyVotingClient renders generic options, guest identity, and responder 
   assert.equal(source.includes('imageUrl'), true);
   assert.equal(source.includes('name="guestName"'), true);
   assert.equal(source.includes('<OpenSurveyOptionForm'), true);
+  assert.equal(source.includes('Add your own option'), false);
+  assert.equal(source.includes('Your option becomes available to everyone immediately.'), false);
   assert.equal(source.includes('survey.allowResponderOptions'), true);
   assert.equal(source.includes('Open link'), true);
 });

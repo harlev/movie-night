@@ -55,7 +55,7 @@ export async function getBallot(surveyId: string, userId: string): Promise<Ballo
 
 export async function getAllBallots(surveyId: string): Promise<Array<{
   ballot: Ballot;
-  user: { id: string; displayName: string };
+  user: { id: string; displayName: string; badge: string | null; mode: Ballot['owner_mode'] };
   ranks: Array<{
     rank: number;
     optionId: string;
@@ -94,7 +94,12 @@ export async function getAllBallots(surveyId: string): Promise<Array<{
         created_at: ballot.created_at,
         updated_at: ballot.updated_at,
       },
-      user: { id: ballot.profiles?.id || ballot.user_id || ballot.id, displayName },
+      user: {
+        id: ballot.profiles?.id || ballot.user_id || ballot.id,
+        displayName,
+        badge: ballot.owner_mode === 'guest' ? 'Guest' : ballot.owner_mode === 'anonymous' ? 'Anonymous' : null,
+        mode: ballot.owner_mode,
+      },
       ranks: (ranks || []).map((rank: any) => {
         const title = rank.survey_entries?.movies?.title ?? rank.survey_entries?.title ?? 'Unknown';
         const movieId = rank.survey_entries?.movies?.id ?? rank.survey_entry_id;

@@ -3,7 +3,7 @@ import test from 'node:test';
 import {
   getSurveyBallotOwnerBadge,
   getSurveyBallotOwnerLabel,
-} from './surveyBallotOwner.ts';
+} from './surveyBallotOwner';
 
 test('getSurveyBallotOwnerLabel returns the guest display name when present', () => {
   assert.equal(

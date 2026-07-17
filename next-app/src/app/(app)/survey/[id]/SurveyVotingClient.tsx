@@ -12,6 +12,7 @@ import type { Standing } from '@/lib/services/scoring';
 import type { Profile, SurveyChoice } from '@/lib/types';
 import { useBallot } from '@/hooks/useBallot';
 import { getRankBadgeClasses, getRankRingClasses, getStandingBorderColor, shuffle } from '@/lib/utils/rankStyles';
+import { reconcileSurveyEntries } from '@/lib/utils/surveyChoices';
 
 interface SurveyInfo {
   id: string;
@@ -75,7 +76,9 @@ export default function SurveyVotingClient({
     if (!hasShuffled.current) {
       hasShuffled.current = true;
       setShuffledEntries(shuffle(entries));
+      return;
     }
+    setShuffledEntries((current) => reconcileSurveyEntries(current, entries, shuffle));
   }, [entries]);
 
   useEffect(() => {

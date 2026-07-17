@@ -22,4 +22,7 @@ test('history and survey API use neutral survey choices', () => {
 
   const history = source('src/app/(app)/history/page.tsx');
   assert.equal(history.includes("survey.survey_type === 'open' ? 'options' : 'movies'"), true);
+  assert.equal(history.includes("cookieStore.get('survey_voter_id')"), true);
+  assert.equal(history.includes('getBallotByOwner'), true);
+  assert.equal(source('src/app/(app)/history/[id]/page.tsx').includes('getBallotByOwner'), true);
 });

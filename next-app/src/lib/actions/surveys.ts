@@ -9,14 +9,15 @@ import { getUserById } from '@/lib/queries/profiles';
 import {
   addOpenSurveyOption,
   addSurveyEntry,
+  cleanupSurveyOptionImages,
   createSurvey,
   deleteSurvey,
+  finalizeExpiredSurveys,
   getAdminSurveyOptionCount,
   getSurveyById,
   getSurveyChoices,
   getSurveyEntries,
-  removeSurveyEntry,
-  removeSurveyOption,
+  queueSurveyOptionImageCleanup,
   updateSurvey,
   updateSurveyArchived,
   updateSurveyState,
@@ -73,6 +74,13 @@ function revalidateSurvey(surveyId: string) {
   revalidatePath(`/survey/${surveyId}/simple`);
   revalidatePath('/admin/surveys');
   revalidatePath('/dashboard');
+}
+
+async function reconcileExpiredSurvey(survey: Awaited<ReturnType<typeof getSurveyById>>): Promise<boolean> {
+  if (!survey || !isSurveyClosed({ state: survey.state, closesAt: survey.closes_at })) return false;
+  if (survey.state === 'live') await finalizeExpiredSurveys();
+  revalidateSurvey(survey.id);
+  return true;
 }
 
 function imageExtension(mimeType: string): string {
@@ -173,7 +181,7 @@ export async function updateSurveyClosesAtAction(_prevState: ActionState | null,
   const surveyId = String(formData.get('surveyId') ?? '');
   const survey = await getSurveyById(surveyId);
   if (!survey) return { error: 'Survey not found' };
-  if (survey.state === 'frozen') return { error: 'Cannot update closing time of frozen survey' };
+  if (await reconcileExpiredSurvey(survey)) return { error: 'Cannot update the closing time of a closed survey' };
   const closesAtLocal = String(formData.get('closesAt') ?? '').trim();
   const closesAt = closesAtLocal ? pacificToUTC(closesAtLocal) : null;
   await updateSurvey(surveyId, { closes_at: closesAt });
@@ -189,7 +197,7 @@ export async function changeSurveyStateAction(_prevState: ActionState | null, fo
   if (!['draft', 'live', 'frozen'].includes(newState)) return { error: 'Invalid state' };
   const survey = await getSurveyById(surveyId);
   if (!survey) return { error: 'Survey not found' };
-  if (survey.state === 'frozen') return { error: 'Cannot change state of frozen survey' };
+  if (await reconcileExpiredSurvey(survey)) return { error: 'Cannot change the state of a closed survey' };
   if (survey.state === 'draft' && newState === 'frozen') return { error: 'Cannot freeze a draft survey directly' };
 
   if (newState === 'live') {
@@ -215,7 +223,12 @@ export async function changeSurveyStateAction(_prevState: ActionState | null, fo
 
 async function addOptionFromForm(
   formData: FormData,
-  creator: { mode: 'admin' | 'responder'; addedBy: string | null; voterId: string | null }
+  creator: {
+    mode: 'admin' | 'responder';
+    authenticatedUserId: string | null;
+    addedBy: string | null;
+    voterId: string | null;
+  }
 ): Promise<ActionState> {
   const surveyId = String(formData.get('surveyId') ?? '');
   const title = String(formData.get('optionTitle') ?? '').trim();
@@ -236,13 +249,18 @@ async function addOptionFromForm(
       imagePath,
       linkUrl: normalizeSurveyLink(link),
       createdByMode: creator.mode,
+      authenticatedUserId: creator.authenticatedUserId,
       addedBy: creator.addedBy,
       voterId: creator.voterId,
     });
   } catch (error) {
     if (imagePath) {
-      const admin = createAdminClient();
-      await admin.storage.from('survey-option-images').remove([imagePath]);
+      try {
+        await queueSurveyOptionImageCleanup(imagePath);
+        await cleanupSurveyOptionImages();
+      } catch {
+        return { error: 'Could not add the option. Image cleanup is queued for retry.' };
+      }
     }
     const message = error instanceof Error && /duplicate|unique/i.test(error.message)
       ? 'An active option with this title already exists'
@@ -259,17 +277,22 @@ export async function addOpenSurveyOptionAction(_prevState: ActionState | null, 
   const surveyId = String(formData.get('surveyId') ?? '');
   const survey = await getSurveyById(surveyId);
   if (!survey || survey.survey_type !== 'open') return { error: 'Open survey not found' };
-  if (survey.state === 'frozen' || isSurveyClosed({ state: survey.state, closesAt: survey.closes_at })) {
+  if (await reconcileExpiredSurvey(survey)) {
     return { error: 'This survey is closed' };
   }
-  return addOptionFromForm(formData, { mode: 'admin', addedBy: adminAccess.userId, voterId: null });
+  return addOptionFromForm(formData, {
+    mode: 'admin',
+    authenticatedUserId: adminAccess.userId,
+    addedBy: adminAccess.userId,
+    voterId: null,
+  });
 }
 
 export async function addResponderSurveyOptionAction(_prevState: ActionState | null, formData: FormData): Promise<ActionState> {
   const surveyId = String(formData.get('surveyId') ?? '');
   const survey = await getSurveyById(surveyId);
   if (!survey || survey.survey_type !== 'open') return { error: 'Open survey not found' };
-  if (survey.state !== 'live' || isSurveyClosed({ state: survey.state, closesAt: survey.closes_at })) {
+  if (survey.state !== 'live' || await reconcileExpiredSurvey(survey)) {
     return { error: 'This survey is not accepting options' };
   }
   if (!survey.allow_responder_options) return { error: 'Responders cannot add options to this survey' };
@@ -286,7 +309,11 @@ export async function addResponderSurveyOptionAction(_prevState: ActionState | n
     voterId: cookieStore.get('survey_voter_id')?.value ?? null,
   });
   if ('error' in creator) return creator;
-  return addOptionFromForm(formData, { mode: 'responder', ...creator });
+  return addOptionFromForm(formData, {
+    mode: 'responder',
+    authenticatedUserId: user?.id ?? null,
+    ...creator,
+  });
 }
 
 export async function removeOpenSurveyOptionAction(_prevState: ActionState | null, formData: FormData): Promise<ActionState> {
@@ -296,11 +323,11 @@ export async function removeOpenSurveyOptionAction(_prevState: ActionState | nul
   const optionId = String(formData.get('optionId') ?? '');
   const survey = await getSurveyById(surveyId);
   if (!survey || survey.survey_type !== 'open') return { error: 'Open survey not found' };
-  if (survey.state === 'frozen') return { error: 'Cannot remove options from a frozen survey' };
+  if (await reconcileExpiredSurvey(survey)) return { error: 'Cannot remove options from a closed survey' };
   const choices = await getSurveyChoices(surveyId);
   if (!choices.some((choice) => choice.id === optionId)) return { error: 'Survey option not found' };
-  const affected = survey.state === 'live' ? await removeBallotOption(surveyId, optionId) : 0;
-  await removeSurveyOption(optionId);
+  const affected = await removeBallotOption(surveyId, optionId);
+  const imageCleanup = await cleanupSurveyOptionImages();
   const adminOptionCount = await getAdminSurveyOptionCount(surveyId);
   const responderOptionsReenabled = !survey.allow_responder_options && !canDisableResponderOptions(adminOptionCount);
   if (responderOptionsReenabled) {
@@ -309,7 +336,7 @@ export async function removeOpenSurveyOptionAction(_prevState: ActionState | nul
   revalidateSurvey(surveyId);
   return {
     success: true,
-    message: `Option removed${affected ? `. ${affected} ballot(s) affected.` : ''}${responderOptionsReenabled ? ' Responder-added options were re-enabled.' : ''}`,
+    message: `Option removed${affected ? `. ${affected} ballot(s) affected.` : ''}${responderOptionsReenabled ? ' Responder-added options were re-enabled.' : ''}${imageCleanup.pending ? ' Image cleanup is queued for retry.' : ''}`,
   };
 }
 
@@ -320,6 +347,7 @@ export async function addMovieToSurveyAction(_prevState: ActionState | null, for
   const movieId = String(formData.get('movieId') ?? '');
   const survey = await getSurveyById(surveyId);
   if (!survey || survey.survey_type !== 'movie') return { error: 'Movie survey not found' };
+  if (await reconcileExpiredSurvey(survey)) return { error: 'Cannot add movies to a closed survey' };
   if (!movieId) return { error: 'Movie ID required' };
   const movie = await getMovieById(movieId);
   if (!movie) return { error: 'Movie not found' };
@@ -336,13 +364,11 @@ export async function removeMovieFromSurveyAction(_prevState: ActionState | null
   const adminAccess = await requireAdmin();
   if ('error' in adminAccess) return adminAccess;
   const surveyId = String(formData.get('surveyId') ?? '');
-  const entryId = String(formData.get('entryId') ?? '');
   const movieId = String(formData.get('movieId') ?? '');
   const survey = await getSurveyById(surveyId);
   if (!survey || survey.survey_type !== 'movie') return { error: 'Movie survey not found' };
-  if (survey.state === 'frozen') return { error: 'Cannot remove movies from frozen survey' };
-  const affected = survey.state === 'live' && movieId ? await removeBallotMovie(surveyId, movieId) : 0;
-  await removeSurveyEntry(entryId);
+  if (await reconcileExpiredSurvey(survey)) return { error: 'Cannot remove movies from a closed survey' };
+  const affected = movieId ? await removeBallotMovie(surveyId, movieId) : 0;
   revalidateSurvey(surveyId);
   return { success: true, message: `Movie removed${affected ? `. ${affected} ballot(s) affected.` : ''}` };
 }
@@ -354,19 +380,8 @@ export async function deleteSurveyAction(_prevState: ActionState | null, formDat
   const survey = await getSurveyById(surveyId);
   if (!survey) return { error: 'Survey not found' };
   if (survey.state !== 'draft') return { error: 'Can only delete draft surveys' };
-  if (survey.survey_type === 'open') {
-    const choices = await getSurveyChoices(surveyId);
-    const imagePaths = choices
-      .map((choice) => choice.imageUrl?.split('/survey-option-images/')[1] ?? null)
-      .filter((path): path is string => Boolean(path));
-    await deleteSurvey(surveyId);
-    if (imagePaths.length > 0) {
-      const admin = createAdminClient();
-      await admin.storage.from('survey-option-images').remove(imagePaths);
-    }
-  } else {
-    await deleteSurvey(surveyId);
-  }
+  await deleteSurvey(surveyId);
+  await cleanupSurveyOptionImages();
   redirect('/admin/surveys');
 }
 

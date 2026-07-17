@@ -3,6 +3,7 @@ export const SURVEY_OPTION_TITLE_MAX_LENGTH = 100;
 export const SURVEY_OPTION_DESCRIPTION_MAX_LENGTH = 500;
 export const SURVEY_OPTION_IMAGE_MAX_BYTES = 2_000_000;
 export const SURVEY_OPTION_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp'] as const;
+export const SURVEY_GUEST_NAME_MAX_LENGTH = 80;
 
 export type SurveySelectionSize = (typeof SURVEY_SELECTION_SIZES)[number];
 
@@ -36,6 +37,15 @@ export function normalizeSurveyLink(value: string | null | undefined): string | 
   } catch {
     return null;
   }
+}
+
+export function getSurveyGuestNameValidationError(value: string | null | undefined): string | null {
+  const name = value?.trim() ?? '';
+  if (!name) return 'Your name is required';
+  if (name.length > SURVEY_GUEST_NAME_MAX_LENGTH) {
+    return `Your name must be ${SURVEY_GUEST_NAME_MAX_LENGTH} characters or fewer`;
+  }
+  return null;
 }
 
 interface SurveyOptionImageLike {

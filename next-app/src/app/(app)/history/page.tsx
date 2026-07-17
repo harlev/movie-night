@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
+import { cookies } from 'next/headers';
 import { getLiveSurvey } from '@/lib/queries/surveys';
-import { getBallot } from '@/lib/queries/ballots';
+import { getBallotByOwner } from '@/lib/queries/ballots';
 import { getClosedPolls, getPollMovies, getPollVotes } from '@/lib/queries/polls';
 import { calculateStandings } from '@/lib/services/scoring';
 import Link from 'next/link';
@@ -27,6 +28,8 @@ export default async function HistoryPage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  const cookieStore = await cookies();
+  const voterId = cookieStore.get('survey_voter_id')?.value ?? null;
 
   // Get all frozen, non-archived surveys
   const { data: frozenSurveys } = await supabase
@@ -57,8 +60,11 @@ export default async function HistoryPage() {
         .eq('survey_id', survey.id);
 
       let userParticipated = false;
-      if (user) {
-        const userBallot = await getBallot(survey.id, user.id);
+      const owner = survey.is_anonymous
+        ? voterId ? { ownerMode: 'anonymous' as const, voterId } : null
+        : user ? { ownerMode: 'user' as const, userId: user.id } : null;
+      if (owner) {
+        const userBallot = await getBallotByOwner(survey.id, owner);
         userParticipated = !!userBallot;
       }
 

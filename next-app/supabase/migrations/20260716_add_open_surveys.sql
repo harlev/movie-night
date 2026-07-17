@@ -132,8 +132,95 @@ alter table public.ballot_change_logs alter column owner_label set not null;
 alter table public.ballot_change_logs add constraint ballot_change_logs_owner_mode_check
   check (owner_mode in ('user', 'guest', 'anonymous'));
 
+create table if not exists public.survey_image_cleanup_queue (
+  object_path text primary key,
+  attempts integer not null default 0,
+  last_error text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+alter table public.survey_image_cleanup_queue enable row level security;
+
 drop function if exists public.submit_ballot(text, uuid, jsonb);
 drop function if exists public.remove_ballot_movie(text, text);
+
+create or replace function public.add_open_survey_option(
+  p_entry_id text,
+  p_survey_id text,
+  p_title text,
+  p_description text,
+  p_image_path text,
+  p_link_url text,
+  p_created_by_mode text,
+  p_authenticated_user_id uuid,
+  p_added_by uuid,
+  p_created_by_voter_id text
+) returns public.survey_entries as $$
+declare
+  v_survey public.surveys%rowtype;
+  v_entry public.survey_entries%rowtype;
+  v_user_role text;
+  v_responder_count integer;
+  v_total_count integer;
+begin
+  select * into v_survey from public.surveys where id = p_survey_id for update;
+  if not found or v_survey.survey_type <> 'open' then raise exception 'Open survey not found'; end if;
+  if v_survey.state = 'frozen' or (v_survey.closes_at is not null and now() >= v_survey.closes_at) then
+    raise exception 'This survey is closed';
+  end if;
+  if p_created_by_mode not in ('admin', 'responder') then raise exception 'Invalid option creator'; end if;
+  if nullif(btrim(p_title), '') is null or char_length(btrim(p_title)) > 100 then raise exception 'Invalid option title'; end if;
+  if char_length(coalesce(p_description, '')) > 500 then raise exception 'Invalid option description'; end if;
+
+  if p_authenticated_user_id is not null then
+    select role into v_user_role from public.profiles
+    where id = p_authenticated_user_id and status = 'active';
+    if v_user_role is null then raise exception 'Authenticated account is not active'; end if;
+  end if;
+
+  if p_created_by_mode = 'admin' then
+    if v_user_role <> 'admin' or p_added_by is distinct from p_authenticated_user_id or p_created_by_voter_id is not null then
+      raise exception 'Admin access required';
+    end if;
+  else
+    if v_survey.state <> 'live' or not v_survey.allow_responder_options then
+      raise exception 'Responders cannot add options to this survey';
+    end if;
+    if v_user_role = 'viewer' then raise exception 'Viewers cannot add options'; end if;
+    if v_survey.members_only and coalesce(v_user_role, 'viewer') not in ('admin', 'member') then
+      raise exception 'This survey is limited to members';
+    end if;
+    if (p_added_by is not null and p_added_by is distinct from p_authenticated_user_id)
+      or (p_added_by is null and nullif(btrim(p_created_by_voter_id), '') is null) then
+      raise exception 'Invalid option creator identity';
+    end if;
+
+    select count(*) into v_total_count from public.survey_entries
+    where survey_id = p_survey_id and removed_at is null;
+    if v_total_count >= 100 then raise exception 'Too many responder options in this survey'; end if;
+
+    select count(*) into v_responder_count from public.survey_entries
+    where survey_id = p_survey_id
+      and created_by_mode = 'responder'
+      and removed_at is null
+      and (
+        (p_added_by is not null and added_by = p_added_by)
+        or (p_added_by is null and created_by_voter_id = p_created_by_voter_id)
+      );
+    if v_responder_count >= 10 then raise exception 'Too many responder options from this responder'; end if;
+  end if;
+
+  insert into public.survey_entries (
+    id, survey_id, movie_id, title, description, image_path, link_url,
+    created_by_mode, added_by, created_by_voter_id
+  ) values (
+    p_entry_id, p_survey_id, null, btrim(p_title), nullif(btrim(p_description), ''),
+    p_image_path, p_link_url, p_created_by_mode, p_added_by, p_created_by_voter_id
+  ) returning * into v_entry;
+  return v_entry;
+end;
+$$ language plpgsql security definer set search_path = public;
+
 create or replace function public.submit_ballot(
   p_survey_id text,
   p_authenticated_user_id uuid,
@@ -180,8 +267,10 @@ begin
   if p_owner_mode in ('guest', 'anonymous') and nullif(btrim(p_voter_id), '') is null then
     raise exception 'Voter identity is required';
   end if;
-  if p_owner_mode = 'guest' and nullif(btrim(p_guest_display_name), '') is null then
-    raise exception 'Guest display name is required';
+  if p_owner_mode = 'guest' and (
+    nullif(btrim(p_guest_display_name), '') is null or char_length(btrim(p_guest_display_name)) > 80
+  ) then
+    raise exception 'Guest display name must be between 1 and 80 characters';
   end if;
   v_owner_label := case
     when p_owner_mode = 'anonymous' then 'Anonymous'
@@ -260,11 +349,22 @@ create or replace function public.remove_ballot_option(
   p_survey_entry_id text
 ) returns integer as $$
 declare
+  v_survey public.surveys%rowtype;
+  v_image_path text;
   v_ballot record;
   v_current_ranks jsonb;
   v_new_ranks jsonb;
   v_affected integer := 0;
 begin
+  select * into v_survey from public.surveys where id = p_survey_id for update;
+  if not found then raise exception 'Survey not found'; end if;
+  if v_survey.state = 'frozen' or (v_survey.closes_at is not null and now() >= v_survey.closes_at) then
+    raise exception 'Cannot remove an option from a closed survey';
+  end if;
+  select image_path into v_image_path from public.survey_entries
+  where id = p_survey_entry_id and survey_id = p_survey_id and removed_at is null for update;
+  if not found then raise exception 'Survey option not found'; end if;
+
   for v_ballot in
     select distinct b.* from public.ballots b
     join public.ballot_ranks br on br.ballot_id = b.id
@@ -299,7 +399,29 @@ begin
     );
     v_affected := v_affected + 1;
   end loop;
+  if v_image_path is not null then
+    insert into public.survey_image_cleanup_queue (object_path)
+    values (v_image_path) on conflict (object_path) do nothing;
+  end if;
+  update public.survey_entries set removed_at = now()
+  where id = p_survey_entry_id and survey_id = p_survey_id;
   return v_affected;
+end;
+$$ language plpgsql security definer set search_path = public;
+
+create or replace function public.delete_draft_survey(p_survey_id text)
+returns void as $$
+declare
+  v_survey public.surveys%rowtype;
+begin
+  select * into v_survey from public.surveys where id = p_survey_id for update;
+  if not found then raise exception 'Survey not found'; end if;
+  if v_survey.state <> 'draft' then raise exception 'Can only delete draft surveys'; end if;
+  insert into public.survey_image_cleanup_queue (object_path)
+  select image_path from public.survey_entries
+  where survey_id = p_survey_id and image_path is not null
+  on conflict (object_path) do nothing;
+  delete from public.surveys where id = p_survey_id;
 end;
 $$ language plpgsql security definer set search_path = public;
 
@@ -313,10 +435,21 @@ $$ language sql security definer set search_path = public;
 
 revoke execute on function public.submit_ballot(text, uuid, text, text, text, jsonb) from public, anon, authenticated;
 grant execute on function public.submit_ballot(text, uuid, text, text, text, jsonb) to service_role;
+revoke execute on function public.add_open_survey_option(text, text, text, text, text, text, text, uuid, uuid, text) from public, anon, authenticated;
+grant execute on function public.add_open_survey_option(text, text, text, text, text, text, text, uuid, uuid, text) to service_role;
 revoke execute on function public.remove_ballot_option(text, text) from public, anon, authenticated;
 grant execute on function public.remove_ballot_option(text, text) to service_role;
+revoke execute on function public.delete_draft_survey(text) from public, anon, authenticated;
+grant execute on function public.delete_draft_survey(text) to service_role;
 revoke execute on function public.finalize_expired_surveys() from public, anon, authenticated;
 grant execute on function public.finalize_expired_surveys() to service_role;
+
+-- Ballot mutations are only allowed through the validated service-role RPCs.
+drop policy if exists "ballots_insert" on public.ballots;
+drop policy if exists "ballots_update" on public.ballots;
+drop policy if exists "ballot_ranks_insert" on public.ballot_ranks;
+drop policy if exists "ballot_ranks_delete" on public.ballot_ranks;
+drop policy if exists "ballot_change_logs_insert" on public.ballot_change_logs;
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values (

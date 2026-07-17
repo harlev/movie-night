@@ -1,7 +1,8 @@
 import { notFound } from 'next/navigation';
+import { cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
 import { getSurveyById, getSurveyChoices } from '@/lib/queries/surveys';
-import { getBallot, getAllBallots } from '@/lib/queries/ballots';
+import { getBallotByOwner, getAllBallots } from '@/lib/queries/ballots';
 import { calculateStandings, getPointsBreakdown } from '@/lib/services/scoring';
 import Link from 'next/link';
 import type { Metadata } from 'next';
@@ -59,9 +60,15 @@ export default async function HistoryDetailPage({ params }: PageProps) {
     notFound();
   }
 
+  const cookieStore = await cookies();
+  const voterId = cookieStore.get('survey_voter_id')?.value ?? null;
+  const owner = survey.is_anonymous
+    ? voterId ? { ownerMode: 'anonymous' as const, voterId } : null
+    : { ownerMode: 'user' as const, userId: user.id };
+
   const [choices, userBallot, allBallots] = await Promise.all([
     getSurveyChoices(survey.id),
-    getBallot(survey.id, user.id),
+    owner ? getBallotByOwner(survey.id, owner) : Promise.resolve(null),
     getAllBallots(survey.id),
   ]);
 

@@ -31,6 +31,11 @@ test('open survey migration and canonical schemas define generic entries and bal
     assert.equal(source.includes('owner_label text'), true);
     assert.equal(source.includes('survey-option-images'), true);
     assert.equal(source.includes('finalize_expired_surveys'), true);
+    assert.equal(source.includes('add_open_survey_option'), true);
+    assert.equal(source.includes('Too many responder options'), true);
+    assert.equal(source.includes("update public.survey_entries set removed_at = now()"), true);
+    assert.equal(source.includes('survey_image_cleanup_queue'), true);
+    assert.equal(source.includes('delete_draft_survey'), true);
     assert.equal(source.includes('Authenticated account is not active'), true);
   }
 
@@ -48,6 +53,17 @@ test('open survey migration and canonical schemas define generic entries and bal
   assert.equal(migration.includes('drop column if exists guest_session_id_hash'), true);
   assert.equal(migration.includes('ballots_owner_identity_check'), true);
   assert.equal(migration.includes('drop function if exists public.remove_ballot_movie(text, text)'), true);
+  for (const policy of [
+    'ballots_insert',
+    'ballots_update',
+    'ballot_ranks_insert',
+    'ballot_ranks_delete',
+    'ballot_change_logs_insert',
+  ]) {
+    assert.equal(migration.includes(`drop policy if exists "${policy}"`), true);
+    assert.equal(schema.includes(`create policy "${policy}"`), false);
+    assert.equal(seed.includes(`create policy "${policy}"`), false);
+  }
   assert.equal(schema.includes('owner_label text not null'), true);
   assert.equal(seed.includes('owner_label text not null'), true);
 });

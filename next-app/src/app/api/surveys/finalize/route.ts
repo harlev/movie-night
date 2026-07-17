@@ -1,6 +1,6 @@
 import { revalidatePath } from 'next/cache';
 import { NextResponse } from 'next/server';
-import { finalizeExpiredSurveys } from '@/lib/queries/surveys';
+import { cleanupSurveyOptionImages, finalizeExpiredSurveys } from '@/lib/queries/surveys';
 
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET;
@@ -12,6 +12,7 @@ export async function GET(request: Request) {
   }
 
   const surveyIds = await finalizeExpiredSurveys();
+  const imageCleanup = await cleanupSurveyOptionImages();
   for (const surveyId of surveyIds) {
     revalidatePath(`/survey/${surveyId}`);
     revalidatePath(`/admin/surveys/${surveyId}`);
@@ -21,5 +22,5 @@ export async function GET(request: Request) {
   revalidatePath('/history');
   revalidatePath('/leaderboard');
 
-  return NextResponse.json({ finalized: surveyIds.length, surveyIds });
+  return NextResponse.json({ finalized: surveyIds.length, surveyIds, imageCleanup });
 }

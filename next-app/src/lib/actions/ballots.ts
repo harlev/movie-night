@@ -8,7 +8,7 @@ import { getUserById } from '@/lib/queries/profiles';
 import { finalizeExpiredSurveys, getSurveyById, getSurveyChoices } from '@/lib/queries/surveys';
 import { createClient } from '@/lib/supabase/server';
 import { resolveSurveyBallotOwner } from '@/lib/utils/surveyAccess';
-import { isSurveyClosed } from '@/lib/utils/surveyConfig';
+import { getSurveyGuestNameValidationError, isSurveyClosed } from '@/lib/utils/surveyConfig';
 
 type BallotActionState = { error?: string; success?: boolean; message?: string };
 
@@ -41,6 +41,10 @@ export async function submitBallotAction(
   const { data: { user } } = await supabase.auth.getUser();
   const profile = user ? await getUserById(user.id) : null;
   if (user && (!profile || profile.status !== 'active')) return { error: 'Account is disabled' };
+  if (!survey.is_anonymous && !user) {
+    const guestNameError = getSurveyGuestNameValidationError(guestName);
+    if (guestNameError) return { error: guestNameError };
+  }
   const cookieStore = await cookies();
   const owner = resolveSurveyBallotOwner({
     membersOnly: survey.members_only,

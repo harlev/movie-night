@@ -61,7 +61,9 @@ test('survey queries expose generic creation, option, cleanup, and finalization 
   assert.equal(source.includes('survey_type: data.surveyType'), true);
   assert.equal(source.includes('allow_responder_options: data.allowResponderOptions'), true);
   assert.equal(source.includes('export async function addOpenSurveyOption'), true);
-  assert.equal(source.includes('export async function removeSurveyOption'), true);
+  assert.equal(source.includes("rpc('add_open_survey_option'"), true);
+  assert.equal(source.includes('export async function cleanupSurveyOptionImages'), true);
+  assert.equal(source.includes("rpc('delete_draft_survey'"), true);
   assert.equal(source.includes("storage.from('survey-option-images').remove"), true);
   assert.equal(source.includes("rpc('finalize_expired_surveys')"), true);
 });

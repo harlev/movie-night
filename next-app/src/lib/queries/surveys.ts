@@ -98,12 +98,13 @@ export async function updateSurvey(
     'title' | 'description' | 'max_rank_n' | 'closes_at' | 'allow_responder_options' | 'is_anonymous' | 'members_only'>>
 ): Promise<Survey | null> {
   const supabase = await createClient();
-  const { data: survey } = await supabase
+  const { data: survey, error } = await supabase
     .from('surveys')
     .update({ ...data, updated_at: new Date().toISOString() })
     .eq('id', id)
     .select()
     .single();
+  if (error) throw error;
   return survey;
 }
 
@@ -128,12 +129,14 @@ export async function updateSurveyState(
 
 export async function updateSurveyArchived(id: string, archived: boolean): Promise<void> {
   const supabase = await createClient();
-  await supabase.from('surveys').update({ archived, updated_at: new Date().toISOString() }).eq('id', id);
+  const { error } = await supabase.from('surveys').update({ archived, updated_at: new Date().toISOString() }).eq('id', id);
+  if (error) throw error;
 }
 
 export async function deleteSurvey(id: string): Promise<void> {
-  const supabase = await createClient();
-  await supabase.from('surveys').delete().eq('id', id);
+  const admin = createAdminClient();
+  const { error } = await admin.rpc('delete_draft_survey', { p_survey_id: id });
+  if (error) throw error;
 }
 
 export async function addSurveyEntry(data: {
@@ -181,42 +184,65 @@ export async function addOpenSurveyOption(data: {
   imagePath: string | null;
   linkUrl: string | null;
   createdByMode: 'admin' | 'responder';
+  authenticatedUserId: string | null;
   addedBy: string | null;
   voterId: string | null;
 }): Promise<SurveyEntry> {
   const admin = createAdminClient();
-  const { data: entry, error } = await admin.from('survey_entries').insert({
-    id: generateId(),
-    survey_id: data.surveyId,
-    movie_id: null,
-    title: data.title,
-    description: data.description,
-    image_path: data.imagePath,
-    link_url: data.linkUrl,
-    created_by_mode: data.createdByMode,
-    added_by: data.addedBy,
-    created_by_voter_id: data.voterId,
-  }).select().single();
+  const { data: entry, error } = await admin.rpc('add_open_survey_option', {
+    p_entry_id: generateId(),
+    p_survey_id: data.surveyId,
+    p_title: data.title,
+    p_description: data.description,
+    p_image_path: data.imagePath,
+    p_link_url: data.linkUrl,
+    p_created_by_mode: data.createdByMode,
+    p_authenticated_user_id: data.authenticatedUserId,
+    p_added_by: data.addedBy,
+    p_created_by_voter_id: data.voterId,
+  });
   if (error) throw error;
-  return entry;
+  return entry as SurveyEntry;
 }
 
-export async function removeSurveyEntry(entryId: string): Promise<void> {
-  const supabase = await createClient();
-  await supabase.from('survey_entries').update({ removed_at: new Date().toISOString() }).eq('id', entryId);
-}
-
-export async function removeSurveyOption(entryId: string): Promise<void> {
+export async function queueSurveyOptionImageCleanup(objectPath: string): Promise<void> {
   const admin = createAdminClient();
-  const { data: entry } = await admin.from('survey_entries').select('image_path').eq('id', entryId).single();
-  const { error } = await admin
-    .from('survey_entries')
-    .update({ removed_at: new Date().toISOString() })
-    .eq('id', entryId);
+  const { error } = await admin.from('survey_image_cleanup_queue').upsert(
+    { object_path: objectPath, last_error: null },
+    { onConflict: 'object_path' }
+  );
   if (error) throw error;
-  if (entry?.image_path) {
-    await admin.storage.from('survey-option-images').remove([entry.image_path]);
+}
+
+export async function cleanupSurveyOptionImages(limit = 100): Promise<{ cleaned: number; pending: number }> {
+  const admin = createAdminClient();
+  const { data: queued, error: loadError } = await admin
+    .from('survey_image_cleanup_queue')
+    .select('object_path, attempts')
+    .order('created_at')
+    .limit(limit);
+  if (loadError) throw loadError;
+  if (!queued?.length) return { cleaned: 0, pending: 0 };
+
+  const paths = queued.map((item) => item.object_path);
+  const { error: storageError } = await admin.storage.from('survey-option-images').remove(paths);
+  if (storageError) {
+    await Promise.all(queued.map(async (item) => {
+      const { error } = await admin
+        .from('survey_image_cleanup_queue')
+        .update({ attempts: item.attempts + 1, last_error: storageError.message })
+        .eq('object_path', item.object_path);
+      if (error) throw error;
+    }));
+    return { cleaned: 0, pending: queued.length };
   }
+
+  const { error: deleteError } = await admin
+    .from('survey_image_cleanup_queue')
+    .delete()
+    .in('object_path', paths);
+  if (deleteError) throw deleteError;
+  return { cleaned: paths.length, pending: 0 };
 }
 
 export async function getSurveyChoices(surveyId: string): Promise<SurveyChoice[]> {

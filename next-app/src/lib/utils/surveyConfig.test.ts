@@ -4,6 +4,7 @@ import {
   SURVEY_SELECTION_SIZES,
   canDisableResponderOptions,
   getSurveyOptionValidationError,
+  getSurveyGuestNameValidationError,
   isSurveyClosed,
   normalizeSurveyLink,
   validateSurveySelectionSize,
@@ -57,4 +58,10 @@ test('survey options require a bounded title and supported optional image', () =
     'Option image must be 2 MB or smaller'
   );
   assert.equal(getSurveyOptionValidationError({ title: 'Lunch' }), null);
+});
+
+test('public guest names are bounded on the server', () => {
+  assert.equal(getSurveyGuestNameValidationError(''), 'Your name is required');
+  assert.equal(getSurveyGuestNameValidationError('A'.repeat(81)), 'Your name must be 80 characters or fewer');
+  assert.equal(getSurveyGuestNameValidationError(' Pat '), null);
 });

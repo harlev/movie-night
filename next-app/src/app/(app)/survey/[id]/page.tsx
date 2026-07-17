@@ -1,75 +1,53 @@
-import { notFound } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
-import { getSurveyById, getSurveyEntries } from '@/lib/queries/surveys';
-import { getAllBallots, getParticipantBallot } from '@/lib/queries/ballots';
+import { cookies } from 'next/headers';
+import { notFound, redirect } from 'next/navigation';
+import { getAllBallots, getBallotByOwner } from '@/lib/queries/ballots';
 import { getUserById } from '@/lib/queries/profiles';
+import { finalizeExpiredSurveys, getSurveyById, getSurveyChoices } from '@/lib/queries/surveys';
 import { calculateStandings, getPointsBreakdown } from '@/lib/services/scoring';
+import { createClient } from '@/lib/supabase/server';
+import { isSurveyClosed } from '@/lib/utils/surveyConfig';
 import SurveyVotingClient from './SurveyVotingClient';
-import { getSurveyGuestSessionIdHash } from '@/lib/utils/surveyGuest.server';
 
 export default async function SurveyPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const guestSessionIdHash = await getSurveyGuestSessionIdHash(id);
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  let survey = await getSurveyById(id);
+  if (!survey || survey.state === 'draft') notFound();
 
-  const survey = await getSurveyById(id);
-  if (!survey || survey.state === 'draft') {
-    notFound();
+  if (isSurveyClosed({ state: survey.state, closesAt: survey.closes_at })) {
+    await finalizeExpiredSurveys();
+    survey = await getSurveyById(id);
+    if (!survey) notFound();
   }
 
-  const [entries, userBallot, allBallots, profile] = await Promise.all([
-    getSurveyEntries(survey.id),
-    getParticipantBallot({
-      surveyId: survey.id,
-      userId: user?.id ?? null,
-      guestSessionIdHash,
-    }),
-    getAllBallots(survey.id),
-    user ? getUserById(user.id) : Promise.resolve(null),
-  ]);
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  const profile = user ? await getUserById(user.id) : null;
+  if (survey.members_only && (!user || !profile || profile.status !== 'active')) {
+    redirect(`/login?next=${encodeURIComponent(`/survey/${id}`)}`);
+  }
 
-  // Calculate standings
+  const cookieStore = await cookies();
+  const voterId = cookieStore.get('survey_voter_id')?.value ?? null;
+  const owner = survey.is_anonymous
+    ? voterId ? { ownerMode: 'anonymous' as const, voterId } : null
+    : user
+      ? { ownerMode: 'user' as const, userId: user.id }
+      : voterId
+        ? { ownerMode: 'guest' as const, voterId }
+        : null;
+
+  const [choices, allBallots, userBallot] = await Promise.all([
+    getSurveyChoices(survey.id),
+    getAllBallots(survey.id),
+    owner ? getBallotByOwner(survey.id, owner) : Promise.resolve(null),
+  ]);
   const standings = calculateStandings(
-    allBallots.map((b) => ({
-      ranks: b.ranks.map((r) => ({ rank: r.rank, movieId: r.movieId })),
+    allBallots.map((ballot) => ({
+      ranks: ballot.ranks.map((rank) => ({ rank: rank.rank, optionId: rank.optionId })),
     })),
-    entries.map((e) => ({
-      id: e.movie.id,
-      title: e.movie.title,
-      tmdbId: e.movie.tmdb_id,
-      metadataSnapshot: e.movie.metadata_snapshot,
-    })),
+    choices.map((choice) => ({ id: choice.id, title: choice.title, imageUrl: choice.imageUrl })),
     survey.max_rank_n
   );
-
-  const pointsBreakdown = getPointsBreakdown(survey.max_rank_n);
-
-  // Serialize data for client
-  const clientEntries = entries.map((e) => ({
-    movieId: e.movie_id,
-    movie: {
-      id: e.movie.id,
-      title: e.movie.title,
-      metadata_snapshot: e.movie.metadata_snapshot,
-    },
-  }));
-
-  const clientBallotRanks = userBallot?.ranks.map((r) => ({
-    rank: r.rank,
-    movieId: r.movie_id,
-  })) || null;
-
-  const clientAllBallots = allBallots.map((b) => ({
-    user: b.user,
-    ranks: b.ranks.map((r) => ({
-      rank: r.rank,
-      movieId: r.movieId,
-      movieTitle: r.movieTitle,
-    })),
-  }));
 
   return (
     <SurveyVotingClient
@@ -80,16 +58,27 @@ export default async function SurveyPage({ params }: { params: Promise<{ id: str
         state: survey.state,
         maxRankN: survey.max_rank_n,
         closesAt: survey.closes_at,
+        surveyType: survey.survey_type,
+        allowResponderOptions: survey.allow_responder_options,
+        isAnonymous: survey.is_anonymous,
+        membersOnly: survey.members_only,
       }}
-      entries={clientEntries}
-      userBallotRanks={clientBallotRanks}
-      allBallots={clientAllBallots}
+      entries={choices.map((choice) => ({ optionId: choice.id, choice }))}
+      userBallotRanks={userBallot?.ranks.map((rank) => ({ rank: rank.rank, optionId: rank.survey_entry_id })) ?? null}
+      allBallots={allBallots.map((ballot) => ({
+        user: ballot.user,
+        ranks: ballot.ranks.map((rank) => ({
+          rank: rank.rank,
+          optionId: rank.optionId,
+          optionTitle: rank.optionTitle,
+        })),
+      }))}
       standings={standings}
-      pointsBreakdown={pointsBreakdown}
-      hasExistingBallot={!!userBallot}
-      userRole={profile?.role}
-      isLoggedIn={!!user}
-      currentGuestDisplayName={userBallot?.guest_display_name ?? null}
+      pointsBreakdown={getPointsBreakdown(survey.max_rank_n)}
+      hasExistingBallot={Boolean(userBallot)}
+      userRole={profile?.role ?? null}
+      isAuthenticated={Boolean(user)}
+      initialGuestName={userBallot?.guest_display_name ?? ''}
     />
   );
 }

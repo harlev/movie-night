@@ -1,12 +1,12 @@
 import { notFound, redirect } from 'next/navigation';
+import { cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
 import { getSurveyById, getSurveyEntries } from '@/lib/queries/surveys';
-import { getAllBallots, getParticipantBallot } from '@/lib/queries/ballots';
+import { getAllBallots, getBallotByOwner } from '@/lib/queries/ballots';
 import { getUserById } from '@/lib/queries/profiles';
 import { calculateStandings } from '@/lib/services/scoring';
 import SimpleVotingClient from './SimpleVotingClient';
 import { resolveSimpleSurveyView } from './simpleViewState';
-import { getSurveyGuestSessionIdHash } from '@/lib/utils/surveyGuest.server';
 
 export default async function SimpleSurveyPage({
   params,
@@ -17,23 +17,25 @@ export default async function SimpleSurveyPage({
 }) {
   const { id } = await params;
   const { view, page, submitted } = await searchParams;
-  const guestSessionIdHash = await getSurveyGuestSessionIdHash(id);
+  const cookieStore = await cookies();
+  const voterId = cookieStore.get('survey_voter_id')?.value ?? null;
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   const survey = await getSurveyById(id);
-  if (!survey || survey.state === 'draft') {
+  if (!survey || survey.state === 'draft' || survey.survey_type !== 'movie') {
     notFound();
   }
 
+  const owner = user
+    ? { ownerMode: 'user' as const, userId: user.id }
+    : voterId
+      ? { ownerMode: 'guest' as const, voterId }
+      : null;
   const [userBallot, profile] = await Promise.all([
-    getParticipantBallot({
-      surveyId: survey.id,
-      userId: user?.id ?? null,
-      guestSessionIdHash,
-    }),
+    owner ? getBallotByOwner(survey.id, owner) : Promise.resolve(null),
     user ? getUserById(user.id) : Promise.resolve(null),
   ]);
 
@@ -62,7 +64,7 @@ export default async function SimpleSurveyPage({
 
   const clientBallotRanks = userBallot?.ranks.map((r) => ({
     rank: r.rank,
-    movieId: r.movie_id,
+    movieId: r.movie?.id ?? r.movie_id ?? r.option.id,
   })) || null;
 
   let standings = undefined;

@@ -2,7 +2,8 @@ import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 
 interface RankEntry {
   rank: number;
-  movieId: string;
+  movieId?: string;
+  optionId?: string;
 }
 
 interface UseBallotOptions {
@@ -17,7 +18,7 @@ export interface FilledRankItem {
   movieId: string;
 }
 
-export function applyMovieClick(
+export function applyOptionClick(
   prev: Map<number, string>,
   movieId: string,
   maxRankN: number
@@ -50,16 +51,13 @@ export function applyMovieClick(
   return { ballot: nextBallot, assignedRank };
 }
 
-function normalizeStoredRanks(
-  storedRanks: unknown,
-  maxRankN: number
-): RankEntry[] {
-  if (!Array.isArray(storedRanks)) {
-    return [];
-  }
+/** Backwards-compatible name for movie and quick-poll callers. */
+export const applyMovieClick = applyOptionClick;
 
+function normalizeStoredRanks(storedRanks: unknown, maxRankN: number): Array<{ rank: number; movieId: string }> {
+  if (!Array.isArray(storedRanks)) return [];
   return storedRanks.filter(
-    (entry): entry is RankEntry =>
+    (entry): entry is { rank: number; movieId: string } =>
       typeof entry?.rank === 'number' &&
       entry.rank >= 1 &&
       entry.rank <= maxRankN &&
@@ -68,21 +66,17 @@ function normalizeStoredRanks(
   );
 }
 
-export function useBallot({
-  maxRankN,
-  initialRanks,
-  isLive,
-  storageKey,
-}: UseBallotOptions) {
+export function useBallot({ maxRankN, initialRanks, isLive, storageKey }: UseBallotOptions) {
   const initialBallot = useMemo(() => {
     const map = new Map<number, string>();
     if (initialRanks) {
-      for (const { rank, movieId } of initialRanks) {
-        map.set(rank, movieId);
+      for (const { rank, movieId, optionId } of initialRanks) {
+        const id = optionId ?? movieId;
+        if (id) map.set(rank, id);
       }
     }
     return map;
-  }, [initialRanks]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [ballot, setBallot] = useState<Map<number, string>>(initialBallot);
   const [lastChangedRank, setLastChangedRank] = useState<number | null>(null);
@@ -98,53 +92,21 @@ export function useBallot({
   }, []);
 
   useEffect(() => {
-    if (!storageKey || hydratedFromStorageRef.current) {
-      return;
-    }
-
+    if (!storageKey || hydratedFromStorageRef.current || initialRanks?.length) return;
     hydratedFromStorageRef.current = true;
-    if (initialRanks?.length) {
-      return;
-    }
-
     const storedValue = localStorage.getItem(storageKey);
-    if (!storedValue) {
-      return;
-    }
-
+    if (!storedValue) return;
     try {
-      const storedRanks = normalizeStoredRanks(
-        JSON.parse(storedValue),
-        maxRankN
-      );
-      if (storedRanks.length === 0) {
-        return;
-      }
-
-      const hydratedBallot = new Map<number, string>();
-      for (const { rank, movieId } of storedRanks) {
-        hydratedBallot.set(rank, movieId);
-      }
-      setBallot(hydratedBallot);
+      const storedRanks = normalizeStoredRanks(JSON.parse(storedValue), maxRankN);
+      if (storedRanks.length > 0) setBallot(new Map(storedRanks.map(({ rank, movieId }) => [rank, movieId])));
     } catch {
       localStorage.removeItem(storageKey);
     }
   }, [initialRanks, maxRankN, storageKey]);
 
   useEffect(() => {
-    if (!storageKey) {
-      return;
-    }
-
-    localStorage.setItem(
-      storageKey,
-      JSON.stringify(
-        Array.from(ballot.entries()).map(([rank, movieId]) => ({
-          rank,
-          movieId,
-        }))
-      )
-    );
+    if (!storageKey) return;
+    localStorage.setItem(storageKey, JSON.stringify(Array.from(ballot.entries()).map(([rank, movieId]) => ({ rank, movieId }))));
   }, [ballot, storageKey]);
 
   const pulseRank = useCallback((rank: number | null) => {
@@ -197,15 +159,19 @@ export function useBallot({
     (movieId: string) => {
       if (!isLive) return;
 
-      const result = applyMovieClick(ballot, movieId, maxRankN);
+      const result = applyOptionClick(ballot, movieId, maxRankN);
       setBallot(result.ballot);
       pulseRank(result.assignedRank);
     },
     [ballot, isLive, maxRankN, pulseRank]
   );
 
-  const getBallotAsArray = useCallback((): RankEntry[] => {
+  const getBallotAsArray = useCallback((): Array<{ rank: number; movieId: string }> => {
     return Array.from(ballot.entries()).map(([rank, movieId]) => ({ rank, movieId }));
+  }, [ballot]);
+
+  const getBallotAsOptionArray = useCallback((): Array<{ rank: number; optionId: string }> => {
+    return Array.from(ballot.entries()).map(([rank, optionId]) => ({ rank, optionId }));
   }, [ballot]);
 
   const isMovieSelected = useCallback(
@@ -300,8 +266,11 @@ export function useBallot({
     setRank,
     clearBallot,
     handleMovieClick,
+    handleOptionClick: handleMovieClick,
     getBallotAsArray,
+    getBallotAsOptionArray,
     isMovieSelected,
+    isOptionSelected: isMovieSelected,
     filledRankItems,
     firstEmptySlot,
     isBallotComplete,

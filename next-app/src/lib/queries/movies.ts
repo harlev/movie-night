@@ -55,6 +55,7 @@ export async function autoMarkPastDueSurveyWinnersAsWatched(referenceNow: Date =
     .from('surveys')
     .select('id, max_rank_n, frozen_at')
     .eq('state', 'frozen')
+    .eq('survey_type', 'movie')
     .not('frozen_at', 'is', null);
 
   if (surveysError || !surveys || surveys.length === 0) return 0;

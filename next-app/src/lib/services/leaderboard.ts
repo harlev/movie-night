@@ -23,7 +23,9 @@ export async function getLeaderboardData(): Promise<{
     getAllUsers(),
   ]);
 
-  const frozenSurveys = allSurveys.filter((s) => s.state === 'frozen' && !s.archived);
+  const frozenSurveys = allSurveys.filter(
+    (s) => s.state === 'frozen' && !s.archived && s.survey_type === 'movie'
+  );
   const closedPolls = allPolls.filter((p) => p.state === 'closed' && !p.archived);
 
   const totalCompletedEvents = frozenSurveys.length + closedPolls.length;
@@ -78,7 +80,7 @@ export async function getLeaderboardData(): Promise<{
     const maxRankN = survey.max_rank_n;
 
     for (const ballot of ballots) {
-      if (ballot.user.mode !== 'identified') continue;
+      if (ballot.user.mode !== 'user') continue;
 
       const userId = ballot.user.id;
 

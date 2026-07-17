@@ -9,6 +9,7 @@ const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w92';
 interface MovieData {
   id: string;
   title: string;
+  imageUrl?: string | null;
   metadata_snapshot: {
     posterPath: string | null;
     releaseDate: string | null;
@@ -77,6 +78,9 @@ export default function SortableBallotSlot({
   const overlayClasses = isOverlay
     ? 'ring-2 ring-[var(--color-primary)]/40 shadow-[0_8px_32px_rgba(212,160,83,0.2)] scale-[1.04] bg-[var(--color-surface)]'
     : '';
+  const imageSrc = movie?.imageUrl ?? (movie?.metadata_snapshot?.posterPath
+    ? `${TMDB_IMAGE_BASE}${movie.metadata_snapshot.posterPath}`
+    : null);
 
   return (
     <div
@@ -113,11 +117,11 @@ export default function SortableBallotSlot({
       {movie ? (
         <>
           <div className={`flex items-center ${compact ? 'gap-2' : 'gap-3'} flex-1 min-w-0`}>
-            {movie.metadata_snapshot?.posterPath && (
+            {imageSrc && (
               <img
-                src={`${TMDB_IMAGE_BASE}${movie.metadata_snapshot.posterPath}`}
+                src={imageSrc}
                 alt={movie.title}
-                className={`${compact ? 'w-8 h-12' : 'w-10 h-15'} object-cover rounded flex-shrink-0`}
+                className={`${movie.imageUrl ? (compact ? 'h-8 w-8' : 'h-10 w-10') : (compact ? 'w-8 h-12' : 'w-10 h-15')} object-cover rounded flex-shrink-0`}
               />
             )}
             <span className={`font-medium ${compact ? 'text-sm' : 'text-base'} text-[var(--color-text)] truncate`}>
@@ -139,7 +143,7 @@ export default function SortableBallotSlot({
         </>
       ) : (
         <span className={`text-[var(--color-text-muted)] italic ${compact ? 'text-xs' : 'text-sm'}`}>
-          Unknown movie
+          Unknown option
         </span>
       )}
     </div>

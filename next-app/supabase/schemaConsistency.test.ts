@@ -14,6 +14,63 @@ test('survey schema defines closes_at for app queries', () => {
   assert.equal(seed.includes('closes_at timestamptz'), true);
 });
 
+test('open survey migration and canonical schemas define generic entries and ballot owners', () => {
+  const schema = readSupabaseFile('schema.sql');
+  const seed = readSupabaseFile('seed.sql');
+  const migration = readSupabaseFile(path.join('migrations', '20260716_add_open_surveys.sql'));
+
+  for (const source of [schema, seed, migration]) {
+    assert.equal(source.includes("survey_type text not null default 'movie'"), true);
+    assert.equal(source.includes("survey_type in ('movie', 'open')"), true);
+    assert.equal(source.includes('allow_responder_options boolean not null default false'), true);
+    assert.equal(source.includes('is_anonymous boolean not null default false'), true);
+    assert.equal(source.includes('members_only boolean not null default true'), true);
+    assert.equal(source.includes('survey_entry_id text'), true);
+    assert.equal(source.includes("owner_mode in ('user', 'guest', 'anonymous')"), true);
+    assert.equal(source.includes('guest_display_name text'), true);
+    assert.equal(source.includes('owner_label text'), true);
+    assert.equal(source.includes('survey-option-images'), true);
+    assert.equal(source.includes('finalize_expired_surveys'), true);
+    assert.equal(source.includes('add_open_survey_option'), true);
+    assert.equal(source.includes('Too many responder options'), true);
+    assert.equal(source.includes("update public.survey_entries set removed_at = now()"), true);
+    assert.equal(source.includes('survey_image_cleanup_queue'), true);
+    assert.equal(source.includes('delete_draft_survey'), true);
+    assert.equal(source.includes('update_survey_closing_time'), true);
+    assert.equal(source.includes('set_survey_state'), true);
+    assert.equal(source.includes('add_movie_survey_entry'), true);
+    assert.equal(source.includes('Authenticated account is not active'), true);
+  }
+
+  assert.equal(migration.includes('update public.ballot_ranks br'), true);
+  assert.equal(migration.includes('ballots_survey_user_unique'), true);
+  assert.equal(migration.includes('ballots_survey_voter_unique'), true);
+  assert.equal(migration.includes('create or replace function public.submit_ballot'), true);
+  assert.equal(migration.includes('create or replace function public.remove_ballot_option'), true);
+  assert.equal(migration.includes('set rank = rank + 1000'), true);
+  assert.equal(migration.includes('revoke execute on function public.submit_ballot'), true);
+  assert.equal(migration.includes('grant execute on function public.submit_ballot'), true);
+  assert.equal(migration.includes('to service_role'), true);
+  assert.equal(migration.includes("set owner_mode = 'user' where owner_mode = 'identified'"), true);
+  assert.equal(migration.includes('guest_session_id_hash'), true);
+  assert.equal(migration.includes('drop column if exists guest_session_id_hash'), true);
+  assert.equal(migration.includes('ballots_owner_identity_check'), true);
+  assert.equal(migration.includes('drop function if exists public.remove_ballot_movie(text, text)'), true);
+  for (const policy of [
+    'ballots_insert',
+    'ballots_update',
+    'ballot_ranks_insert',
+    'ballot_ranks_delete',
+    'ballot_change_logs_insert',
+  ]) {
+    assert.equal(migration.includes(`drop policy if exists "${policy}"`), true);
+    assert.equal(schema.includes(`create policy "${policy}"`), false);
+    assert.equal(seed.includes(`create policy "${policy}"`), false);
+  }
+  assert.equal(schema.includes('owner_label text not null'), true);
+  assert.equal(seed.includes('owner_label text not null'), true);
+});
+
 test('quick poll seed includes scheduled closes_at support', () => {
   const seed = readSupabaseFile('seed.sql');
   const migration = readSupabaseFile(path.join('migrations', '20260307_add_closes_at_columns.sql'));

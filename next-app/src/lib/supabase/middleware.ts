@@ -2,16 +2,11 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import { generateId } from '@/lib/utils/id';
 
-const SURVEY_GUEST_COOKIE_NAME = 'sv_guest_id';
-
 export async function updateSession(request: NextRequest) {
   const requestHeaders = new Headers(request.headers);
-  requestHeaders.set('x-pathname', request.nextUrl.pathname);
-
+  requestHeaders.set('x-movie-night-pathname', request.nextUrl.pathname);
   let supabaseResponse = NextResponse.next({
-    request: {
-      headers: requestHeaders,
-    },
+    request: { headers: requestHeaders },
   });
 
   const supabase = createServerClient(
@@ -27,9 +22,7 @@ export async function updateSession(request: NextRequest) {
             request.cookies.set(name, value)
           );
           supabaseResponse = NextResponse.next({
-            request: {
-              headers: requestHeaders,
-            },
+            request: { headers: requestHeaders },
           });
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)
@@ -104,6 +97,8 @@ export async function updateSession(request: NextRequest) {
     }
   }
 
+  // Survey access is enforced after loading each survey's members_only setting.
+  // Every survey visitor gets a stable opaque voter id for public or anonymous ownership.
   if (pathname.startsWith('/survey/')) {
     const cookieOpts = {
       httpOnly: true,
@@ -112,13 +107,8 @@ export async function updateSession(request: NextRequest) {
       path: '/',
       maxAge: 60 * 60 * 24 * 365,
     };
-
-    if (!request.cookies.get(SURVEY_GUEST_COOKIE_NAME)?.value) {
-      supabaseResponse.cookies.set(
-        SURVEY_GUEST_COOKIE_NAME,
-        generateId(),
-        cookieOpts
-      );
+    if (!request.cookies.get('survey_voter_id')?.value) {
+      supabaseResponse.cookies.set('survey_voter_id', generateId(), cookieOpts);
     }
   }
 

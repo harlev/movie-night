@@ -25,6 +25,7 @@ const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w92';
 interface MovieData {
   id: string;
   title: string;
+  imageUrl?: string | null;
   metadata_snapshot: {
     posterPath: string | null;
     releaseDate: string | null;
@@ -100,6 +101,9 @@ export default function SortableBallotList({
           const rank = i + 1;
           const item = filledRankItems.find((f) => f.rank === rank);
           const movie = item ? getMovieById(item.movieId) : null;
+          const imageSrc = movie?.imageUrl ?? (movie?.metadata_snapshot?.posterPath
+            ? `${TMDB_IMAGE_BASE}${movie.metadata_snapshot.posterPath}`
+            : null);
 
           return (
             <div
@@ -117,11 +121,11 @@ export default function SortableBallotList({
               </span>
               {movie ? (
                 <div className={`flex items-center ${compact ? 'gap-2' : 'gap-3'} flex-1 min-w-0`}>
-                  {movie.metadata_snapshot?.posterPath && (
+                  {imageSrc && (
                     <img
-                      src={`${TMDB_IMAGE_BASE}${movie.metadata_snapshot.posterPath}`}
+                      src={imageSrc}
                       alt={movie.title}
-                      className={`${compact ? 'w-8 h-12' : 'w-10 h-15'} object-cover rounded flex-shrink-0`}
+                      className={`${movie.imageUrl ? (compact ? 'h-8 w-8' : 'h-10 w-10') : (compact ? 'w-8 h-12' : 'w-10 h-15')} object-cover rounded flex-shrink-0`}
                     />
                   )}
                   <span className={`font-medium ${compact ? 'text-sm' : 'text-base'} text-[var(--color-text)] truncate`}>
@@ -202,7 +206,7 @@ export default function SortableBallotList({
               {rank}
             </span>
             <span className={`text-[var(--color-text-muted)] italic ${compact ? 'text-xs' : 'text-sm'}`}>
-              {isFirstEmpty ? (compact ? 'Tap a movie below' : 'Select a movie below') : 'Empty'}
+              {isFirstEmpty ? (compact ? 'Tap an option below' : 'Select an option below') : 'Empty'}
             </span>
           </div>
         );

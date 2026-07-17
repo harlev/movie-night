@@ -21,3 +21,18 @@ test('SurveyDetailClient uses shared Toast component for MoviePicker warnings', 
     false
   );
 });
+
+test('SurveyDetailClient reuses its shell and branches only the survey option editor', () => {
+  const filePath = path.join(
+    process.cwd(),
+    'src/app/(admin)/admin/surveys/[id]/SurveyDetailClient.tsx'
+  );
+  const source = readFileSync(filePath, 'utf8');
+
+  assert.equal(source.includes("survey.survey_type === 'open'"), true);
+  assert.equal(source.includes('<OpenSurveyOptionForm'), true);
+  assert.equal(source.includes('<SurveyChoiceCard'), true);
+  assert.equal(source.includes('<MoviePicker'), true);
+  assert.equal(source.includes('allow_responder_options'), true);
+  assert.equal(source.includes('at least two admin options'), true);
+});

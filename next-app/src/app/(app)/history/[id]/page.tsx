@@ -1,7 +1,8 @@
 import { notFound } from 'next/navigation';
+import { cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
-import { getSurveyById, getSurveyEntries } from '@/lib/queries/surveys';
-import { getBallot, getAllBallots } from '@/lib/queries/ballots';
+import { getSurveyById, getSurveyChoices } from '@/lib/queries/surveys';
+import { getBallotByOwner, getAllBallots } from '@/lib/queries/ballots';
 import { calculateStandings, getPointsBreakdown } from '@/lib/services/scoring';
 import Link from 'next/link';
 import type { Metadata } from 'next';
@@ -59,22 +60,29 @@ export default async function HistoryDetailPage({ params }: PageProps) {
     notFound();
   }
 
-  const [entries, userBallot, allBallots] = await Promise.all([
-    getSurveyEntries(survey.id),
-    getBallot(survey.id, user.id),
+  const cookieStore = await cookies();
+  const voterId = cookieStore.get('survey_voter_id')?.value ?? null;
+  const owner = survey.is_anonymous
+    ? voterId ? { ownerMode: 'anonymous' as const, voterId } : null
+    : { ownerMode: 'user' as const, userId: user.id };
+
+  const [choices, userBallot, allBallots] = await Promise.all([
+    getSurveyChoices(survey.id),
+    owner ? getBallotByOwner(survey.id, owner) : Promise.resolve(null),
     getAllBallots(survey.id),
   ]);
 
   // Calculate final standings
   const standings = calculateStandings(
     allBallots.map((b) => ({
-      ranks: b.ranks.map((r) => ({ rank: r.rank, movieId: r.movieId })),
+      ranks: b.ranks.map((r) => ({ rank: r.rank, optionId: r.optionId })),
     })),
-    entries.map((e) => ({
-      id: e.movie.id,
-      title: e.movie.title,
-      tmdbId: e.movie.tmdb_id,
-      metadataSnapshot: e.movie.metadata_snapshot,
+    choices.map((choice) => ({
+      id: choice.id,
+      title: choice.title,
+      imageUrl: choice.imageUrl,
+      tmdbId: choice.movie?.tmdb_id,
+      metadataSnapshot: choice.movie?.metadata_snapshot,
     })),
     survey.max_rank_n
   );
@@ -154,9 +162,9 @@ export default async function HistoryDetailPage({ params }: PageProps) {
                   </span>
                   {standing.posterPath && (
                     <img
-                      src={`${TMDB_IMAGE_BASE}${standing.posterPath}`}
+                      src={standing.posterPath.startsWith('http') ? standing.posterPath : `${TMDB_IMAGE_BASE}${standing.posterPath}`}
                       alt={standing.title}
-                      className="w-12 h-18 object-cover rounded-lg"
+                      className={`${survey.survey_type === 'open' ? 'h-12 w-12' : 'w-12 h-18'} object-cover rounded-lg`}
                     />
                   )}
                   <div className="flex-1 min-w-0">
@@ -205,7 +213,7 @@ export default async function HistoryDetailPage({ params }: PageProps) {
               <div className="space-y-2">
                 {[...userBallot.ranks]
                   .sort((a, b) => a.rank - b.rank)
-                  .map(({ rank, movie }) => (
+                  .map(({ rank, movie, option }) => (
                     <div
                       key={rank}
                       className="flex items-center gap-3 p-2.5 bg-[var(--color-surface-elevated)] rounded-xl"
@@ -213,7 +221,7 @@ export default async function HistoryDetailPage({ params }: PageProps) {
                       <span className={`w-7 h-7 flex items-center justify-center rounded-full text-sm font-bold ${getRankBadgeClasses(rank)}`}>
                         {rank}
                       </span>
-                      <span className="text-[var(--color-text)]">{movie.title}</span>
+                      <span className="text-[var(--color-text)]">{movie?.title ?? option.title}</span>
                     </div>
                   ))}
               </div>

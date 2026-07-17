@@ -14,3 +14,33 @@ test('SurveyVotingClient keeps the regular survey experience on the non-/simple 
   assert.equal(source.includes('SortableBallotList'), true);
   assert.equal(source.includes('Your Ballot'), true);
 });
+
+test('SurveyVotingClient renders generic options, guest identity, and responder option controls', () => {
+  const filePath = path.join(process.cwd(), 'src/app/(app)/survey/[id]/SurveyVotingClient.tsx');
+  const source = readFileSync(filePath, 'utf8');
+
+  assert.equal(source.includes('optionId'), true);
+  assert.equal(source.includes('imageUrl'), true);
+  assert.equal(source.includes('name="guestName"'), true);
+  assert.equal(source.includes('<OpenSurveyOptionForm'), true);
+  assert.equal(source.includes('Add your own option'), false);
+  assert.equal(source.includes('Your option becomes available to everyone immediately.'), false);
+  assert.equal(source.includes('survey.allowResponderOptions'), true);
+  assert.equal(source.includes('Open link'), true);
+
+  const optionListIndex = source.indexOf('filteredEntries.map');
+  const responderEntryIndex = source.indexOf('<OpenSurveyOptionForm');
+  assert.ok(optionListIndex >= 0);
+  assert.ok(responderEntryIndex > optionListIndex);
+  assert.equal(source.includes('<div className="mt-4">{canAddOptions && <OpenSurveyOptionForm surveyId={survey.id} responder />}</div>'), true);
+});
+
+test('survey page conditionally enforces members-only access and resolves browser-owned ballots', () => {
+  const source = readFileSync(path.join(process.cwd(), 'src/app/(app)/survey/[id]/page.tsx'), 'utf8');
+
+  assert.equal(source.includes('survey.members_only'), true);
+  assert.equal(source.includes('redirect(`/login?next='), true);
+  assert.equal(source.includes('getBallotByOwner'), true);
+  assert.equal(source.includes("cookieStore.get('survey_voter_id')"), true);
+  assert.equal(source.includes('getSurveyChoices'), true);
+});

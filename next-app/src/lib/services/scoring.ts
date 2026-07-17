@@ -1,4 +1,6 @@
-export interface MovieScore {
+export interface ChoiceScore {
+  optionId: string;
+  /** Compatibility alias used by existing movie-survey UI. */
   movieId: string;
   title: string;
   tmdbId: number;
@@ -7,7 +9,7 @@ export interface MovieScore {
   rankCounts: number[];
 }
 
-export interface Standing extends MovieScore {
+export interface Standing extends ChoiceScore {
   position: number;
   tied: boolean;
 }
@@ -18,31 +20,35 @@ export function calculatePoints(rank: number, maxRankN: number): number {
 
 export function calculateStandings(
   ballots: Array<{
-    ranks: Array<{ rank: number; movieId: string }>;
+    ranks: Array<{ rank: number; optionId?: string; movieId?: string }>;
   }>,
-  movies: Array<{
+  choices: Array<{
     id: string;
     title: string;
-    tmdbId: number;
-    metadataSnapshot: { posterPath: string | null } | null;
+    imageUrl?: string | null;
+    tmdbId?: number;
+    metadataSnapshot?: { posterPath: string | null } | null;
   }>,
   maxRankN: number
 ): Standing[] {
-  const scores = new Map<string, MovieScore>();
-  for (const movie of movies) {
-    scores.set(movie.id, {
-      movieId: movie.id,
-      title: movie.title,
-      tmdbId: movie.tmdbId,
-      posterPath: movie.metadataSnapshot?.posterPath || null,
+  const scores = new Map<string, ChoiceScore>();
+  for (const choice of choices) {
+    scores.set(choice.id, {
+      optionId: choice.id,
+      movieId: choice.id,
+      title: choice.title,
+      tmdbId: choice.tmdbId ?? 0,
+      posterPath: choice.imageUrl ?? choice.metadataSnapshot?.posterPath ?? null,
       totalPoints: 0,
       rankCounts: new Array(maxRankN).fill(0)
     });
   }
 
   for (const ballot of ballots) {
-    for (const { rank, movieId } of ballot.ranks) {
-      const score = scores.get(movieId);
+    for (const rankEntry of ballot.ranks) {
+      const optionId = rankEntry.optionId ?? rankEntry.movieId;
+      const score = optionId ? scores.get(optionId) : undefined;
+      const { rank } = rankEntry;
       if (score && rank >= 1 && rank <= maxRankN) {
         score.totalPoints += calculatePoints(rank, maxRankN);
         score.rankCounts[rank - 1]++;
@@ -61,7 +67,8 @@ export function calculateStandings(
     }
     const titleCompare = a.title.localeCompare(b.title);
     if (titleCompare !== 0) return titleCompare;
-    return a.tmdbId - b.tmdbId;
+    const tmdbCompare = a.tmdbId - b.tmdbId;
+    return tmdbCompare !== 0 ? tmdbCompare : a.optionId.localeCompare(b.optionId);
   });
 
   const standings: Standing[] = [];
@@ -104,7 +111,7 @@ export function getPointsBreakdown(
     breakdown.push({
       rank,
       points: calculatePoints(rank, maxRankN),
-      label: `Rank ${rank}`
+      label: maxRankN === 1 ? 'Choice' : `Rank ${rank}`
     });
   }
   return breakdown;

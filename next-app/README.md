@@ -18,12 +18,12 @@ Live at [fcmovienight.org](https://fcmovienight.org)
 ### For Members
 - **Movie Catalog** — Browse, search, and suggest movies with TMDb integration (posters, trailers, ratings)
 - **Comments** — Discuss movies with other members
-- **Ranked-Choice Surveys** — Vote on curated movie lists by ranking your top picks
+- **Reusable Surveys** — Vote on movies or custom options using select-one or ranked top-3/top-5 ballots
 - **Live Results** — See standings update in real-time as votes come in
 - **Survey History** — Review past survey results and your voting history
 
 ### For Admins
-- **Survey Management** — Create surveys, add movies, control state (draft/live/frozen)
+- **Survey Management** — Create movie or open surveys, configure access/anonymity, add custom options, share, and schedule closing
 - **Quick Polls** — Public shareable polls with QR codes, no login required for voters
 - **User Management** — Edit names, change roles, disable/enable accounts
 - **Invite System** — Generate invite codes for new member signups
@@ -35,6 +35,14 @@ Live at [fcmovienight.org](https://fcmovienight.org)
 - Cookie-based voter identity (logged-in users sync across devices)
 - Optional sign-in via Google or magic link (auto-creates profile)
 - Real-time standings with auto-refresh
+
+### Open Surveys
+- Admins choose **Open survey** under **Admin > Surveys > New Survey** and set the title, description, selection method, access, anonymity, and closing time.
+- Options have a required title plus optional description, HTTPS/HTTP link, and a small PNG/JPEG/WEBP image (up to 2 MB).
+- Responders may add stored options when enabled. This setting is required until the admin has supplied at least two options.
+- Surveys default to named responses and members-only access. Public named responders provide a display name; anonymous surveys never expose responder names.
+- Closing freezes the survey and determines the winner from the shared scoring model. The database reconciles expiration on survey reads/writes, and the scheduled endpoint provides background finalization.
+- The shared survey button always copies or shares the canonical `/survey/<id>` URL.
 
 ## Project Structure
 
@@ -156,6 +164,7 @@ supabase stop
 3. Apply migrations in order:
    - `supabase/migrations/20260214_add_quick_polls.sql` — quick polls tables
    - `supabase/migrations/20260215_poll_vote_disabled.sql` — vote disable feature
+   - `supabase/migrations/20260716_add_open_surveys.sql` — open surveys, generic entries/ballots, option images, and finalization
 
 #### Configure Supabase Auth
 
@@ -197,6 +206,9 @@ TMDB_API_KEY=your-tmdb-api-key
 
 # Site URL (used for OAuth redirects and magic links)
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
+
+# Protects /api/surveys/finalize (Vercel Cron sends this as a Bearer token)
+CRON_SECRET=replace-with-a-long-random-secret
 ```
 
 | Variable | Where to find it | Exposed to browser? |
@@ -206,6 +218,7 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
 | `SUPABASE_SERVICE_ROLE_KEY` | `supabase start` output or Supabase > Settings > API | No (server only) |
 | `TMDB_API_KEY` | themoviedb.org account | No (server only) |
 | `NEXT_PUBLIC_SITE_URL` | Your deployment URL | Yes |
+| `CRON_SECRET` | A generated deployment secret | No (server only) |
 
 ### 4. Bootstrap the first admin
 
@@ -310,9 +323,9 @@ docker compose exec app sh
 | `profiles` | User accounts (synced with Supabase Auth) |
 | `movies` | Movie catalog with TMDb metadata snapshots |
 | `movie_comments` | User comments on movies |
-| `surveys` | Ranked-choice surveys (draft/live/frozen) |
-| `survey_entries` | Movies included in a survey |
-| `ballots` | User votes in a survey |
+| `surveys` | Movie/open surveys and their access, anonymity, and closing settings |
+| `survey_entries` | Movie choices or stored custom options and image paths |
+| `ballots` | Member, guest, or anonymous survey responses |
 | `ballot_ranks` | Individual rank entries per ballot |
 | `ballot_change_logs` | Audit trail for ballot changes |
 | `invites` | Admin-generated invite codes |

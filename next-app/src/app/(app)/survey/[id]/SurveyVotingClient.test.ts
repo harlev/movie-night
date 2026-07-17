@@ -32,6 +32,7 @@ test('SurveyVotingClient renders generic options, guest identity, and responder 
   const responderEntryIndex = source.indexOf('<OpenSurveyOptionForm');
   assert.ok(optionListIndex >= 0);
   assert.ok(responderEntryIndex > optionListIndex);
+  assert.equal(source.includes('<div className="mt-4">{canAddOptions && <OpenSurveyOptionForm surveyId={survey.id} responder />}</div>'), true);
 });
 
 test('survey page conditionally enforces members-only access and resolves browser-owned ballots', () => {

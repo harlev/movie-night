@@ -270,7 +270,7 @@ export default function SurveyVotingClient({
               </div>
             )}
 
-            {canAddOptions && <OpenSurveyOptionForm surveyId={survey.id} responder />}
+            <div className="mt-4">{canAddOptions && <OpenSurveyOptionForm surveyId={survey.id} responder />}</div>
           </section>
         </div>
 

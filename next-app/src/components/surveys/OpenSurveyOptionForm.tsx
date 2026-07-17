@@ -16,12 +16,10 @@ export function OpenSurveyOptionForm({ surveyId, responder = false }: OpenSurvey
   const titleInputRef = useRef<HTMLInputElement>(null);
   const responderDetailsRef = useRef<HTMLDetailsElement>(null);
   const responderSummaryRef = useRef<HTMLElement>(null);
-  const optionalDetailsRef = useRef<HTMLDetailsElement>(null);
   const visibleState = state === dismissedState ? null : state;
 
   const closeResponderDisclosure = useCallback(() => {
     responderSummaryRef.current?.focus();
-    if (optionalDetailsRef.current) optionalDetailsRef.current.open = false;
     if (responderDetailsRef.current) responderDetailsRef.current.open = false;
   }, []);
 
@@ -100,18 +98,7 @@ export function OpenSurveyOptionForm({ surveyId, responder = false }: OpenSurvey
         />
       </div>
 
-      {responder ? (
-        <details ref={optionalDetailsRef}>
-          <summary className="flex cursor-pointer list-none items-center gap-3 rounded-lg border border-[var(--color-primary)]/30 bg-[var(--color-primary)]/10 px-3 py-2 text-left transition-colors hover:bg-[var(--color-primary)]/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/40 [&::-webkit-details-marker]:hidden">
-            <span aria-hidden="true" className="flex h-7 w-7 flex-none items-center justify-center rounded-full bg-[var(--color-primary)]/20 text-lg leading-none text-[var(--color-primary)]">+</span>
-            <span className="min-w-0">
-              <span className="block text-sm font-medium text-[var(--color-text)]">Add details</span>
-              <span className="block text-xs text-[var(--color-text-muted)]">Make it stand out · image, link &amp; description</span>
-            </span>
-          </summary>
-          <div className="mt-3">{optionalFields}</div>
-        </details>
-      ) : optionalFields}
+      {optionalFields}
 
       {visibleState?.error && <p role="alert" className="text-sm text-[var(--color-error)]">{visibleState.error}</p>}
       {visibleState?.success && !responder && <p role="status" className="text-sm text-[var(--color-success)]">{visibleState.message}</p>}

@@ -133,6 +133,7 @@ alter table public.ballot_change_logs add constraint ballot_change_logs_owner_mo
   check (owner_mode in ('user', 'guest', 'anonymous'));
 
 drop function if exists public.submit_ballot(text, uuid, jsonb);
+drop function if exists public.remove_ballot_movie(text, text);
 create or replace function public.submit_ballot(
   p_survey_id text,
   p_authenticated_user_id uuid,

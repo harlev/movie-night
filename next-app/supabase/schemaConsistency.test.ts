@@ -47,6 +47,7 @@ test('open survey migration and canonical schemas define generic entries and bal
   assert.equal(migration.includes('guest_session_id_hash'), true);
   assert.equal(migration.includes('drop column if exists guest_session_id_hash'), true);
   assert.equal(migration.includes('ballots_owner_identity_check'), true);
+  assert.equal(migration.includes('drop function if exists public.remove_ballot_movie(text, text)'), true);
   assert.equal(schema.includes('owner_label text not null'), true);
   assert.equal(seed.includes('owner_label text not null'), true);
 });

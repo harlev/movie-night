@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useEffect, useRef, useState } from 'react';
+import { useActionState, useCallback, useEffect, useRef, useState } from 'react';
 import { addOpenSurveyOptionAction, addResponderSurveyOptionAction } from '@/lib/actions/surveys';
 
 interface OpenSurveyOptionFormProps {
@@ -15,23 +15,28 @@ export function OpenSurveyOptionForm({ surveyId, responder = false }: OpenSurvey
   const formRef = useRef<HTMLFormElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
   const responderDetailsRef = useRef<HTMLDetailsElement>(null);
+  const responderSummaryRef = useRef<HTMLElement>(null);
   const optionalDetailsRef = useRef<HTMLDetailsElement>(null);
   const visibleState = state === dismissedState ? null : state;
+
+  const closeResponderDisclosure = useCallback(() => {
+    responderSummaryRef.current?.focus();
+    if (optionalDetailsRef.current) optionalDetailsRef.current.open = false;
+    if (responderDetailsRef.current) responderDetailsRef.current.open = false;
+  }, []);
 
   function closeResponderForm() {
     formRef.current?.reset();
     setDismissedState(state);
-    if (optionalDetailsRef.current) optionalDetailsRef.current.open = false;
-    if (responderDetailsRef.current) responderDetailsRef.current.open = false;
+    closeResponderDisclosure();
   }
 
   useEffect(() => {
     if (!responder || !state?.success) return;
     formRef.current?.reset();
     setDismissedState(state);
-    if (optionalDetailsRef.current) optionalDetailsRef.current.open = false;
-    if (responderDetailsRef.current) responderDetailsRef.current.open = false;
-  }, [responder, state]);
+    closeResponderDisclosure();
+  }, [closeResponderDisclosure, responder, state]);
 
   const optionalFields = (
     <div className="grid gap-3 sm:grid-cols-2">
@@ -48,7 +53,6 @@ export function OpenSurveyOptionForm({ surveyId, responder = false }: OpenSurvey
       <div>
         <label htmlFor={`${responder ? 'responder-' : ''}option-link`} className="mb-1 block text-sm font-medium text-[var(--color-text)]">Link (optional)</label>
         <input
-          ref={titleInputRef}
           id={`${responder ? 'responder-' : ''}option-link`}
           name="optionLink"
           type="url"
@@ -86,6 +90,7 @@ export function OpenSurveyOptionForm({ surveyId, responder = false }: OpenSurvey
           Option title
         </label>
         <input
+          ref={titleInputRef}
           id={`${responder ? 'responder-' : ''}option-title`}
           name="optionTitle"
           required
@@ -135,13 +140,15 @@ export function OpenSurveyOptionForm({ surveyId, responder = false }: OpenSurvey
       ref={responderDetailsRef}
       className="group"
       onToggle={(event) => {
-        if (event.currentTarget.open) {
-          setDismissedState(state);
-          titleInputRef.current?.focus();
-        }
+        if (!event.currentTarget.open) return;
+        setDismissedState(state);
+        titleInputRef.current?.focus();
       }}
     >
-      <summary className="inline-flex cursor-pointer list-none items-center gap-2 rounded-lg px-2 py-2 text-sm text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface)] hover:text-[var(--color-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/40 [&::-webkit-details-marker]:hidden">
+      <summary
+        ref={responderSummaryRef}
+        className="inline-flex cursor-pointer list-none items-center gap-2 rounded-lg px-2 py-2 text-sm text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface)] hover:text-[var(--color-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/40 [&::-webkit-details-marker]:hidden"
+      >
         <span aria-hidden="true" className="flex h-6 w-6 items-center justify-center rounded-full border border-[var(--color-border)] text-base leading-none">+</span>
         <span>Add an option</span>
       </summary>

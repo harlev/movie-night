@@ -50,13 +50,23 @@ export interface Survey {
   updated_at: string;
   frozen_at: string | null;
   closes_at: string | null;
+  survey_type: 'movie' | 'open';
+  allow_responder_options: boolean;
+  is_anonymous: boolean;
+  members_only: boolean;
 }
 
 export interface SurveyEntry {
   id: string;
   survey_id: string;
-  movie_id: string;
-  added_by: string;
+  movie_id: string | null;
+  added_by: string | null;
+  title: string | null;
+  description: string | null;
+  image_path: string | null;
+  link_url: string | null;
+  created_by_mode: 'admin' | 'responder';
+  created_by_voter_id: string | null;
   removed_at: string | null;
   created_at: string;
 }
@@ -64,10 +74,10 @@ export interface SurveyEntry {
 export interface Ballot {
   id: string;
   survey_id: string;
-  owner_mode: 'identified' | 'guest';
   user_id: string | null;
+  owner_mode: 'user' | 'guest' | 'anonymous';
+  voter_id: string | null;
   guest_display_name: string | null;
-  guest_session_id_hash: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -76,15 +86,27 @@ export interface BallotRank {
   id: string;
   ballot_id: string;
   rank: number;
-  movie_id: string;
+  survey_entry_id: string;
+  movie_id?: string | null;
+}
+
+export interface SurveyChoice {
+  id: string;
+  surveyId: string;
+  title: string;
+  description: string | null;
+  imageUrl: string | null;
+  linkUrl: string | null;
+  movie: Pick<Movie, 'id' | 'title' | 'tmdb_id' | 'metadata_snapshot' | 'watched' | 'watched_at'> | null;
+  createdByMode: 'admin' | 'responder';
 }
 
 export interface BallotChangeLog {
   id: string;
   survey_id: string;
   user_id: string | null;
-  owner_mode: 'identified' | 'guest';
-  owner_label: string;
+  owner_mode: 'user' | 'guest' | 'anonymous';
+  voter_id: string | null;
   previous_ranks: Array<{ rank: number; movieId: string }> | null;
   new_ranks: Array<{ rank: number; movieId: string }> | null;
   reason: 'user_update' | 'movie_removed' | 'system';
@@ -208,8 +230,8 @@ export type FeedbackSortMode = 'active' | 'new';
 
 export interface FeedbackThread {
   id: string;
-  author_id: string | null;
-  author_display_name_snapshot: string | null;
+  author_id: string;
+  author_display_name_snapshot: string;
   content: string;
   is_anonymous: boolean;
   status: FeedbackStatus;
@@ -223,8 +245,8 @@ export interface FeedbackThread {
 export interface FeedbackReply {
   id: string;
   thread_id: string;
-  author_id: string | null;
-  author_display_name_snapshot: string | null;
+  author_id: string;
+  author_display_name_snapshot: string;
   content: string;
   is_anonymous: boolean;
   status: FeedbackStatus;

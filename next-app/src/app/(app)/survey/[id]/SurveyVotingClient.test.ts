@@ -27,6 +27,11 @@ test('SurveyVotingClient renders generic options, guest identity, and responder 
   assert.equal(source.includes('Your option becomes available to everyone immediately.'), false);
   assert.equal(source.includes('survey.allowResponderOptions'), true);
   assert.equal(source.includes('Open link'), true);
+
+  const optionListIndex = source.indexOf('filteredEntries.map');
+  const responderEntryIndex = source.indexOf('<OpenSurveyOptionForm');
+  assert.ok(optionListIndex >= 0);
+  assert.ok(responderEntryIndex > optionListIndex);
 });
 
 test('survey page conditionally enforces members-only access and resolves browser-owned ballots', () => {

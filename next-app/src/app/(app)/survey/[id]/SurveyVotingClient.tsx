@@ -159,8 +159,6 @@ export default function SurveyVotingClient({
         </div>
       )}
 
-      {canAddOptions && <OpenSurveyOptionForm surveyId={survey.id} responder />}
-
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="min-w-0 space-y-4">
           <section className="overflow-hidden rounded-xl border border-[var(--color-border)]/50 bg-[var(--color-surface)] p-6 shadow-lg shadow-black/20">
@@ -271,6 +269,8 @@ export default function SurveyVotingClient({
                 })}
               </div>
             )}
+
+            {canAddOptions && <OpenSurveyOptionForm surveyId={survey.id} responder />}
           </section>
         </div>
 

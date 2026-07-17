@@ -78,7 +78,7 @@ export function OpenSurveyOptionForm({ surveyId, responder = false }: OpenSurvey
       ref={formRef}
       action={formAction}
       className={responder
-        ? 'mt-2 max-w-xl space-y-3 rounded-xl border border-[var(--color-border)]/60 bg-[var(--color-surface)] p-3'
+        ? 'mt-3 space-y-3 rounded-xl border border-[var(--color-primary)]/25 bg-[var(--color-primary)]/5 p-4'
         : 'space-y-3'}
     >
       <input type="hidden" name="surveyId" value={surveyId} />
@@ -102,8 +102,12 @@ export function OpenSurveyOptionForm({ surveyId, responder = false }: OpenSurvey
 
       {responder ? (
         <details ref={optionalDetailsRef}>
-          <summary className="w-fit cursor-pointer list-none text-sm text-[var(--color-text-muted)] hover:text-[var(--color-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/40 [&::-webkit-details-marker]:hidden">
-            Add details
+          <summary className="flex cursor-pointer list-none items-center gap-3 rounded-lg border border-[var(--color-primary)]/30 bg-[var(--color-primary)]/10 px-3 py-2 text-left transition-colors hover:bg-[var(--color-primary)]/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/40 [&::-webkit-details-marker]:hidden">
+            <span aria-hidden="true" className="flex h-7 w-7 flex-none items-center justify-center rounded-full bg-[var(--color-primary)]/20 text-lg leading-none text-[var(--color-primary)]">+</span>
+            <span className="min-w-0">
+              <span className="block text-sm font-medium text-[var(--color-text)]">Add details</span>
+              <span className="block text-xs text-[var(--color-text-muted)]">Make it stand out · image, link &amp; description</span>
+            </span>
           </summary>
           <div className="mt-3">{optionalFields}</div>
         </details>
@@ -147,10 +151,14 @@ export function OpenSurveyOptionForm({ surveyId, responder = false }: OpenSurvey
     >
       <summary
         ref={responderSummaryRef}
-        className="inline-flex cursor-pointer list-none items-center gap-2 rounded-lg px-2 py-2 text-sm text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface)] hover:text-[var(--color-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/40 [&::-webkit-details-marker]:hidden"
+        className="flex cursor-pointer list-none items-center gap-3 rounded-xl border border-dashed border-[var(--color-primary)]/60 bg-[var(--color-primary)]/10 px-4 py-3 text-left transition-all hover:-translate-y-px hover:border-[var(--color-primary)] hover:bg-[var(--color-primary)]/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/50 [&::-webkit-details-marker]:hidden"
       >
-        <span aria-hidden="true" className="flex h-6 w-6 items-center justify-center rounded-full border border-[var(--color-border)] text-base leading-none">+</span>
-        <span>Add an option</span>
+        <span aria-hidden="true" className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-[var(--color-primary)] text-xl leading-none text-white shadow-sm shadow-[var(--color-primary)]/40">+</span>
+        <span className="min-w-0 flex-1">
+          <span className="block font-medium text-[var(--color-text)]">Add your own option</span>
+          <span className="block text-sm text-[var(--color-text-muted)]">Have an idea? Add it to the vote.</span>
+        </span>
+        <span className="hidden rounded-full bg-[var(--color-primary)] px-3 py-1 text-xs font-medium text-white sm:block">Add</span>
       </summary>
       {form}
     </details>

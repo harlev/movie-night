@@ -28,6 +28,7 @@ test('open survey migration and canonical schemas define generic entries and bal
     assert.equal(source.includes('survey_entry_id text'), true);
     assert.equal(source.includes("owner_mode in ('user', 'guest', 'anonymous')"), true);
     assert.equal(source.includes('guest_display_name text'), true);
+    assert.equal(source.includes('owner_label text'), true);
     assert.equal(source.includes('survey-option-images'), true);
     assert.equal(source.includes('finalize_expired_surveys'), true);
   }
@@ -41,6 +42,12 @@ test('open survey migration and canonical schemas define generic entries and bal
   assert.equal(migration.includes('revoke execute on function public.submit_ballot'), true);
   assert.equal(migration.includes('grant execute on function public.submit_ballot'), true);
   assert.equal(migration.includes('to service_role'), true);
+  assert.equal(migration.includes("set owner_mode = 'user' where owner_mode = 'identified'"), true);
+  assert.equal(migration.includes('guest_session_id_hash'), true);
+  assert.equal(migration.includes('drop column if exists guest_session_id_hash'), true);
+  assert.equal(migration.includes('ballots_owner_identity_check'), true);
+  assert.equal(schema.includes('owner_label text not null'), true);
+  assert.equal(seed.includes('owner_label text not null'), true);
 });
 
 test('quick poll seed includes scheduled closes_at support', () => {

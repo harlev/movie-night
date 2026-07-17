@@ -64,7 +64,7 @@ export default async function HistoryPage() {
 
       return {
         ...survey,
-        movieCount: entryCount || 0,
+        optionCount: entryCount || 0,
         ballotCount: ballotCount || 0,
         userParticipated,
       };
@@ -164,7 +164,9 @@ export default async function HistoryPage() {
                         </p>
                       )}
                       <div className="flex items-center gap-4 mt-2 text-xs text-[var(--color-text-muted)]">
-                        <span>{survey.movieCount} movies</span>
+                        <span>
+                          {survey.optionCount} {survey.survey_type === 'open' ? 'options' : 'movies'}
+                        </span>
                         <span>{survey.ballotCount} votes</span>
                         <span>Closed {formatDate(survey.frozen_at)}</span>
                       </div>

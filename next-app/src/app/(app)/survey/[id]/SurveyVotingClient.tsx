@@ -1,26 +1,17 @@
 'use client';
 
-import {
-  startTransition,
-  useState,
-  useEffect,
-  useRef,
-  useActionState,
-  useCallback,
-  useMemo,
-  type FormEvent,
-} from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
+import { useActionState, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import CountdownTimer from '@/components/CountdownTimer';
+import ShareButton from '@/components/ShareButton';
+import SortableBallotList from '@/components/SortableBallotList';
+import { OpenSurveyOptionForm } from '@/components/surveys/OpenSurveyOptionForm';
 import { submitBallotAction } from '@/lib/actions/ballots';
 import type { Standing } from '@/lib/services/scoring';
+import type { Profile, SurveyChoice } from '@/lib/types';
 import { useBallot } from '@/hooks/useBallot';
-import { getRankBadgeClasses, getRankOverlayClasses, getRankRingClasses, getStandingBorderColor, shuffle } from '@/lib/utils/rankStyles';
-import SortableBallotList from '@/components/SortableBallotList';
-import CountdownTimer from '@/components/CountdownTimer';
-import SurveyIdentityModal from '@/components/SurveyIdentityModal';
-
-const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w92';
-const TMDB_IMAGE_BASE_GRID = 'https://image.tmdb.org/t/p/w185';
+import { getRankBadgeClasses, getRankRingClasses, getStandingBorderColor, shuffle } from '@/lib/utils/rankStyles';
 
 interface SurveyInfo {
   id: string;
@@ -29,38 +20,33 @@ interface SurveyInfo {
   state: 'draft' | 'live' | 'frozen';
   maxRankN: number;
   closesAt: string | null;
-}
-
-interface EntryMovie {
-  id: string;
-  title: string;
-  metadata_snapshot: {
-    posterPath: string | null;
-    releaseDate: string | null;
-  } | null;
+  surveyType: 'movie' | 'open';
+  allowResponderOptions: boolean;
+  isAnonymous: boolean;
+  membersOnly: boolean;
 }
 
 interface ClientEntry {
-  movieId: string;
-  movie: EntryMovie;
+  optionId: string;
+  choice: SurveyChoice;
 }
 
 interface ClientBallot {
-  user: { id: string; displayName: string; badge?: string | null };
-  ranks: Array<{ rank: number; movieId: string; movieTitle: string }>;
+  user: { id: string; displayName: string };
+  ranks: Array<{ rank: number; optionId: string; optionTitle: string }>;
 }
 
 interface SurveyVotingClientProps {
   survey: SurveyInfo;
   entries: ClientEntry[];
-  userBallotRanks: Array<{ rank: number; movieId: string }> | null;
+  userBallotRanks: Array<{ rank: number; optionId: string }> | null;
   allBallots: ClientBallot[];
   standings: Standing[];
   pointsBreakdown: Array<{ rank: number; points: number; label: string }>;
   hasExistingBallot: boolean;
-  userRole?: 'admin' | 'member' | 'viewer';
-  isLoggedIn?: boolean;
-  currentGuestDisplayName?: string | null;
+  userRole: Profile['role'] | null;
+  isAuthenticated: boolean;
+  initialGuestName: string;
 }
 
 export default function SurveyVotingClient({
@@ -72,567 +58,259 @@ export default function SurveyVotingClient({
   pointsBreakdown,
   hasExistingBallot,
   userRole,
-  isLoggedIn = false,
-  currentGuestDisplayName = null,
+  isAuthenticated,
+  initialGuestName,
 }: SurveyVotingClientProps) {
   const isLive = survey.state === 'live';
-  const canVote = isLive && userRole !== 'viewer';
-  const ballotStorageKey = `survey-ballot:${survey.id}`;
-  const authResumeKey = `survey-auth-resume:${survey.id}`;
-
+  const canVote = isLive && userRole !== 'viewer' && (!survey.membersOnly || isAuthenticated);
+  const canAddOptions = canVote && survey.surveyType === 'open' && survey.allowResponderOptions;
+  const [formState, formAction, isSubmitting] = useActionState(submitBallotAction, null);
+  const [guestName, setGuestName] = useState(initialGuestName);
   const [shuffledEntries, setShuffledEntries] = useState(entries);
   const hasShuffled = useRef(false);
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
+  const [filterQuery, setFilterQuery] = useState('');
+
   useEffect(() => {
     if (!hasShuffled.current) {
       hasShuffled.current = true;
       setShuffledEntries(shuffle(entries));
     }
   }, [entries]);
-  const [formState, formAction, isSubmitting] = useActionState(submitBallotAction, null);
-  const [identityModalOpen, setIdentityModalOpen] = useState(false);
-  const [guestDisplayName, setGuestDisplayName] = useState(
-    currentGuestDisplayName || ''
-  );
-  const [authResumeNotice, setAuthResumeNotice] = useState('');
+
+  useEffect(() => {
+    const saved = localStorage.getItem('survey-view-mode');
+    if (saved === 'list' || saved === 'grid') setViewMode(saved);
+  }, []);
+
+  useEffect(() => localStorage.setItem('survey-view-mode', viewMode), [viewMode]);
 
   const {
     ballot,
     lastChangedRank,
     setRank,
     clearBallot,
-    handleMovieClick,
-    getBallotAsArray,
-    isMovieSelected,
+    handleOptionClick,
+    getBallotAsOptionArray,
+    isOptionSelected,
     filledRankItems,
     firstEmptySlot,
     isBallotComplete,
     reorderBallot,
-  } = useBallot({
-    maxRankN: survey.maxRankN,
-    initialRanks: userBallotRanks,
-    isLive,
-    storageKey: ballotStorageKey,
-  });
+  } = useBallot({ maxRankN: survey.maxRankN, initialRanks: userBallotRanks, isLive });
 
-  const getMovieById = useCallback(
-    (id: string): EntryMovie | undefined => entries.find((e) => e.movie.id === id)?.movie,
+  const getChoiceById = useCallback(
+    (id: string) => {
+      const choice = entries.find((entry) => entry.optionId === id)?.choice;
+      if (!choice) return undefined;
+      return {
+        id: choice.id,
+        title: choice.title,
+        imageUrl: choice.imageUrl,
+        metadata_snapshot: choice.movie?.metadata_snapshot
+          ? {
+              posterPath: choice.movie.metadata_snapshot.posterPath,
+              releaseDate: choice.movie.metadata_snapshot.releaseDate,
+            }
+          : null,
+      };
+    },
     [entries]
   );
 
-  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
-  const [filterQuery, setFilterQuery] = useState('');
-
-  // Initialize viewMode from localStorage on mount
-  useEffect(() => {
-    const saved = localStorage.getItem('survey-view-mode');
-    if (saved === 'list' || saved === 'grid') {
-      setViewMode(saved);
-    }
-  }, []);
-
-  // Persist viewMode to localStorage
-  useEffect(() => {
-    localStorage.setItem('survey-view-mode', viewMode);
-  }, [viewMode]);
-
-  useEffect(() => {
-    if (!isLoggedIn) {
-      return;
-    }
-
-    if (localStorage.getItem(authResumeKey) === '1') {
-      setAuthResumeNotice(
-        'You are signed in. Your ballot is still here and ready to submit.'
-      );
-      localStorage.removeItem(authResumeKey);
-    }
-  }, [authResumeKey, isLoggedIn]);
-
   const filteredEntries = useMemo(() => {
-    if (!filterQuery.trim()) return shuffledEntries;
-    const query = filterQuery.toLowerCase().trim();
+    const query = filterQuery.trim().toLowerCase();
+    if (!query) return shuffledEntries;
     return shuffledEntries.filter((entry) =>
-      entry.movie.title.toLowerCase().includes(query)
+      `${entry.choice.title} ${entry.choice.description ?? ''}`.toLowerCase().includes(query)
     );
-  }, [shuffledEntries, filterQuery]);
+  }, [filterQuery, shuffledEntries]);
 
-  const handleBallotSubmit = useCallback(
-    (event: FormEvent<HTMLFormElement>) => {
-      if (isLoggedIn) {
-        return;
-      }
-
-      event.preventDefault();
-      setIdentityModalOpen(true);
-    },
-    [isLoggedIn]
-  );
-
-  const handleGuestSubmit = useCallback(
-    (mode: 'guest_named', nextGuestDisplayName: string) => {
-      const nextName = nextGuestDisplayName;
-      setGuestDisplayName(nextName);
-      setIdentityModalOpen(false);
-      const formData = new FormData();
-      formData.set('surveyId', survey.id);
-      formData.set('ranks', JSON.stringify(getBallotAsArray()));
-      formData.set('submissionMode', mode);
-      formData.set('guestDisplayName', nextName);
-      startTransition(() => {
-        formAction(formData);
-      });
-    },
-    [formAction, getBallotAsArray, survey.id]
-  );
+  const showGuestName = !survey.isAnonymous && !isAuthenticated;
+  const optionLabel = survey.surveyType === 'movie' ? 'Movies' : 'Options';
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Header */}
-      <div>
-        {isLoggedIn ? (
-          <Link
-            href="/dashboard"
-            className="text-[var(--color-primary)] hover:text-[var(--color-primary-light)] text-sm inline-flex items-center gap-1 transition-colors"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 19l-7-7 7-7"
-              />
-            </svg>
-            Back to Dashboard
-          </Link>
-        ) : null}
-        <div className="flex items-center gap-3 mt-2">
+      <header>
+        <Link href={isAuthenticated ? '/dashboard' : '/'} className="text-sm text-[var(--color-primary)] hover:underline">
+          ← {isAuthenticated ? 'Back to Dashboard' : 'Movie Night'}
+        </Link>
+        <div className="mt-2 flex flex-wrap items-center gap-3">
           <h1 className="text-2xl font-display font-bold text-[var(--color-text)]">{survey.title}</h1>
-          <span
-            className={`px-2.5 py-1 text-xs font-medium rounded-full ${
-              isLive
-                ? 'bg-[var(--color-success)]/10 text-[var(--color-success)] border border-[var(--color-success)]/20'
-                : 'bg-[var(--color-secondary)]/10 text-[var(--color-secondary)] border border-[var(--color-secondary)]/20'
-            }`}
-          >
-            {isLive && <span className="inline-block w-1.5 h-1.5 rounded-full bg-[var(--color-success)] mr-1.5 animate-pulse" />}
+          <span className={`rounded-full border px-2.5 py-1 text-xs font-medium ${isLive ? 'border-[var(--color-success)]/20 bg-[var(--color-success)]/10 text-[var(--color-success)]' : 'border-[var(--color-secondary)]/20 bg-[var(--color-secondary)]/10 text-[var(--color-secondary)]'}`}>
             {survey.state}
           </span>
+          {survey.isAnonymous && <span className="rounded-full bg-[var(--color-surface-elevated)] px-2.5 py-1 text-xs text-[var(--color-text-muted)]">Anonymous</span>}
+          <ShareButton surveyId={survey.id} title={survey.title} />
         </div>
-        {survey.description && (
-          <p className="text-[var(--color-text-muted)] mt-1">{survey.description}</p>
-        )}
-      </div>
+        {survey.description && <p className="mt-1 text-[var(--color-text-muted)]">{survey.description}</p>}
+      </header>
 
-      {formState?.error && (
-        <div className="bg-red-500/10 border border-red-500/50 text-red-400 rounded-xl p-3">
-          {formState.error}
-        </div>
-      )}
-
-      {formState?.success && (
-        <div className="bg-[var(--color-success)]/10 border border-[var(--color-success)]/50 text-[var(--color-success)] rounded-xl p-3">
-          Your ballot has been submitted!
-        </div>
-      )}
-
-      {authResumeNotice ? (
-        <div className="rounded-xl border border-[var(--color-primary)]/35 bg-[var(--color-primary)]/10 p-3 text-sm text-[var(--color-primary-light)]">
-          {authResumeNotice}
-        </div>
-      ) : null}
+      {formState?.error && <div role="alert" className="rounded-xl border border-red-500/50 bg-red-500/10 p-3 text-red-400">{formState.error}</div>}
+      {formState?.success && <div role="status" className="rounded-xl border border-[var(--color-success)]/50 bg-[var(--color-success)]/10 p-3 text-[var(--color-success)]">Your ballot has been submitted!</div>}
 
       {isLive && survey.closesAt && (
-        <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 py-3 px-3 sm:px-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)]/50">
-          <span className="text-[11px] sm:text-xs uppercase tracking-[0.14em] sm:tracking-widest text-[var(--color-text-muted)]">
-            Voting closes in
-          </span>
-          <CountdownTimer
-            closesAt={survey.closesAt}
-            variant="full"
-            className="min-w-0 max-w-full"
-            onExpired={() => window.location.reload()}
-          />
+        <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 rounded-xl border border-[var(--color-border)]/50 bg-[var(--color-surface)] px-3 py-3 sm:px-4">
+          <span className="text-[11px] uppercase tracking-[0.14em] text-[var(--color-text-muted)] sm:text-xs sm:tracking-widest">Voting closes in</span>
+          <CountdownTimer closesAt={survey.closesAt} variant="full" className="min-w-0 max-w-full" onExpired={() => window.location.reload()} />
         </div>
       )}
 
-      <div className="grid lg:grid-cols-2 gap-6">
-        {/* Ballot Section */}
-        <div className="space-y-4 min-w-0">
-          <div className="bg-[var(--color-surface)] rounded-xl p-6 border border-[var(--color-border)]/50 shadow-lg shadow-black/20 overflow-hidden">
-            <div className="flex items-center justify-between mb-4">
+      {canAddOptions && (
+        <section className="rounded-xl border border-[var(--color-border)]/50 bg-[var(--color-surface)] p-5">
+          <h2 className="font-display text-lg font-semibold text-[var(--color-text)]">Add your own option</h2>
+          <p className="mb-4 mt-1 text-sm text-[var(--color-text-muted)]">Your option becomes available to everyone immediately.</p>
+          <OpenSurveyOptionForm surveyId={survey.id} responder />
+        </section>
+      )}
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <div className="min-w-0 space-y-4">
+          <section className="overflow-hidden rounded-xl border border-[var(--color-border)]/50 bg-[var(--color-surface)] p-6 shadow-lg shadow-black/20">
+            <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-display font-semibold text-[var(--color-text)]">Your Ballot</h2>
-              {canVote && ballot.size > 0 && (
-                <button
-                  type="button"
-                  onClick={clearBallot}
-                  className="text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
-                >
-                  Clear
-                </button>
-              )}
+              {canVote && ballot.size > 0 && <button type="button" onClick={clearBallot} className="text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text)]">Clear</button>}
             </div>
 
-            {/* Points breakdown */}
-            <div className="mb-4 p-3 bg-[var(--color-surface-elevated)] rounded-xl">
-              <p className="text-xs text-[var(--color-text-muted)] mb-2">Points per position:</p>
+            <div className="mb-4 rounded-xl bg-[var(--color-surface-elevated)] p-3">
+              <p className="mb-2 text-xs text-[var(--color-text-muted)]">Points per position:</p>
               <div className="flex flex-wrap gap-2">
-                {pointsBreakdown.map(({ rank, points }) => (
-                  <span
-                    key={rank}
-                    className="text-xs px-2 py-1 bg-[var(--color-surface)] rounded-lg"
-                  >
-                    #{rank} = {points}pts
-                  </span>
-                ))}
+                {pointsBreakdown.map(({ rank, points }) => <span key={rank} className="rounded-lg bg-[var(--color-surface)] px-2 py-1 text-xs">#{rank} = {points}pt{points === 1 ? '' : 's'}</span>)}
               </div>
             </div>
 
-            {/* Rank slots with drag-and-drop */}
-            <div className="space-y-2">
-              <SortableBallotList
-                filledRankItems={filledRankItems}
-                maxRankN={survey.maxRankN}
-                isLive={isLive}
-                firstEmptySlot={firstEmptySlot}
-                lastChangedRank={lastChangedRank}
-                getMovieById={getMovieById}
-                onRemove={setRank}
-                onReorder={reorderBallot}
-                dndId="survey-ballot"
-              />
-            </div>
+            <SortableBallotList
+              filledRankItems={filledRankItems}
+              maxRankN={survey.maxRankN}
+              isLive={canVote}
+              firstEmptySlot={firstEmptySlot}
+              lastChangedRank={lastChangedRank}
+              getMovieById={getChoiceById}
+              onRemove={setRank}
+              onReorder={reorderBallot}
+              dndId="survey-ballot"
+            />
 
             {canVote ? (
-              <form
-                action={formAction}
-                className="mt-4"
-                onSubmit={handleBallotSubmit}
-              >
+              <form action={formAction} className="mt-4 space-y-3">
                 <input type="hidden" name="surveyId" value={survey.id} />
-                <input
-                  type="hidden"
-                  name="ranks"
-                  value={JSON.stringify(getBallotAsArray())}
-                />
-                <button
-                  type="submit"
-                  disabled={isSubmitting || ballot.size === 0}
-                  className={`w-full py-2.5 px-4 bg-[var(--color-primary)] hover:bg-[var(--color-primary-dark)] text-white font-medium rounded-xl transition-all duration-150 active:scale-[0.97] disabled:opacity-50 disabled:active:scale-100 ${
-                    isBallotComplete ? 'shadow-lg shadow-[var(--color-primary)]/30' : 'shadow-md shadow-[var(--color-primary)]/20'
-                  }`}
-                >
-                  {isSubmitting
-                    ? 'Submitting...'
-                    : hasExistingBallot
-                      ? 'Update Ballot'
-                      : 'Submit Ballot'}
+                <input type="hidden" name="ranks" value={JSON.stringify(getBallotAsOptionArray())} />
+                {showGuestName && (
+                  <div>
+                    <label htmlFor="guestName" className="mb-1 block text-sm font-medium text-[var(--color-text)]">Your name</label>
+                    <input
+                      id="guestName"
+                      name="guestName"
+                      required
+                      maxLength={80}
+                      value={guestName}
+                      onChange={(event) => setGuestName(event.target.value)}
+                      className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-3 py-2 text-[var(--color-text)] focus:border-[var(--color-primary)] focus:outline-none"
+                    />
+                  </div>
+                )}
+                <button type="submit" disabled={isSubmitting || ballot.size === 0 || (showGuestName && !guestName.trim())} className={`w-full rounded-xl bg-[var(--color-primary)] px-4 py-2.5 font-medium text-white transition-all hover:bg-[var(--color-primary-dark)] disabled:opacity-50 ${isBallotComplete ? 'shadow-lg shadow-[var(--color-primary)]/30' : ''}`}>
+                  {isSubmitting ? 'Submitting…' : hasExistingBallot ? 'Update Ballot' : 'Submit Ballot'}
                 </button>
-                {!isLoggedIn ? (
-                  <p className="mt-3 text-center text-xs text-[var(--color-text-muted)]">
-                    You&apos;ll choose how to identify this ballot when you
-                    submit.
-                  </p>
-                ) : null}
               </form>
-            ) : userRole === 'viewer' ? (
-              <p className="mt-4 text-center text-sm text-[var(--color-text-muted)]">
-                Viewers cannot vote on surveys.
-              </p>
             ) : (
-              <p className="mt-4 text-center text-sm text-[var(--color-text-muted)]">
-                This survey is closed for voting.
-              </p>
+              <p className="mt-4 text-center text-sm text-[var(--color-text-muted)]">{userRole === 'viewer' ? 'Viewers cannot vote on surveys.' : 'This survey is closed for voting.'}</p>
             )}
-          </div>
+          </section>
 
-          {/* Available Movies */}
-          <div className="bg-[var(--color-surface)] rounded-xl p-6 border border-[var(--color-border)]/50 shadow-lg shadow-black/20">
-            {/* Header row with title + view toggle */}
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-display font-semibold text-[var(--color-text)]">
-                Movies{' '}
-                <span className="text-sm font-normal text-[var(--color-text-muted)]">
-                  {filterQuery.trim()
-                    ? `${filteredEntries.length} of ${shuffledEntries.length}`
-                    : `(${shuffledEntries.length})`}
-                </span>
-              </h2>
-              <div className="flex items-center gap-1 bg-[var(--color-surface-elevated)] rounded-lg p-1">
-                <button
-                  type="button"
-                  onClick={() => setViewMode('list')}
-                  className={`p-1.5 rounded-md transition-colors ${
-                    viewMode === 'list'
-                      ? 'bg-[var(--color-primary)]/20 text-[var(--color-primary)]'
-                      : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
-                  }`}
-                  title="List view"
-                >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-                  </svg>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setViewMode('grid')}
-                  className={`p-1.5 rounded-md transition-colors ${
-                    viewMode === 'grid'
-                      ? 'bg-[var(--color-primary)]/20 text-[var(--color-primary)]'
-                      : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
-                  }`}
-                  title="Grid view"
-                >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-
-            <div className="relative mb-4">
-              <input
-                type="text"
-                value={filterQuery}
-                onChange={(e) => setFilterQuery(e.target.value)}
-                placeholder="Filter movies..."
-                className="w-full px-4 py-2 bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-xl text-[var(--color-text)] placeholder:text-[var(--color-text-muted)]/60 focus:outline-none focus:border-[var(--color-primary)] focus:ring-1 focus:ring-[var(--color-primary)] transition-all text-sm"
-              />
-              {filterQuery && (
-                <button
-                  type="button"
-                  onClick={() => setFilterQuery('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
-                >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
+          <section className="rounded-xl border border-[var(--color-border)]/50 bg-[var(--color-surface)] p-6 shadow-lg shadow-black/20">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <h2 className="text-lg font-display font-semibold text-[var(--color-text)]">{optionLabel} <span className="text-sm font-normal text-[var(--color-text-muted)]">({filteredEntries.length})</span></h2>
+              {survey.surveyType === 'movie' && (
+                <div className="flex rounded-lg bg-[var(--color-surface-elevated)] p-1">
+                  {(['list', 'grid'] as const).map((mode) => (
+                    <button key={mode} type="button" onClick={() => setViewMode(mode)} className={`rounded-md px-2 py-1 text-xs ${viewMode === mode ? 'bg-[var(--color-primary)]/20 text-[var(--color-primary)]' : 'text-[var(--color-text-muted)]'}`}>{mode}</button>
+                  ))}
+                </div>
               )}
             </div>
+            <input
+              type="search"
+              value={filterQuery}
+              onChange={(event) => setFilterQuery(event.target.value)}
+              placeholder={survey.surveyType === 'movie' ? 'Filter movies...' : 'Filter options...'}
+              className="mb-4 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-4 py-2 text-sm text-[var(--color-text)] focus:border-[var(--color-primary)] focus:outline-none"
+            />
 
-            {filteredEntries.length === 0 && filterQuery.trim() ? (
-              <p className="text-[var(--color-text-muted)] text-center py-6 text-sm">
-                No movies match &ldquo;{filterQuery.trim()}&rdquo;
-              </p>
-            ) : viewMode === 'list' ? (
-              /* List view */
-              <div className="space-y-2 max-h-96 overflow-y-auto">
-                {filteredEntries.map((entry) => {
-                  const selectedRank = isMovieSelected(entry.movie.id);
-
+            {filteredEntries.length === 0 ? (
+              <p className="py-6 text-center text-sm text-[var(--color-text-muted)]">No {optionLabel.toLowerCase()} available yet.</p>
+            ) : survey.surveyType === 'open' || viewMode === 'list' ? (
+              <div className="max-h-[32rem] space-y-2 overflow-y-auto">
+                {filteredEntries.map(({ optionId, choice }) => {
+                  const selectedRank = isOptionSelected(optionId);
                   return (
-                    <button
-                      key={entry.movie.id}
-                      type="button"
-                      disabled={!canVote}
-                      onClick={() => handleMovieClick(entry.movie.id)}
-                      className={`w-full flex items-center gap-3 p-3 rounded-xl text-left transition-all duration-150 ${
-                        selectedRank !== null
-                          ? 'bg-[var(--color-primary)]/10 border-l-4 border-l-[var(--color-primary)]'
-                          : 'bg-[var(--color-surface-elevated)] hover:bg-[var(--color-border)] border-l-4 border-l-transparent'
-                      } ${!canVote ? 'cursor-default' : 'active:scale-[0.98]'}`}
-                    >
-                      {entry.movie.metadata_snapshot?.posterPath ? (
-                        <img
-                          src={`${TMDB_IMAGE_BASE}${entry.movie.metadata_snapshot.posterPath}`}
-                          alt={entry.movie.title}
-                          className="w-12 h-18 object-cover rounded-lg"
-                        />
-                      ) : (
-                        <div className="w-12 h-18 bg-[var(--color-border)] rounded-lg flex items-center justify-center">
-                          <svg className="w-5 h-5 text-[var(--color-text-muted)]/30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
-                            <rect x="2" y="4" width="20" height="16" rx="2" />
-                            <path d="M2 8h20M2 16h20" />
-                          </svg>
-                        </div>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-[var(--color-text)] truncate">
-                          {entry.movie.title}
-                        </p>
-                        {entry.movie.metadata_snapshot?.releaseDate && (
-                          <p className="text-xs text-[var(--color-text-muted)]">
-                            {entry.movie.metadata_snapshot.releaseDate.slice(0, 4)}
-                          </p>
-                        )}
-                      </div>
-                      {selectedRank !== null && (
-                        <span className={`w-7 h-7 flex items-center justify-center rounded-full text-sm font-bold ${getRankBadgeClasses(selectedRank)}`}>
-                          {selectedRank}
+                    <article key={optionId} className={`flex items-center gap-2 rounded-xl border-l-4 ${selectedRank !== null ? 'border-l-[var(--color-primary)] bg-[var(--color-primary)]/10' : 'border-l-transparent bg-[var(--color-surface-elevated)]'}`}>
+                      <button type="button" disabled={!canVote} onClick={() => handleOptionClick(optionId)} className="flex min-w-0 flex-1 items-center gap-3 p-3 text-left disabled:cursor-default">
+                        {choice.imageUrl ? <Image src={choice.imageUrl} alt="" width={48} height={48} unoptimized className="h-12 w-12 flex-none rounded-lg object-cover" /> : <div className="flex h-12 w-12 flex-none items-center justify-center rounded-lg bg-[var(--color-surface)] text-[var(--color-text-muted)]">?</div>}
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate font-medium text-[var(--color-text)]">{choice.title}</span>
+                          {choice.description && <span className="line-clamp-2 block text-xs text-[var(--color-text-muted)]">{choice.description}</span>}
                         </span>
-                      )}
-                    </button>
+                        {selectedRank !== null && <span className={`flex h-7 w-7 flex-none items-center justify-center rounded-full text-sm font-bold ${getRankBadgeClasses(selectedRank)}`}>{selectedRank}</span>}
+                      </button>
+                      {choice.linkUrl && <a href={choice.linkUrl} target="_blank" rel="noreferrer noopener" className="mr-3 flex-none text-xs text-[var(--color-primary)] hover:underline">Open link</a>}
+                    </article>
                   );
                 })}
               </div>
             ) : (
-              /* Grid view */
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-96 overflow-y-auto">
-                {filteredEntries.map((entry) => {
-                  const selectedRank = isMovieSelected(entry.movie.id);
-
+              <div className="grid max-h-[32rem] grid-cols-2 gap-3 overflow-y-auto sm:grid-cols-3">
+                {filteredEntries.map(({ optionId, choice }) => {
+                  const selectedRank = isOptionSelected(optionId);
                   return (
-                    <button
-                      key={entry.movie.id}
-                      type="button"
-                      disabled={!canVote}
-                      onClick={() => handleMovieClick(entry.movie.id)}
-                      className={`relative rounded-xl overflow-hidden text-left transition-all duration-200 ${
-                        selectedRank !== null
-                          ? getRankRingClasses(selectedRank)
-                          : 'border border-[var(--color-border)]/50 opacity-70 hover:opacity-100'
-                      } ${!canVote ? 'cursor-default' : 'active:scale-[0.97]'}`}
-                    >
-                      {/* Poster with selection overlay */}
-                      <div className="relative">
-                        {entry.movie.metadata_snapshot?.posterPath ? (
-                          <img
-                            src={`${TMDB_IMAGE_BASE_GRID}${entry.movie.metadata_snapshot.posterPath}`}
-                            alt={entry.movie.title}
-                            className="w-full aspect-[2/3] object-cover"
-                            loading="lazy"
-                          />
-                        ) : (
-                          <div className="w-full aspect-[2/3] bg-[var(--color-surface-elevated)] flex items-center justify-center">
-                            <svg className="w-10 h-10 text-[var(--color-text-muted)]/30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
-                              <rect x="2" y="4" width="20" height="16" rx="2" />
-                              <path d="M2 8h20M2 16h20" />
-                            </svg>
-                          </div>
-                        )}
-                        {selectedRank !== null && (
-                          <>
-                            <div className="absolute inset-0 bg-black/40" />
-                            <div className={`absolute top-2 left-2 w-9 h-9 flex items-center justify-center rounded-full text-sm font-bold ${getRankBadgeClasses(selectedRank)}`}>
-                              {selectedRank}
-                            </div>
-                          </>
-                        )}
+                    <button key={optionId} type="button" disabled={!canVote} onClick={() => handleOptionClick(optionId)} className={`overflow-hidden rounded-xl text-left transition-all ${selectedRank !== null ? getRankRingClasses(selectedRank) : 'border border-[var(--color-border)]/50 opacity-80 hover:opacity-100'}`}>
+                      <div className="relative aspect-[2/3] bg-[var(--color-surface-elevated)]">
+                        {choice.imageUrl && <Image src={choice.imageUrl} alt={choice.title} fill unoptimized className="object-cover" />}
+                        {selectedRank !== null && <span className={`absolute left-2 top-2 flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold ${getRankBadgeClasses(selectedRank)}`}>{selectedRank}</span>}
                       </div>
-                      {/* Title + year */}
-                      <div className={`p-2 ${selectedRank !== null ? 'bg-[var(--color-primary)]/10' : 'bg-[var(--color-surface-elevated)]'}`}>
-                        <p className="font-medium text-[var(--color-text)] text-sm truncate">
-                          {entry.movie.title}
-                        </p>
-                        {entry.movie.metadata_snapshot?.releaseDate && (
-                          <p className="text-xs text-[var(--color-text-muted)]">
-                            {entry.movie.metadata_snapshot.releaseDate.slice(0, 4)}
-                          </p>
-                        )}
-                      </div>
+                      <div className="bg-[var(--color-surface-elevated)] p-2"><p className="truncate text-sm font-medium text-[var(--color-text)]">{choice.title}</p></div>
                     </button>
                   );
                 })}
               </div>
             )}
-          </div>
+          </section>
         </div>
 
-        {/* Standings & Ballots Section */}
-        <div className="space-y-4 min-w-0">
-          {/* Current Standings */}
-          <div className="bg-[var(--color-surface)] rounded-xl p-6 border border-[var(--color-border)]/50 shadow-lg shadow-black/20">
-            <h2 className="text-lg font-display font-semibold text-[var(--color-text)] mb-4">
-              Current Standings
-            </h2>
+        <div className="min-w-0 space-y-4">
+          <section className="rounded-xl border border-[var(--color-border)]/50 bg-[var(--color-surface)] p-6 shadow-lg shadow-black/20">
+            <h2 className="mb-4 text-lg font-display font-semibold text-[var(--color-text)]">Current Standings</h2>
             {standings.length > 0 && allBallots.length > 0 ? (
               <div className="space-y-2">
                 {standings.map((standing) => (
-                  <div
-                    key={standing.movieId}
-                    className={`flex items-center gap-3 p-3 bg-[var(--color-surface-elevated)] rounded-xl border-l-4 ${getStandingBorderColor(standing.position)}`}
-                  >
-                    <span
-                      className={`w-8 h-8 flex items-center justify-center rounded-full font-bold text-sm ${getRankBadgeClasses(standing.position)}`}
-                    >
-                      {standing.position}
-                    </span>
-                    {standing.posterPath && (
-                      <img
-                        src={`${TMDB_IMAGE_BASE}${standing.posterPath}`}
-                        alt={standing.title}
-                        className="w-10 h-15 object-cover rounded-lg"
-                      />
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-[var(--color-text)] truncate">
-                        {standing.title}
-                        {standing.tied && (
-                          <span className="text-xs text-[var(--color-text-muted)]"> (tied)</span>
-                        )}
-                      </p>
-                    </div>
-                    <span className={`text-lg font-display font-bold ${
-                      standing.position === 1 ? 'text-yellow-500' : 'text-[var(--color-primary)]'
-                    }`}>
-                      {standing.totalPoints}
-                    </span>
+                  <div key={standing.optionId} className={`flex items-center gap-3 rounded-xl border-l-4 bg-[var(--color-surface-elevated)] p-3 ${getStandingBorderColor(standing.position)}`}>
+                    <span className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold ${getRankBadgeClasses(standing.position)}`}>{standing.position}</span>
+                    {standing.posterPath && <Image src={standing.posterPath} alt="" width={40} height={40} unoptimized className="h-10 w-10 rounded-lg object-cover" />}
+                    <p className="min-w-0 flex-1 truncate font-medium text-[var(--color-text)]">{standing.title}{standing.tied && <span className="text-xs text-[var(--color-text-muted)]"> (tied)</span>}</p>
+                    <span className={`text-lg font-display font-bold ${standing.position === 1 ? 'text-yellow-500' : 'text-[var(--color-primary)]'}`}>{standing.totalPoints}</span>
                   </div>
                 ))}
               </div>
-            ) : (
-              <p className="text-[var(--color-text-muted)] text-center py-4">No votes yet.</p>
-            )}
-          </div>
+            ) : <p className="py-4 text-center text-[var(--color-text-muted)]">No votes yet.</p>}
+          </section>
 
-          {/* All Ballots (Transparency) */}
-          <div className="bg-[var(--color-surface)] rounded-xl p-6 border border-[var(--color-border)]/50 shadow-lg shadow-black/20">
-            <h2 className="text-lg font-display font-semibold text-[var(--color-text)] mb-4">
-              All Ballots ({allBallots.length})
-            </h2>
+          <section className="rounded-xl border border-[var(--color-border)]/50 bg-[var(--color-surface)] p-6 shadow-lg shadow-black/20">
+            <h2 className="mb-4 text-lg font-display font-semibold text-[var(--color-text)]">All Ballots ({allBallots.length})</h2>
             {allBallots.length > 0 ? (
-              <div className="space-y-3 max-h-96 overflow-y-auto">
-                {allBallots.map((b) => (
-                  <div
-                    key={b.user.id}
-                    className="p-3 bg-[var(--color-surface-elevated)] rounded-xl"
-                  >
-                    <div className="mb-2 flex items-center gap-2">
-                      <p className="font-medium text-[var(--color-text)]">
-                        {b.user.displayName}
-                      </p>
-                      {b.user.badge ? (
-                        <span className="rounded-full border border-[var(--color-border)]/60 px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-[var(--color-text-muted)]">
-                          {b.user.badge}
-                        </span>
-                      ) : null}
+              <div className="max-h-96 space-y-3 overflow-y-auto">
+                {allBallots.map((submittedBallot) => (
+                  <div key={submittedBallot.user.id} className="rounded-xl bg-[var(--color-surface-elevated)] p-3">
+                    <p className="mb-2 font-medium text-[var(--color-text)]">{submittedBallot.user.displayName}</p>
+                    <div className="flex flex-wrap gap-2">
+                      {[...submittedBallot.ranks].sort((a, b) => a.rank - b.rank).map(({ rank, optionTitle }) => <span key={rank} className="rounded-lg bg-[var(--color-surface)] px-2 py-1 text-xs">#{rank}: {optionTitle}</span>)}
                     </div>
-                    {b.ranks.length > 0 ? (
-                      <div className="flex flex-wrap gap-2">
-                        {[...b.ranks]
-                          .sort((a, b) => a.rank - b.rank)
-                          .map(({ rank, movieTitle }) => (
-                            <span
-                              key={rank}
-                              className="text-xs px-2 py-1 bg-[var(--color-surface)] rounded-lg"
-                            >
-                              #{rank}: {movieTitle}
-                            </span>
-                          ))}
-                      </div>
-                    ) : (
-                      <p className="text-xs text-[var(--color-text-muted)] italic">Empty ballot</p>
-                    )}
                   </div>
                 ))}
               </div>
-            ) : (
-              <p className="text-[var(--color-text-muted)] text-center py-4">
-                No ballots submitted yet.
-              </p>
-            )}
-          </div>
+            ) : <p className="py-4 text-center text-[var(--color-text-muted)]">No ballots submitted yet.</p>}
+          </section>
         </div>
       </div>
-
-      <SurveyIdentityModal
-        open={identityModalOpen}
-        surveyId={survey.id}
-        returnTo={`/survey/${survey.id}`}
-        defaultGuestDisplayName={guestDisplayName}
-        onClose={() => setIdentityModalOpen(false)}
-        onSubmitGuest={handleGuestSubmit}
-      />
     </div>
   );
 }

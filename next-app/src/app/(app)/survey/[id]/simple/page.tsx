@@ -24,7 +24,7 @@ export default async function SimpleSurveyPage({
   } = await supabase.auth.getUser();
 
   const survey = await getSurveyById(id);
-  if (!survey || survey.state === 'draft') {
+  if (!survey || survey.state === 'draft' || survey.survey_type !== 'movie') {
     notFound();
   }
 
@@ -62,7 +62,7 @@ export default async function SimpleSurveyPage({
 
   const clientBallotRanks = userBallot?.ranks.map((r) => ({
     rank: r.rank,
-    movieId: r.movie_id,
+    movieId: r.movie?.id ?? r.movie_id ?? r.option.id,
   })) || null;
 
   let standings = undefined;

@@ -46,9 +46,35 @@ alter table public.ballots
   add column if not exists guest_display_name text;
 
 alter table public.ballots drop constraint if exists ballots_owner_mode_check;
+alter table public.ballots drop constraint if exists ballots_owner_identity_check;
+alter table public.ballots drop constraint if exists ballots_owner_check;
+
+-- Preserve ballots created by the previous guest-voting implementation.
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'ballots' and column_name = 'guest_session_id_hash'
+  ) then
+    execute $sql$
+      update public.ballots
+      set voter_id = guest_session_id_hash
+      where owner_mode = 'guest' and voter_id is null
+    $sql$;
+  end if;
+end $$;
+
+update public.ballots set owner_mode = 'user' where owner_mode = 'identified';
+update public.ballots
+set guest_display_name = coalesce(nullif(btrim(guest_display_name), ''), 'Anonymous')
+where owner_mode = 'guest';
+alter table public.ballots alter column owner_mode set default 'user';
+drop index if exists public.ballots_identified_owner_idx;
+drop index if exists public.ballots_guest_owner_idx;
+alter table public.ballots drop column if exists guest_session_id_hash;
+
 alter table public.ballots add constraint ballots_owner_mode_check
   check (owner_mode in ('user', 'guest', 'anonymous'));
-alter table public.ballots drop constraint if exists ballots_owner_check;
 alter table public.ballots add constraint ballots_owner_check check (
   (owner_mode = 'user' and user_id is not null and voter_id is null and guest_display_name is null)
   or (owner_mode = 'guest' and user_id is null and voter_id is not null and nullif(btrim(guest_display_name), '') is not null)
@@ -90,8 +116,19 @@ create unique index if not exists ballot_ranks_ballot_entry_unique
 alter table public.ballot_change_logs alter column user_id drop not null;
 alter table public.ballot_change_logs
   add column if not exists owner_mode text not null default 'user',
-  add column if not exists voter_id text;
+  add column if not exists voter_id text,
+  add column if not exists owner_label text;
 alter table public.ballot_change_logs drop constraint if exists ballot_change_logs_owner_mode_check;
+update public.ballot_change_logs set owner_mode = 'user' where owner_mode = 'identified';
+update public.ballot_change_logs logs
+set owner_label = coalesce(
+  nullif(btrim(logs.owner_label), ''),
+  (select nullif(btrim(p.display_name), '') from public.profiles p where p.id = logs.user_id),
+  case when logs.owner_mode = 'anonymous' then 'Anonymous' when logs.owner_mode = 'guest' then 'Guest' else 'Unknown' end
+)
+where owner_label is null or nullif(btrim(owner_label), '') is null;
+alter table public.ballot_change_logs alter column owner_mode set default 'user';
+alter table public.ballot_change_logs alter column owner_label set not null;
 alter table public.ballot_change_logs add constraint ballot_change_logs_owner_mode_check
   check (owner_mode in ('user', 'guest', 'anonymous'));
 
@@ -110,6 +147,8 @@ declare
   v_previous_ranks jsonb;
   v_rank record;
   v_user_role text;
+  v_user_display_name text;
+  v_owner_label text;
   v_rank_count integer;
 begin
   select * into v_survey from public.surveys where id = p_survey_id for update;
@@ -119,7 +158,7 @@ begin
   end if;
 
   if p_authenticated_user_id is not null then
-    select role into v_user_role from public.profiles
+    select role, display_name into v_user_role, v_user_display_name from public.profiles
     where id = p_authenticated_user_id and status = 'active';
   end if;
   if v_survey.members_only and coalesce(v_user_role, 'viewer') not in ('admin', 'member') then
@@ -142,6 +181,11 @@ begin
   if p_owner_mode = 'guest' and nullif(btrim(p_guest_display_name), '') is null then
     raise exception 'Guest display name is required';
   end if;
+  v_owner_label := case
+    when p_owner_mode = 'anonymous' then 'Anonymous'
+    when p_owner_mode = 'guest' then btrim(p_guest_display_name)
+    else coalesce(nullif(btrim(v_user_display_name), ''), 'Unknown')
+  end;
 
   select count(*) into v_rank_count from jsonb_to_recordset(p_ranks) as x(rank integer, "optionId" text);
   if v_rank_count < 1 or v_rank_count > v_survey.max_rank_n then
@@ -194,13 +238,14 @@ begin
     from public.survey_entries se where se.id = v_rank."optionId";
   end loop;
 
-  insert into public.ballot_change_logs (id, survey_id, user_id, owner_mode, voter_id, previous_ranks, new_ranks, reason)
+  insert into public.ballot_change_logs (id, survey_id, user_id, owner_mode, voter_id, owner_label, previous_ranks, new_ranks, reason)
   values (
     gen_random_uuid()::text,
     p_survey_id,
     case when p_owner_mode = 'user' then p_authenticated_user_id else null end,
     p_owner_mode,
     case when p_owner_mode in ('guest', 'anonymous') then p_voter_id else null end,
+    v_owner_label,
     v_previous_ranks,
     p_ranks,
     'user_update'
@@ -234,8 +279,22 @@ begin
     update public.ballot_ranks br set rank = ordered.next_rank from ordered where br.id = ordered.id;
     select jsonb_agg(jsonb_build_object('rank', rank, 'optionId', survey_entry_id) order by rank)
       into v_new_ranks from public.ballot_ranks where ballot_id = v_ballot.id;
-    insert into public.ballot_change_logs (id, survey_id, user_id, owner_mode, voter_id, previous_ranks, new_ranks, reason)
-    values (gen_random_uuid()::text, p_survey_id, v_ballot.user_id, v_ballot.owner_mode, v_ballot.voter_id, v_current_ranks, v_new_ranks, 'movie_removed');
+    insert into public.ballot_change_logs (id, survey_id, user_id, owner_mode, voter_id, owner_label, previous_ranks, new_ranks, reason)
+    values (
+      gen_random_uuid()::text,
+      p_survey_id,
+      v_ballot.user_id,
+      v_ballot.owner_mode,
+      v_ballot.voter_id,
+      case
+        when v_ballot.owner_mode = 'anonymous' then 'Anonymous'
+        when v_ballot.owner_mode = 'guest' then coalesce(nullif(btrim(v_ballot.guest_display_name), ''), 'Guest')
+        else coalesce((select nullif(btrim(display_name), '') from public.profiles where id = v_ballot.user_id), 'Unknown')
+      end,
+      v_current_ranks,
+      v_new_ranks,
+      'movie_removed'
+    );
     v_affected := v_affected + 1;
   end loop;
   return v_affected;

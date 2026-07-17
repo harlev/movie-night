@@ -4,6 +4,7 @@ import type { Movie, Survey, SurveyChoice, SurveyEntry } from '@/lib/types';
 import { generateId } from '@/lib/utils/id';
 
 type ChoiceMovie = Pick<Movie, 'id' | 'title' | 'tmdb_id' | 'metadata_snapshot' | 'watched' | 'watched_at'>;
+type MovieSurveyEntry = Omit<SurveyEntry, 'movie_id'> & { movie_id: string; movie: ChoiceMovie };
 
 interface ChoiceEntryRow {
   id: string;
@@ -232,7 +233,7 @@ export async function getSurveyChoices(surveyId: string): Promise<SurveyChoice[]
 
 export async function getSurveyEntries(
   surveyId: string
-): Promise<Array<SurveyEntry & { movie: ChoiceMovie }>> {
+): Promise<MovieSurveyEntry[]> {
   const supabase = await createClient();
   const { data } = await supabase
     .from('survey_entries')

@@ -1,7 +1,6 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/server';
-import { getAllSurveys, getSurveyEntries } from '@/lib/queries/surveys';
+import { getAllSurveys, getSurveyChoices } from '@/lib/queries/surveys';
 import { getAllBallots } from '@/lib/queries/ballots';
 
 export const metadata: Metadata = {
@@ -32,11 +31,11 @@ export default async function AdminSurveysPage() {
 
   const surveysWithCounts = await Promise.all(
     allSurveys.map(async (survey) => {
-      const entries = await getSurveyEntries(survey.id);
+      const choices = await getSurveyChoices(survey.id);
       const ballots = await getAllBallots(survey.id);
       return {
         ...survey,
-        movieCount: entries.length,
+        optionCount: choices.length,
         ballotCount: ballots.length,
       };
     })
@@ -66,7 +65,7 @@ export default async function AdminSurveysPage() {
                   Status
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wider">
-                  Movies
+                  Options
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wider">
                   Ballots
@@ -83,6 +82,9 @@ export default async function AdminSurveysPage() {
                   <td className="px-4 py-4">
                     <div>
                       <p className="font-medium text-[var(--color-text)]">{survey.title}</p>
+                      <span className="mt-1 inline-block rounded bg-[var(--color-surface-elevated)] px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-[var(--color-text-muted)]">
+                        {survey.survey_type === 'open' ? 'Open' : 'Movie'}
+                      </span>
                       {survey.description && (
                         <p className="text-sm text-[var(--color-text-muted)] truncate max-w-xs">
                           {survey.description}
@@ -103,7 +105,7 @@ export default async function AdminSurveysPage() {
                     </div>
                   </td>
                   <td className="px-4 py-4 text-[var(--color-text-muted)]">
-                    {survey.movieCount}
+                    {survey.optionCount}
                   </td>
                   <td className="px-4 py-4 text-[var(--color-text-muted)]">
                     {survey.ballotCount}

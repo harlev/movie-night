@@ -1,6 +1,6 @@
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { getSurveyById, getSurveyEntries } from '@/lib/queries/surveys';
+import { getSurveyById, getSurveyChoices, getSurveyEntries } from '@/lib/queries/surveys';
 import { getAllMovies, autoMarkPastDueSurveyWinnersAsWatched } from '@/lib/queries/movies';
 import { getAllBallots } from '@/lib/queries/ballots';
 import { getSuggestionCounts } from '@/lib/queries/suggestions';
@@ -22,13 +22,16 @@ export default async function SurveyDetailPage({ params }: { params: Promise<{ i
     notFound();
   }
 
-  await autoMarkPastDueSurveyWinnersAsWatched();
+  if (survey.survey_type === 'movie') {
+    await autoMarkPastDueSurveyWinnersAsWatched();
+  }
 
-  const [entries, allMovies, ballots, suggestionCounts] = await Promise.all([
-    getSurveyEntries(survey.id),
-    getAllMovies(),
+  const [choices, entries, allMovies, ballots, suggestionCounts] = await Promise.all([
+    getSurveyChoices(survey.id),
+    survey.survey_type === 'movie' ? getSurveyEntries(survey.id) : Promise.resolve([]),
+    survey.survey_type === 'movie' ? getAllMovies() : Promise.resolve([]),
     getAllBallots(survey.id),
-    getSuggestionCounts(),
+    survey.survey_type === 'movie' ? getSuggestionCounts() : Promise.resolve({}),
   ]);
 
   // Filter out movies already in survey
@@ -48,6 +51,7 @@ export default async function SurveyDetailPage({ params }: { params: Promise<{ i
   return (
     <SurveyDetailClient
       survey={survey}
+      choices={choices}
       entries={entries}
       ballotCount={ballots.length}
       availableMovies={availableMovies}

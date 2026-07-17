@@ -107,6 +107,7 @@ export interface BallotChangeLog {
   user_id: string | null;
   owner_mode: 'user' | 'guest' | 'anonymous';
   voter_id: string | null;
+  owner_label: string;
   previous_ranks: Array<{ rank: number; movieId: string }> | null;
   new_ranks: Array<{ rank: number; movieId: string }> | null;
   reason: 'user_update' | 'movie_removed' | 'system';

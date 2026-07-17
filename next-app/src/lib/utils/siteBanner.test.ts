@@ -6,7 +6,7 @@ import {
   SITE_BANNER_MOBILE_OBJECT_PATH,
   SITE_BANNER_MAX_BYTES,
   SITE_BANNER_OBJECT_PATH,
-} from './siteBanner.ts';
+} from './siteBanner';
 
 test('getSiteBannerValidationError returns an error when no file is provided', () => {
   assert.equal(getSiteBannerValidationError(null), 'Please choose an image file to upload');

@@ -74,7 +74,7 @@ export async function getAllBallots(surveyId: string): Promise<Array<{
   return Promise.all(allBallots.map(async (ballot: any) => {
     const { data: ranks } = await admin
       .from('ballot_ranks')
-      .select('rank, survey_entry_id, survey_entries!survey_entry_id(title, movies!movie_id(title))')
+      .select('rank, survey_entry_id, survey_entries!survey_entry_id(title, movies!movie_id(id, title))')
       .eq('ballot_id', ballot.id)
       .order('rank');
     const displayName = getBallotDisplayName({
@@ -97,11 +97,12 @@ export async function getAllBallots(surveyId: string): Promise<Array<{
       user: { id: ballot.profiles?.id || ballot.user_id || ballot.id, displayName },
       ranks: (ranks || []).map((rank: any) => {
         const title = rank.survey_entries?.movies?.title ?? rank.survey_entries?.title ?? 'Unknown';
+        const movieId = rank.survey_entries?.movies?.id ?? rank.survey_entry_id;
         return {
           rank: rank.rank,
           optionId: rank.survey_entry_id,
           optionTitle: title,
-          movieId: rank.survey_entry_id,
+          movieId,
           movieTitle: title,
         };
       }),
@@ -193,7 +194,7 @@ export async function getBallotChangeLogs(
     ...log,
     userName: getBallotDisplayName({
       owner_mode: log.owner_mode,
-      guest_display_name: null,
+      guest_display_name: log.owner_label,
       profile_display_name: log.profiles?.display_name,
     }, log.surveys?.is_anonymous ?? false),
   }));

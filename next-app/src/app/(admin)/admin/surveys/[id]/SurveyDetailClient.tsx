@@ -12,10 +12,14 @@ import {
   updateSurveyClosesAtAction,
 } from '@/lib/actions/surveys';
 import { bulkAddSuggestedToSurveyAction } from '@/lib/actions/suggestions';
-import type { Survey, Movie } from '@/lib/types';
+import type { Survey, Movie, SurveyChoice } from '@/lib/types';
 import { utcToPacificLocal } from '@/lib/utils/closesAt';
 import CountdownTimer from '@/components/CountdownTimer';
 import Toast from '@/components/ui/Toast';
+import { OpenSurveyOptionForm } from '@/components/surveys/OpenSurveyOptionForm';
+import { SurveyChoiceCard } from '@/components/surveys/SurveyChoiceCard';
+import { SurveySettingsFields } from '@/components/surveys/SurveySettingsFields';
+import ShareButton from '@/components/ShareButton';
 
 function getStateColor(state: string): string {
   switch (state) {
@@ -59,6 +63,7 @@ interface AvailableMovie {
 
 interface SurveyDetailClientProps {
   survey: Survey;
+  choices: SurveyChoice[];
   entries: SurveyEntry[];
   ballotCount: number;
   availableMovies: AvailableMovie[];
@@ -66,53 +71,23 @@ interface SurveyDetailClientProps {
   suggestionCounts: Record<string, number>;
 }
 
-function UpdateInfoForm({ survey }: { survey: Survey }) {
+function UpdateInfoForm({ survey, adminOptionCount }: { survey: Survey; adminOptionCount: number }) {
   const [state, formAction, pending] = useActionState(updateSurveyAction, null);
 
   return (
     <form action={formAction}>
       <input type="hidden" name="surveyId" value={survey.id} />
       <div className="space-y-4">
-        <div>
-          <label htmlFor="title" className="block text-sm font-medium text-[var(--color-text)] mb-2">
-            Title
-          </label>
-          <input
-            type="text"
-            id="title"
-            name="title"
-            defaultValue={survey.title}
-            required
-            className="w-full px-4 py-2 bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-lg text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)]"
-          />
-        </div>
-        <div>
-          <label htmlFor="description" className="block text-sm font-medium text-[var(--color-text)] mb-2">
-            Description
-          </label>
-          <textarea
-            id="description"
-            name="description"
-            defaultValue={survey.description || ''}
-            rows={2}
-            className="w-full px-4 py-2 bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-lg text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)] resize-none"
-          />
-        </div>
-        <div>
-          <label htmlFor="maxRankN" className="block text-sm font-medium text-[var(--color-text)] mb-2">
-            Max Rank
-          </label>
-          <select
-            id="maxRankN"
-            name="maxRankN"
-            defaultValue={survey.max_rank_n}
-            className="px-4 py-2 bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-lg text-[var(--color-text)]"
-          >
-            {[3, 5, 7, 10].map((n) => (
-              <option key={n} value={n}>Top {n}</option>
-            ))}
-          </select>
-        </div>
+        <SurveySettingsFields
+          title={survey.title}
+          description={survey.description ?? ''}
+          maxRankN={survey.max_rank_n}
+          isAnonymous={survey.is_anonymous}
+          membersOnly={survey.members_only}
+          showResponderOptions={survey.survey_type === 'open'}
+          allowResponderOptions={survey.allow_responder_options}
+          canDisableResponderOptions={adminOptionCount >= 2}
+        />
         {state?.error && (
           <div className="bg-red-500/10 border border-red-500 text-red-400 rounded-lg p-3">
             {state.error}
@@ -218,7 +193,11 @@ function StateControls({ survey, entryCount }: { survey: Survey; entryCount: num
   const [archiveResult, archiveAction, archivePending] = useActionState(toggleSurveyArchivedAction, null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  const canGoLive = survey.state === 'draft' && entryCount > 0;
+  const canGoLive = survey.state === 'draft' && (
+    survey.survey_type === 'open'
+      ? survey.allow_responder_options || entryCount >= 2
+      : entryCount > 0
+  );
   const canFreeze = survey.state === 'live';
 
   return (
@@ -332,9 +311,11 @@ function StateControls({ survey, entryCount }: { survey: Survey; entryCount: num
         </div>
       )}
 
-      {survey.state === 'draft' && entryCount === 0 && (
+      {survey.state === 'draft' && !canGoLive && (
         <p className="text-sm text-[var(--color-warning)] mt-3">
-          Add at least one movie before going live.
+          {survey.survey_type === 'open'
+            ? 'Add at least two admin options or allow responders to add options before going live.'
+            : 'Add at least one movie before going live.'}
         </p>
       )}
     </div>
@@ -576,6 +557,7 @@ function BulkAddSuggestedBanner({ surveyId, suggestedAvailableIds }: { surveyId:
 
 export default function SurveyDetailClient({
   survey,
+  choices,
   entries,
   ballotCount,
   availableMovies,
@@ -587,6 +569,7 @@ export default function SurveyDetailClient({
     .filter((m) => suggestionCounts[m.id])
     .map((m) => m.id);
   const watchedNomineeCount = entries.filter((entry) => entry.movie.watched).length;
+  const adminOptionCount = choices.filter((choice) => choice.createdByMode === 'admin').length;
 
   return (
     <div className="space-y-6">
@@ -604,6 +587,10 @@ export default function SurveyDetailClient({
           <h1 className="text-2xl font-bold text-[var(--color-text)] mt-2">{survey.title}</h1>
         </div>
         <div className="flex items-center gap-2">
+          <ShareButton surveyId={survey.id} title={survey.title} />
+          <span className="rounded bg-[var(--color-surface-elevated)] px-2 py-1 text-xs uppercase tracking-wide text-[var(--color-text-muted)]">
+            {survey.survey_type === 'open' ? 'Open' : 'Movie'}
+          </span>
           <span className={`px-3 py-1 text-sm font-medium rounded ${getStateColor(survey.state)}`}>
             {survey.state}
           </span>
@@ -620,7 +607,7 @@ export default function SurveyDetailClient({
         <h2 className="text-lg font-semibold text-[var(--color-text)] mb-4">Survey Details</h2>
 
         {survey.state === 'draft' ? (
-          <UpdateInfoForm survey={survey} />
+          <UpdateInfoForm survey={survey} adminOptionCount={adminOptionCount} />
         ) : (
           <div className="space-y-3 text-sm">
             <p className="text-[var(--color-text-muted)]">
@@ -632,8 +619,19 @@ export default function SurveyDetailClient({
               </p>
             )}
             <p className="text-[var(--color-text-muted)]">
-              <span className="font-medium text-[var(--color-text)]">Max Rank:</span> Top {survey.max_rank_n}
+              <span className="font-medium text-[var(--color-text)]">Selection:</span>{' '}
+              {survey.max_rank_n === 1 ? 'Select one' : `Rank top ${survey.max_rank_n}`}
             </p>
+            <p className="text-[var(--color-text-muted)]">
+              <span className="font-medium text-[var(--color-text)]">Responses:</span>{' '}
+              {survey.is_anonymous ? 'Anonymous' : 'Named'} · {survey.members_only ? 'Members only' : 'Public'}
+            </p>
+            {survey.survey_type === 'open' && (
+              <p className="text-[var(--color-text-muted)]">
+                <span className="font-medium text-[var(--color-text)]">Responder options:</span>{' '}
+                {survey.allow_responder_options ? 'Allowed' : 'Not allowed'}
+              </p>
+            )}
             <p className="text-[var(--color-text-muted)]">
               <span className="font-medium text-[var(--color-text)]">Ballots:</span> {ballotCount}
             </p>
@@ -652,14 +650,14 @@ export default function SurveyDetailClient({
       {/* State Controls */}
       <div className="bg-[var(--color-surface)] rounded-lg p-6">
         <h2 className="text-lg font-semibold text-[var(--color-text)] mb-4">Survey State</h2>
-        <StateControls survey={survey} entryCount={entries.length} />
+        <StateControls survey={survey} entryCount={choices.length} />
       </div>
 
       {/* In Survey */}
       <div className="bg-[var(--color-surface)] rounded-lg p-6">
         <h2 className="text-lg font-semibold text-[var(--color-text)] mb-4">
           In Survey
-          <span className="ml-2 text-sm font-normal text-[var(--color-text-muted)]">({entries.length})</span>
+          <span className="ml-2 text-sm font-normal text-[var(--color-text-muted)]">({choices.length})</span>
         </h2>
 
         {watchedNomineeCount > 0 && (
@@ -668,7 +666,22 @@ export default function SurveyDetailClient({
           </div>
         )}
 
-        {entries.length > 0 ? (
+        {survey.survey_type === 'open' ? (
+          choices.length > 0 ? (
+            <div className="grid gap-3 md:grid-cols-2">
+              {choices.map((choice) => (
+                <SurveyChoiceCard
+                  key={choice.id}
+                  choice={choice}
+                  surveyId={survey.id}
+                  canRemove={survey.state !== 'frozen'}
+                />
+              ))}
+            </div>
+          ) : (
+            <p className="py-8 text-center text-[var(--color-text-muted)]">No options in this survey yet.</p>
+          )
+        ) : entries.length > 0 ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
             {entries.map((entry) => {
               const isWatched = entry.movie.watched;
@@ -737,8 +750,18 @@ export default function SurveyDetailClient({
         )}
       </div>
 
+      {survey.survey_type === 'open' && survey.state !== 'frozen' && (
+        <div className="rounded-lg bg-[var(--color-surface)] p-6">
+          <h2 className="mb-1 text-lg font-semibold text-[var(--color-text)]">Add an option</h2>
+          <p className="mb-4 text-sm text-[var(--color-text-muted)]">
+            Options need a title; descriptions, small images, and links are optional.
+          </p>
+          <OpenSurveyOptionForm surveyId={survey.id} />
+        </div>
+      )}
+
       {/* Available Movies */}
-      {survey.state !== 'frozen' && availableMovies.length > 0 && (
+      {survey.survey_type === 'movie' && survey.state !== 'frozen' && availableMovies.length > 0 && (
         <div className="bg-[var(--color-surface)] rounded-lg p-6">
           <h2 className="text-lg font-semibold text-[var(--color-text)] mb-4">
             Available Movies

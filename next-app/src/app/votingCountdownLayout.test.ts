@@ -31,3 +31,11 @@ test('app layout blocks accidental horizontal page scroll', () => {
     true
   );
 });
+
+test('app layout lets the survey page decide whether a guest must sign in', () => {
+  const appLayoutSource = readSource('src/app/(app)/layout.tsx');
+
+  assert.equal(appLayoutSource.includes("headersList.get('x-movie-night-pathname')"), true);
+  assert.equal(appLayoutSource.includes("pathname.startsWith('/survey/')"), true);
+  assert.equal(appLayoutSource.includes('if (!user && !isSurveyRoute)'), true);
+});

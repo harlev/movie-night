@@ -17,4 +17,5 @@ test('responder option entry is a compact inline disclosure with optional detail
   assert.equal(source.includes('Add details'), true);
   assert.equal(source.includes('type="button"'), true);
   assert.equal(source.includes('formRef.current?.reset()'), true);
+  assert.equal(source.includes('titleInputRef.current?.focus()'), true);
 });

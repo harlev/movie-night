@@ -159,13 +159,7 @@ export default function SurveyVotingClient({
         </div>
       )}
 
-      {canAddOptions && (
-        <section className="rounded-xl border border-[var(--color-border)]/50 bg-[var(--color-surface)] p-5">
-          <h2 className="font-display text-lg font-semibold text-[var(--color-text)]">Add your own option</h2>
-          <p className="mb-4 mt-1 text-sm text-[var(--color-text-muted)]">Your option becomes available to everyone immediately.</p>
-          <OpenSurveyOptionForm surveyId={survey.id} responder />
-        </section>
-      )}
+      {canAddOptions && <OpenSurveyOptionForm surveyId={survey.id} responder />}
 
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="min-w-0 space-y-4">

@@ -10,7 +10,9 @@ test('ballot queries use generic entries and hide anonymous identities', () => {
   assert.equal(source.includes('survey_entry_id'), true);
   assert.equal(source.includes('optionId'), true);
   assert.equal(source.includes('guest_display_name: log.owner_label'), true);
+  assert.equal(source.includes('ballot.profiles?.id || ballot.user_id || ballot.id'), true);
   assert.equal(getBallotDisplayName({ owner_mode: 'guest', guest_display_name: ' Pat ' }, false), 'Pat');
+  assert.equal(getBallotDisplayName({ owner_mode: 'guest', guest_display_name: null }, false), 'Anonymous');
   assert.equal(getBallotDisplayName({ owner_mode: 'anonymous', guest_display_name: null }, true), 'Anonymous');
   assert.equal(
     getBallotDisplayName({ owner_mode: 'user', guest_display_name: null, profile_display_name: 'Alex' }, true),

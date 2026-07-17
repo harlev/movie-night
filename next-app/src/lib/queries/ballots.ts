@@ -10,7 +10,7 @@ interface BallotNameSource {
 
 export function getBallotDisplayName(source: BallotNameSource, surveyIsAnonymous: boolean): string {
   if (surveyIsAnonymous || source.owner_mode === 'anonymous') return 'Anonymous';
-  if (source.owner_mode === 'guest') return source.guest_display_name?.trim() || 'Guest';
+  if (source.owner_mode === 'guest') return source.guest_display_name?.trim() || 'Anonymous';
   return source.profile_display_name?.trim() || 'Unknown';
 }
 

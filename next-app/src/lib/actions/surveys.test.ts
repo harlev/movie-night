@@ -11,6 +11,7 @@ test('survey actions create open surveys with secure defaults and 1/3/5 selectio
   assert.equal(source.includes("readCheckbox(formData, 'membersOnly', true)"), true);
   assert.equal(source.includes('validateSurveySelectionSize'), true);
   assert.equal(source.includes('membersOnly,'), true);
+  assert.equal(source.includes("profile.status !== 'active'"), true);
 });
 
 test('survey actions enforce option permissions, closing, upload cleanup, and two-admin-option rule', () => {

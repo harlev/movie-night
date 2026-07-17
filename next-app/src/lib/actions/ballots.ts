@@ -40,6 +40,7 @@ export async function submitBallotAction(
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   const profile = user ? await getUserById(user.id) : null;
+  if (user && (!profile || profile.status !== 'active')) return { error: 'Account is disabled' };
   const cookieStore = await cookies();
   const owner = resolveSurveyBallotOwner({
     membersOnly: survey.members_only,

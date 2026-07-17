@@ -160,6 +160,7 @@ begin
   if p_authenticated_user_id is not null then
     select role, display_name into v_user_role, v_user_display_name from public.profiles
     where id = p_authenticated_user_id and status = 'active';
+    if v_user_role is null then raise exception 'Authenticated account is not active'; end if;
   end if;
   if v_survey.members_only and coalesce(v_user_role, 'viewer') not in ('admin', 'member') then
     raise exception 'This survey is limited to members';

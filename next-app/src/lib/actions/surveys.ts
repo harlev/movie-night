@@ -56,6 +56,7 @@ async function getCurrentUser() {
 async function requireAdmin(): Promise<{ userId: string } | { error: string }> {
   const { user, profile } = await getCurrentUser();
   if (!user || !profile) return { error: 'Not authenticated' };
+  if (profile.status !== 'active') return { error: 'Account is disabled' };
   if (profile.role !== 'admin') return { error: 'Admin access required' };
   return { userId: user.id };
 }
@@ -274,7 +275,8 @@ export async function addResponderSurveyOptionAction(_prevState: ActionState | n
   if (!survey.allow_responder_options) return { error: 'Responders cannot add options to this survey' };
 
   const { user, profile } = await getCurrentUser();
-  if (survey.members_only && (!user || !profile || profile.role === 'viewer')) {
+  if (user && (!profile || profile.status !== 'active')) return { error: 'Account is disabled' };
+  if (survey.members_only && (!user || !profile || profile.status !== 'active' || profile.role === 'viewer')) {
     return { error: 'This survey is limited to members' };
   }
   const cookieStore = await cookies();

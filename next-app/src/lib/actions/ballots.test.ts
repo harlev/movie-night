@@ -24,4 +24,5 @@ test('submitBallotAction resolves generic survey ownership and validates option 
   assert.equal(source.includes('optionId'), true);
   assert.equal(source.includes('getSurveyChoices'), true);
   assert.equal(source.includes('isSurveyClosed'), true);
+  assert.equal(source.includes("profile.status !== 'active'"), true);
 });

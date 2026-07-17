@@ -31,6 +31,7 @@ test('open survey migration and canonical schemas define generic entries and bal
     assert.equal(source.includes('owner_label text'), true);
     assert.equal(source.includes('survey-option-images'), true);
     assert.equal(source.includes('finalize_expired_surveys'), true);
+    assert.equal(source.includes('Authenticated account is not active'), true);
   }
 
   assert.equal(migration.includes('update public.ballot_ranks br'), true);

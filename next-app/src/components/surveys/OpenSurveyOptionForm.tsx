@@ -13,7 +13,7 @@ export function OpenSurveyOptionForm({ surveyId, responder = false }: OpenSurvey
   const [state, formAction, pending] = useActionState(action, null);
 
   return (
-    <form action={formAction} className="space-y-3" encType="multipart/form-data">
+    <form action={formAction} className="space-y-3">
       <input type="hidden" name="surveyId" value={surveyId} />
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="sm:col-span-2">

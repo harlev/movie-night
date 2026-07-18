@@ -35,7 +35,7 @@ export async function shareSurvey({
 }
 
 export default function ShareButton({ surveyId, title }: { surveyId: string; title: string }) {
-  const [status, setStatus] = useState<'idle' | 'copied' | 'error'>('idle');
+  const [status, setStatus] = useState<'idle' | 'shared' | 'copied' | 'error'>('idle');
 
   async function handleShare() {
     try {
@@ -44,7 +44,7 @@ export default function ShareButton({ surveyId, title }: { surveyId: string; tit
         url: getSurveyShareUrl(surveyId, window.location.href),
         navigatorLike: navigator,
       });
-      setStatus(result === 'copied' ? 'copied' : 'idle');
+      setStatus(result);
     } catch {
       setStatus('error');
     }
@@ -60,7 +60,7 @@ export default function ShareButton({ surveyId, title }: { surveyId: string; tit
       <svg aria-hidden="true" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.7 11.3 15.3 7.7M8.7 12.7l6.6 3.6M18 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM6 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm12 6a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
       </svg>
-      {status === 'copied' ? 'Link copied' : status === 'error' ? 'Copy failed' : 'Share'}
+      {status === 'shared' ? 'Shared' : status === 'copied' ? 'Link copied' : status === 'error' ? 'Copy failed' : 'Share'}
     </button>
   );
 }

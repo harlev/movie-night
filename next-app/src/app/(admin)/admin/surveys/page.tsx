@@ -81,7 +81,9 @@ export default async function AdminSurveysPage() {
                 <tr key={survey.id} className="hover:bg-[var(--color-surface-elevated)]/50">
                   <td className="px-4 py-4">
                     <div>
-                      <p className="font-medium text-[var(--color-text)]">{survey.title}</p>
+                      <Link href={`/survey/${survey.id}`} className="font-medium text-[var(--color-text)] hover:text-[var(--color-primary)] hover:underline">
+                        {survey.title}
+                      </Link>
                       <span className="mt-1 inline-block rounded bg-[var(--color-surface-elevated)] px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-[var(--color-text-muted)]">
                         {survey.survey_type === 'open' ? 'Open' : 'Movie'}
                       </span>

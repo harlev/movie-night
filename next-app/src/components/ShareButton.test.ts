@@ -48,3 +48,12 @@ test('survey clients reuse the same share control', () => {
     assert.equal(source.includes('<ShareButton'), true, `${file} should render ShareButton`);
   }
 });
+
+test('share control confirms native sharing and survey titles link to voting', () => {
+  const shareSource = readFileSync(path.join(process.cwd(), 'src/components/ShareButton.tsx'), 'utf8');
+  const listSource = readFileSync(path.join(process.cwd(), 'src/app/(admin)/admin/surveys/page.tsx'), 'utf8');
+
+  assert.equal(shareSource.includes("'shared' | 'copied' | 'error'"), true);
+  assert.equal(shareSource.includes("status === 'shared' ? 'Shared'"), true);
+  assert.equal(listSource.includes('href={`/survey/${survey.id}`}'), true);
+});
